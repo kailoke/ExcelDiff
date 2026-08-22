@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using NPOI.SS.UserModel;
 using NPOI.HSSF.UserModel;
@@ -8,6 +8,7 @@ namespace ExcelMerge
 {
     public class ExcelUtility
     {
+#if PERF_TIMING || NPOI_READ
         public static object GetCellValue(ICell cell)
         {
             if (cell == null)
@@ -50,6 +51,7 @@ namespace ExcelMerge
 
             return GetCellValue(cell).ToString();
         }
+#endif
 
         public static void CreateWorkbook(string path, ExcelWorkbookType workbookType)
         {

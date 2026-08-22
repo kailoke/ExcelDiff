@@ -106,6 +106,14 @@ namespace FastWpfGrid
             }
             if (_isInvalidatedAll)
             {
+#if PERF_TIMING
+                try
+                {
+                    System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "em_open_timing.log"),
+                        $"RenderGrid full={Math.Round((DateTime.Now - start).TotalMilliseconds)}ms rows={VisibleRowCount} cols={VisibleColumnCount}\r\n");
+                }
+                catch { }
+#endif
                 Debug.WriteLine("Render full grid: {0} ms", Math.Round((DateTime.Now - start).TotalMilliseconds));
             }
             ClearInvalidation();

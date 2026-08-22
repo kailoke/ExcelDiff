@@ -5,6 +5,8 @@ namespace ExcelMerge
 {
     public class ExcelSheetDiff
     {
+        private int nextRowIndex = 0;
+
         public SortedDictionary<int, ExcelRowDiff> Rows { get; private set; }
 
         public ExcelSheetDiff()
@@ -14,7 +16,7 @@ namespace ExcelMerge
 
         public ExcelRowDiff CreateRow()
         {
-            var row = new ExcelRowDiff(Rows.Any() ? Rows.Keys.Last() + 1 : 0);
+            var row = new ExcelRowDiff(nextRowIndex++);
             Rows.Add(row.Index, row);
 
             return row;

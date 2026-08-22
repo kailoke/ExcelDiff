@@ -215,7 +215,13 @@ namespace ExcelMerge.GUI.ViewModels
 
             if (existsSrc)
             {
+#if PERF_TIMING
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
                 SrcSheetNames = ExcelWorkbook.GetSheetNames(SrcPath).ToList();
+#if PERF_TIMING
+                ExcelMerge.GUI.Timing.Log("GetSheetNames(src)", sw.ElapsedMilliseconds);
+#endif
                 SelectedSrcSheetIndex = 0;
             }
             else
@@ -226,7 +232,13 @@ namespace ExcelMerge.GUI.ViewModels
 
             if (existsDst)
             {
+#if PERF_TIMING
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
                 DstSheetNames = ExcelWorkbook.GetSheetNames(DstPath).ToList();
+#if PERF_TIMING
+                ExcelMerge.GUI.Timing.Log("GetSheetNames(dst)", sw.ElapsedMilliseconds);
+#endif
                 SelectedDstSheetIndex = 0;
             }
             else

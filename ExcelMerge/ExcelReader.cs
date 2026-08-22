@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using NPOI.SS.UserModel;
 
 namespace ExcelMerge
 {
+#if PERF_TIMING || NPOI_READ
     internal class ExcelReader
     {
         internal static IEnumerable<ExcelRow> Read(ISheet sheet)
@@ -27,4 +28,5 @@ namespace ExcelMerge
             }
         }
     }
+#endif
 }

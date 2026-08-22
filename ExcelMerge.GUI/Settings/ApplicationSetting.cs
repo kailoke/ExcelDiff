@@ -13,7 +13,8 @@ namespace ExcelMerge.GUI.Settings
     {
         public static readonly string Location =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "ExcelMerge", "ExcelMerge.yml");
+                System.Reflection.Assembly.GetExecutingAssembly().GetName().Name,
+                System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + ".yml");
 
         private bool skipFirstBlankRows;
         public bool SkipFirstBlankRows
@@ -184,6 +185,55 @@ namespace ExcelMerge.GUI.Settings
         {
             get { return culture; }
             set { SetProperty(ref culture, value); }
+        }
+
+        private bool startOnBoot = true;
+        public bool StartOnBoot
+        {
+            get { return startOnBoot; }
+            set { SetProperty(ref startOnBoot, value); }
+        }
+
+        private bool runInBackground = true;
+        public bool RunInBackground
+        {
+            get { return runInBackground; }
+            set { SetProperty(ref runInBackground, value); }
+        }
+
+        private double windowLeft = double.NaN;
+        public double WindowLeft
+        {
+            get { return windowLeft; }
+            set { SetProperty(ref windowLeft, value); }
+        }
+
+        private double windowTop = double.NaN;
+        public double WindowTop
+        {
+            get { return windowTop; }
+            set { SetProperty(ref windowTop, value); }
+        }
+
+        private double windowWidth = double.NaN;
+        public double WindowWidth
+        {
+            get { return windowWidth; }
+            set { SetProperty(ref windowWidth, value); }
+        }
+
+        private double windowHeight = double.NaN;
+        public double WindowHeight
+        {
+            get { return windowHeight; }
+            set { SetProperty(ref windowHeight, value); }
+        }
+
+        private string windowState = "Normal";
+        public string WindowState
+        {
+            get { return windowState; }
+            set { SetProperty(ref windowState, value); }
         }
 
         private int columnWidth = 100;

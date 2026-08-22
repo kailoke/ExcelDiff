@@ -10,6 +10,7 @@
 
 namespace ExcelMerge.GUI.Properties {
     using System;
+    using ExcelMerge.GUI.Localization;
     
     
     /// <summary>
@@ -65,7 +66,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Button_ExtractDiff {
             get {
-                return ResourceManager.GetString("Button_ExtractDiff", resourceCulture);
+                return LocalizationManager.GetString("Button_ExtractDiff", ResourceManager, resourceCulture);
             }
         }
         
@@ -74,7 +75,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_BuildCellBaseLog {
             get {
-                return ResourceManager.GetString("ContextMenu_BuildCellBaseLog", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_BuildCellBaseLog", ResourceManager, resourceCulture);
             }
         }
         
@@ -83,7 +84,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_BuildColumnBaseLog {
             get {
-                return ResourceManager.GetString("ContextMenu_BuildColumnBaseLog", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_BuildColumnBaseLog", ResourceManager, resourceCulture);
             }
         }
         
@@ -92,7 +93,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_BuildRowBaseLog {
             get {
-                return ResourceManager.GetString("ContextMenu_BuildRowBaseLog", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_BuildRowBaseLog", ResourceManager, resourceCulture);
             }
         }
         
@@ -101,7 +102,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_CopyAsCsv {
             get {
-                return ResourceManager.GetString("ContextMenu_CopyAsCsv", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_CopyAsCsv", ResourceManager, resourceCulture);
             }
         }
         
@@ -110,7 +111,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_CopyAsTsv {
             get {
-                return ResourceManager.GetString("ContextMenu_CopyAsTsv", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_CopyAsTsv", ResourceManager, resourceCulture);
             }
         }
         
@@ -119,7 +120,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_DiffAsHeader {
             get {
-                return ResourceManager.GetString("ContextMenu_DiffAsHeader", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_DiffAsHeader", ResourceManager, resourceCulture);
             }
         }
         
@@ -128,7 +129,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_ResetColumnHeader {
             get {
-                return ResourceManager.GetString("ContextMenu_ResetColumnHeader", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_ResetColumnHeader", ResourceManager, resourceCulture);
             }
         }
         
@@ -137,7 +138,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_ResetRowHeader {
             get {
-                return ResourceManager.GetString("ContextMenu_ResetRowHeader", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_ResetRowHeader", ResourceManager, resourceCulture);
             }
         }
         
@@ -146,7 +147,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_SetColumnHeader {
             get {
-                return ResourceManager.GetString("ContextMenu_SetColumnHeader", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_SetColumnHeader", ResourceManager, resourceCulture);
             }
         }
         
@@ -155,7 +156,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ContextMenu_SetRowHeader {
             get {
-                return ResourceManager.GetString("ContextMenu_SetRowHeader", resourceCulture);
+                return LocalizationManager.GetString("ContextMenu_SetRowHeader", ResourceManager, resourceCulture);
             }
         }
         
@@ -164,7 +165,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string DefaultColumnBaseLogFormat {
             get {
-                return ResourceManager.GetString("DefaultColumnBaseLogFormat", resourceCulture);
+                return LocalizationManager.GetString("DefaultColumnBaseLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -173,7 +174,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string DefaultLogFormat {
             get {
-                return ResourceManager.GetString("DefaultLogFormat", resourceCulture);
+                return LocalizationManager.GetString("DefaultLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -182,7 +183,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string DefaultLogFormatAddedRow {
             get {
-                return ResourceManager.GetString("DefaultLogFormatAddedRow", resourceCulture);
+                return LocalizationManager.GetString("DefaultLogFormatAddedRow", ResourceManager, resourceCulture);
             }
         }
         
@@ -191,7 +192,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string DefaultLogFormatRemovedRow {
             get {
-                return ResourceManager.GetString("DefaultLogFormatRemovedRow", resourceCulture);
+                return LocalizationManager.GetString("DefaultLogFormatRemovedRow", ResourceManager, resourceCulture);
             }
         }
         
@@ -200,7 +201,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string DefaultRowBaseLogFormat {
             get {
-                return ResourceManager.GetString("DefaultRowBaseLogFormat", resourceCulture);
+                return LocalizationManager.GetString("DefaultRowBaseLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -209,7 +210,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string GroupBox_Behavior {
             get {
-                return ResourceManager.GetString("GroupBox_Behavior", resourceCulture);
+                return LocalizationManager.GetString("GroupBox_Behavior", ResourceManager, resourceCulture);
             }
         }
         
@@ -218,7 +219,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string GroupBox_DisplayFormat {
             get {
-                return ResourceManager.GetString("GroupBox_DisplayFormat", resourceCulture);
+                return LocalizationManager.GetString("GroupBox_DisplayFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -227,7 +228,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string GroupBox_LogFormat {
             get {
-                return ResourceManager.GetString("GroupBox_LogFormat", resourceCulture);
+                return LocalizationManager.GetString("GroupBox_LogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -236,7 +237,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string GroupBox_ReadSetting {
             get {
-                return ResourceManager.GetString("GroupBox_ReadSetting", resourceCulture);
+                return LocalizationManager.GetString("GroupBox_ReadSetting", ResourceManager, resourceCulture);
             }
         }
         
@@ -245,7 +246,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string GroupBox_Style {
             get {
-                return ResourceManager.GetString("GroupBox_Style", resourceCulture);
+                return LocalizationManager.GetString("GroupBox_Style", ResourceManager, resourceCulture);
             }
         }
         
@@ -254,7 +255,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_AddedColor {
             get {
-                return ResourceManager.GetString("Label_AddedColor", resourceCulture);
+                return LocalizationManager.GetString("Label_AddedColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -263,7 +264,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_AddedRowLogFormat {
             get {
-                return ResourceManager.GetString("Label_AddedRowLogFormat", resourceCulture);
+                return LocalizationManager.GetString("Label_AddedRowLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -272,7 +273,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_AddedRows {
             get {
-                return ResourceManager.GetString("Label_AddedRows", resourceCulture);
+                return LocalizationManager.GetString("Label_AddedRows", ResourceManager, resourceCulture);
             }
         }
         
@@ -281,7 +282,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_AlwaysExpandCellDiff {
             get {
-                return ResourceManager.GetString("Label_AlwaysExpandCellDiff", resourceCulture);
+                return LocalizationManager.GetString("Label_AlwaysExpandCellDiff", ResourceManager, resourceCulture);
             }
         }
         
@@ -290,7 +291,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ColorModifiedRow {
             get {
-                return ResourceManager.GetString("Label_ColorModifiedRow", resourceCulture);
+                return LocalizationManager.GetString("Label_ColorModifiedRow", ResourceManager, resourceCulture);
             }
         }
         
@@ -299,7 +300,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ColumnBaseLogFormat {
             get {
-                return ResourceManager.GetString("Label_ColumnBaseLogFormat", resourceCulture);
+                return LocalizationManager.GetString("Label_ColumnBaseLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -308,7 +309,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ColumnHeaderColor {
             get {
-                return ResourceManager.GetString("Label_ColumnHeaderColor", resourceCulture);
+                return LocalizationManager.GetString("Label_ColumnHeaderColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -317,7 +318,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ColumnWidth {
             get {
-                return ResourceManager.GetString("Label_ColumnWidth", resourceCulture);
+                return LocalizationManager.GetString("Label_ColumnWidth", ResourceManager, resourceCulture);
             }
         }
         
@@ -326,7 +327,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_FitRowHeight {
             get {
-                return ResourceManager.GetString("Label_FitRowHeight", resourceCulture);
+                return LocalizationManager.GetString("Label_FitRowHeight", ResourceManager, resourceCulture);
             }
         }
         
@@ -335,7 +336,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_FocusFirstDiff {
             get {
-                return ResourceManager.GetString("Label_FocusFirstDiff", resourceCulture);
+                return LocalizationManager.GetString("Label_FocusFirstDiff", ResourceManager, resourceCulture);
             }
         }
         
@@ -344,7 +345,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_IgnoreFileSetting {
             get {
-                return ResourceManager.GetString("Label_IgnoreFileSetting", resourceCulture);
+                return LocalizationManager.GetString("Label_IgnoreFileSetting", ResourceManager, resourceCulture);
             }
         }
         
@@ -353,7 +354,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_LogFormat {
             get {
-                return ResourceManager.GetString("Label_LogFormat", resourceCulture);
+                return LocalizationManager.GetString("Label_LogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -362,7 +363,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_MaxRowHeight {
             get {
-                return ResourceManager.GetString("Label_MaxRowHeight", resourceCulture);
+                return LocalizationManager.GetString("Label_MaxRowHeight", ResourceManager, resourceCulture);
             }
         }
         
@@ -371,7 +372,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_MinRowHeight {
             get {
-                return ResourceManager.GetString("Label_MinRowHeight", resourceCulture);
+                return LocalizationManager.GetString("Label_MinRowHeight", ResourceManager, resourceCulture);
             }
         }
         
@@ -380,7 +381,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ModifiedCells {
             get {
-                return ResourceManager.GetString("Label_ModifiedCells", resourceCulture);
+                return LocalizationManager.GetString("Label_ModifiedCells", ResourceManager, resourceCulture);
             }
         }
         
@@ -389,7 +390,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ModifiedColor {
             get {
-                return ResourceManager.GetString("Label_ModifiedColor", resourceCulture);
+                return LocalizationManager.GetString("Label_ModifiedColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -398,7 +399,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ModifiedRowColor {
             get {
-                return ResourceManager.GetString("Label_ModifiedRowColor", resourceCulture);
+                return LocalizationManager.GetString("Label_ModifiedRowColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -407,7 +408,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_ModifiedRows {
             get {
-                return ResourceManager.GetString("Label_ModifiedRows", resourceCulture);
+                return LocalizationManager.GetString("Label_ModifiedRows", ResourceManager, resourceCulture);
             }
         }
         
@@ -416,7 +417,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_NotifyEqual {
             get {
-                return ResourceManager.GetString("Label_NotifyEqual", resourceCulture);
+                return LocalizationManager.GetString("Label_NotifyEqual", ResourceManager, resourceCulture);
             }
         }
         
@@ -425,7 +426,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RemovedColor {
             get {
-                return ResourceManager.GetString("Label_RemovedColor", resourceCulture);
+                return LocalizationManager.GetString("Label_RemovedColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -434,7 +435,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RemovedRowLogFormat {
             get {
-                return ResourceManager.GetString("Label_RemovedRowLogFormat", resourceCulture);
+                return LocalizationManager.GetString("Label_RemovedRowLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -443,7 +444,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RemovedRows {
             get {
-                return ResourceManager.GetString("Label_RemovedRows", resourceCulture);
+                return LocalizationManager.GetString("Label_RemovedRows", ResourceManager, resourceCulture);
             }
         }
         
@@ -452,7 +453,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RowBaseLogFormat {
             get {
-                return ResourceManager.GetString("Label_RowBaseLogFormat", resourceCulture);
+                return LocalizationManager.GetString("Label_RowBaseLogFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -461,7 +462,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RowColor {
             get {
-                return ResourceManager.GetString("Label_RowColor", resourceCulture);
+                return LocalizationManager.GetString("Label_RowColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -470,7 +471,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RowHeaderColor {
             get {
-                return ResourceManager.GetString("Label_RowHeaderColor", resourceCulture);
+                return LocalizationManager.GetString("Label_RowHeaderColor", ResourceManager, resourceCulture);
             }
         }
         
@@ -479,7 +480,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_RowlHeight {
             get {
-                return ResourceManager.GetString("Label_RowlHeight", resourceCulture);
+                return LocalizationManager.GetString("Label_RowlHeight", ResourceManager, resourceCulture);
             }
         }
         
@@ -488,7 +489,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_SkipFirstBlankColumns {
             get {
-                return ResourceManager.GetString("Label_SkipFirstBlankColumns", resourceCulture);
+                return LocalizationManager.GetString("Label_SkipFirstBlankColumns", ResourceManager, resourceCulture);
             }
         }
         
@@ -497,7 +498,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_SkipFirstBlankRows {
             get {
-                return ResourceManager.GetString("Label_SkipFirstBlankRows", resourceCulture);
+                return LocalizationManager.GetString("Label_SkipFirstBlankRows", ResourceManager, resourceCulture);
             }
         }
         
@@ -506,7 +507,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_TrimLastBlankColumns {
             get {
-                return ResourceManager.GetString("Label_TrimLastBlankColumns", resourceCulture);
+                return LocalizationManager.GetString("Label_TrimLastBlankColumns", ResourceManager, resourceCulture);
             }
         }
         
@@ -515,7 +516,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Label_TrimLastBlankRows {
             get {
-                return ResourceManager.GetString("Label_TrimLastBlankRows", resourceCulture);
+                return LocalizationManager.GetString("Label_TrimLastBlankRows", ResourceManager, resourceCulture);
             }
         }
         
@@ -524,7 +525,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_Console {
             get {
-                return ResourceManager.GetString("MenuItem_Console", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_Console", ResourceManager, resourceCulture);
             }
         }
         
@@ -533,7 +534,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_ExeExternalCmd {
             get {
-                return ResourceManager.GetString("MenuItem_ExeExternalCmd", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_ExeExternalCmd", ResourceManager, resourceCulture);
             }
         }
         
@@ -542,7 +543,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_ExternalCommands {
             get {
-                return ResourceManager.GetString("MenuItem_ExternalCommands", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_ExternalCommands", ResourceManager, resourceCulture);
             }
         }
         
@@ -551,7 +552,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_FileSettings {
             get {
-                return ResourceManager.GetString("MenuItem_FileSettings", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_FileSettings", ResourceManager, resourceCulture);
             }
         }
         
@@ -560,7 +561,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_GeneralSetting {
             get {
-                return ResourceManager.GetString("MenuItem_GeneralSetting", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_GeneralSetting", ResourceManager, resourceCulture);
             }
         }
         
@@ -569,7 +570,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_OpenAsDstFile {
             get {
-                return ResourceManager.GetString("MenuItem_OpenAsDstFile", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_OpenAsDstFile", ResourceManager, resourceCulture);
             }
         }
         
@@ -578,7 +579,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_OpenAsSrcFile {
             get {
-                return ResourceManager.GetString("MenuItem_OpenAsSrcFile", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_OpenAsSrcFile", ResourceManager, resourceCulture);
             }
         }
         
@@ -587,7 +588,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_OpenDstFile {
             get {
-                return ResourceManager.GetString("MenuItem_OpenDstFile", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_OpenDstFile", ResourceManager, resourceCulture);
             }
         }
         
@@ -596,7 +597,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_OpenSrcFile {
             get {
-                return ResourceManager.GetString("MenuItem_OpenSrcFile", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_OpenSrcFile", ResourceManager, resourceCulture);
             }
         }
         
@@ -605,7 +606,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_RecentFiles {
             get {
-                return ResourceManager.GetString("MenuItem_RecentFiles", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_RecentFiles", ResourceManager, resourceCulture);
             }
         }
         
@@ -614,7 +615,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_RecentFileSets {
             get {
-                return ResourceManager.GetString("MenuItem_RecentFileSets", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_RecentFileSets", ResourceManager, resourceCulture);
             }
         }
         
@@ -623,7 +624,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string MenuItem_View {
             get {
-                return ResourceManager.GetString("MenuItem_View", resourceCulture);
+                return LocalizationManager.GetString("MenuItem_View", ResourceManager, resourceCulture);
             }
         }
         
@@ -632,7 +633,13 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Message_NoDiff {
             get {
-                return ResourceManager.GetString("Message_NoDiff", resourceCulture);
+                return LocalizationManager.GetString("Message_NoDiff", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Message_NoDiffFormat {
+            get {
+                return LocalizationManager.GetString("Message_NoDiffFormat", ResourceManager, resourceCulture);
             }
         }
         
@@ -641,7 +648,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Message_Reboot {
             get {
-                return ResourceManager.GetString("Message_Reboot", resourceCulture);
+                return LocalizationManager.GetString("Message_Reboot", ResourceManager, resourceCulture);
             }
         }
         
@@ -650,7 +657,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Msg_ExtractingDiff {
             get {
-                return ResourceManager.GetString("Msg_ExtractingDiff", resourceCulture);
+                return LocalizationManager.GetString("Msg_ExtractingDiff", ResourceManager, resourceCulture);
             }
         }
         
@@ -661,7 +668,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Msg_OutofSheetRange {
             get {
-                return ResourceManager.GetString("Msg_OutofSheetRange", resourceCulture);
+                return LocalizationManager.GetString("Msg_OutofSheetRange", ResourceManager, resourceCulture);
             }
         }
         
@@ -670,7 +677,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Msg_ReadingFiles {
             get {
-                return ResourceManager.GetString("Msg_ReadingFiles", resourceCulture);
+                return LocalizationManager.GetString("Msg_ReadingFiles", ResourceManager, resourceCulture);
             }
         }
         
@@ -679,7 +686,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Msg_Undisplayable {
             get {
-                return ResourceManager.GetString("Msg_Undisplayable", resourceCulture);
+                return LocalizationManager.GetString("Msg_Undisplayable", ResourceManager, resourceCulture);
             }
         }
         
@@ -688,7 +695,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Msg_WarnSize {
             get {
-                return ResourceManager.GetString("Msg_WarnSize", resourceCulture);
+                return LocalizationManager.GetString("Msg_WarnSize", ResourceManager, resourceCulture);
             }
         }
         
@@ -697,7 +704,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string RadioButton_ShowAll {
             get {
-                return ResourceManager.GetString("RadioButton_ShowAll", resourceCulture);
+                return LocalizationManager.GetString("RadioButton_ShowAll", ResourceManager, resourceCulture);
             }
         }
         
@@ -706,7 +713,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string RadioButton_ShowOnlyDiff {
             get {
-                return ResourceManager.GetString("RadioButton_ShowOnlyDiff", resourceCulture);
+                return LocalizationManager.GetString("RadioButton_ShowOnlyDiff", ResourceManager, resourceCulture);
             }
         }
         
@@ -715,7 +722,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_Down {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_Down", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_Down", ResourceManager, resourceCulture);
             }
         }
         
@@ -724,7 +731,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_I {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_I", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_I", ResourceManager, resourceCulture);
             }
         }
         
@@ -733,7 +740,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_K {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_K", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_K", ResourceManager, resourceCulture);
             }
         }
         
@@ -742,7 +749,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_L {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_L", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_L", ResourceManager, resourceCulture);
             }
         }
         
@@ -751,7 +758,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_Left {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_Left", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_Left", ResourceManager, resourceCulture);
             }
         }
         
@@ -760,7 +767,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_O {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_O", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_O", ResourceManager, resourceCulture);
             }
         }
         
@@ -769,7 +776,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_Right {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_Right", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_Right", ResourceManager, resourceCulture);
             }
         }
         
@@ -778,7 +785,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_Ctrl_Up {
             get {
-                return ResourceManager.GetString("Shortcut_Ctrl_Up", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_Ctrl_Up", ResourceManager, resourceCulture);
             }
         }
         
@@ -787,7 +794,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_F8 {
             get {
-                return ResourceManager.GetString("Shortcut_F8", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_F8", ResourceManager, resourceCulture);
             }
         }
         
@@ -796,7 +803,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Shortcut_F9 {
             get {
-                return ResourceManager.GetString("Shortcut_F9", resourceCulture);
+                return LocalizationManager.GetString("Shortcut_F9", ResourceManager, resourceCulture);
             }
         }
         
@@ -805,7 +812,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Title_ExternalCommandEditorWindow {
             get {
-                return ResourceManager.GetString("Title_ExternalCommandEditorWindow", resourceCulture);
+                return LocalizationManager.GetString("Title_ExternalCommandEditorWindow", ResourceManager, resourceCulture);
             }
         }
         
@@ -814,7 +821,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Title_ExternalCommandsWindow {
             get {
-                return ResourceManager.GetString("Title_ExternalCommandsWindow", resourceCulture);
+                return LocalizationManager.GetString("Title_ExternalCommandsWindow", ResourceManager, resourceCulture);
             }
         }
         
@@ -823,7 +830,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Title_FileSettingEditorWindow {
             get {
-                return ResourceManager.GetString("Title_FileSettingEditorWindow", resourceCulture);
+                return LocalizationManager.GetString("Title_FileSettingEditorWindow", ResourceManager, resourceCulture);
             }
         }
         
@@ -832,7 +839,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Title_FileSettingsWindow {
             get {
-                return ResourceManager.GetString("Title_FileSettingsWindow", resourceCulture);
+                return LocalizationManager.GetString("Title_FileSettingsWindow", ResourceManager, resourceCulture);
             }
         }
         
@@ -841,7 +848,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Title_GeneralSettingWindow {
             get {
-                return ResourceManager.GetString("Title_GeneralSettingWindow", resourceCulture);
+                return LocalizationManager.GetString("Title_GeneralSettingWindow", ResourceManager, resourceCulture);
             }
         }
         
@@ -850,7 +857,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ToolTip_DstFilePath {
             get {
-                return ResourceManager.GetString("ToolTip_DstFilePath", resourceCulture);
+                return LocalizationManager.GetString("ToolTip_DstFilePath", ResourceManager, resourceCulture);
             }
         }
         
@@ -859,7 +866,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ToolTip_DstSheet {
             get {
-                return ResourceManager.GetString("ToolTip_DstSheet", resourceCulture);
+                return LocalizationManager.GetString("ToolTip_DstSheet", ResourceManager, resourceCulture);
             }
         }
         
@@ -868,7 +875,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ToolTip_SrcFilePath {
             get {
-                return ResourceManager.GetString("ToolTip_SrcFilePath", resourceCulture);
+                return LocalizationManager.GetString("ToolTip_SrcFilePath", ResourceManager, resourceCulture);
             }
         }
         
@@ -877,7 +884,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ToolTip_SrcSheet {
             get {
-                return ResourceManager.GetString("ToolTip_SrcSheet", resourceCulture);
+                return LocalizationManager.GetString("ToolTip_SrcSheet", ResourceManager, resourceCulture);
             }
         }
         
@@ -886,7 +893,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string ToolTip_Swap {
             get {
-                return ResourceManager.GetString("ToolTip_Swap", resourceCulture);
+                return LocalizationManager.GetString("ToolTip_Swap", ResourceManager, resourceCulture);
             }
         }
         
@@ -895,7 +902,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Apply {
             get {
-                return ResourceManager.GetString("Word_Apply", resourceCulture);
+                return LocalizationManager.GetString("Word_Apply", ResourceManager, resourceCulture);
             }
         }
         
@@ -904,7 +911,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Args {
             get {
-                return ResourceManager.GetString("Word_Args", resourceCulture);
+                return LocalizationManager.GetString("Word_Args", ResourceManager, resourceCulture);
             }
         }
         
@@ -913,7 +920,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Blank {
             get {
-                return ResourceManager.GetString("Word_Blank", resourceCulture);
+                return LocalizationManager.GetString("Word_Blank", ResourceManager, resourceCulture);
             }
         }
         
@@ -922,7 +929,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Cancel {
             get {
-                return ResourceManager.GetString("Word_Cancel", resourceCulture);
+                return LocalizationManager.GetString("Word_Cancel", ResourceManager, resourceCulture);
             }
         }
         
@@ -931,7 +938,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_CaseSensitive {
             get {
-                return ResourceManager.GetString("Word_CaseSensitive", resourceCulture);
+                return LocalizationManager.GetString("Word_CaseSensitive", ResourceManager, resourceCulture);
             }
         }
         
@@ -940,7 +947,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_ColumnHeaderIndex {
             get {
-                return ResourceManager.GetString("Word_ColumnHeaderIndex", resourceCulture);
+                return LocalizationManager.GetString("Word_ColumnHeaderIndex", ResourceManager, resourceCulture);
             }
         }
         
@@ -949,7 +956,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Default {
             get {
-                return ResourceManager.GetString("Word_Default", resourceCulture);
+                return LocalizationManager.GetString("Word_Default", ResourceManager, resourceCulture);
             }
         }
         
@@ -958,7 +965,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Done {
             get {
-                return ResourceManager.GetString("Word_Done", resourceCulture);
+                return LocalizationManager.GetString("Word_Done", ResourceManager, resourceCulture);
             }
         }
         
@@ -967,7 +974,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_DstFile {
             get {
-                return ResourceManager.GetString("Word_DstFile", resourceCulture);
+                return LocalizationManager.GetString("Word_DstFile", ResourceManager, resourceCulture);
             }
         }
         
@@ -976,7 +983,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Edit {
             get {
-                return ResourceManager.GetString("Word_Edit", resourceCulture);
+                return LocalizationManager.GetString("Word_Edit", ResourceManager, resourceCulture);
             }
         }
         
@@ -985,7 +992,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_English {
             get {
-                return ResourceManager.GetString("Word_English", resourceCulture);
+                return LocalizationManager.GetString("Word_English", ResourceManager, resourceCulture);
             }
         }
         
@@ -994,7 +1001,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_ExactMatch {
             get {
-                return ResourceManager.GetString("Word_ExactMatch", resourceCulture);
+                return LocalizationManager.GetString("Word_ExactMatch", ResourceManager, resourceCulture);
             }
         }
         
@@ -1003,7 +1010,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Executable {
             get {
-                return ResourceManager.GetString("Word_Executable", resourceCulture);
+                return LocalizationManager.GetString("Word_Executable", ResourceManager, resourceCulture);
             }
         }
         
@@ -1012,7 +1019,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_File {
             get {
-                return ResourceManager.GetString("Word_File", resourceCulture);
+                return LocalizationManager.GetString("Word_File", ResourceManager, resourceCulture);
             }
         }
         
@@ -1021,7 +1028,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Font {
             get {
-                return ResourceManager.GetString("Word_Font", resourceCulture);
+                return LocalizationManager.GetString("Word_Font", ResourceManager, resourceCulture);
             }
         }
         
@@ -1030,7 +1037,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Japanese {
             get {
-                return ResourceManager.GetString("Word_Japanese", resourceCulture);
+                return LocalizationManager.GetString("Word_Japanese", ResourceManager, resourceCulture);
             }
         }
         
@@ -1039,7 +1046,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Language {
             get {
-                return ResourceManager.GetString("Word_Language", resourceCulture);
+                return LocalizationManager.GetString("Word_Language", ResourceManager, resourceCulture);
             }
         }
         
@@ -1048,7 +1055,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_MatchType {
             get {
-                return ResourceManager.GetString("Word_MatchType", resourceCulture);
+                return LocalizationManager.GetString("Word_MatchType", ResourceManager, resourceCulture);
             }
         }
         
@@ -1057,7 +1064,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_MaxRowHeaderWidth {
             get {
-                return ResourceManager.GetString("Word_MaxRowHeaderWidth", resourceCulture);
+                return LocalizationManager.GetString("Word_MaxRowHeaderWidth", ResourceManager, resourceCulture);
             }
         }
         
@@ -1066,7 +1073,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Name {
             get {
-                return ResourceManager.GetString("Word_Name", resourceCulture);
+                return LocalizationManager.GetString("Word_Name", ResourceManager, resourceCulture);
             }
         }
         
@@ -1075,7 +1082,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Path {
             get {
-                return ResourceManager.GetString("Word_Path", resourceCulture);
+                return LocalizationManager.GetString("Word_Path", ResourceManager, resourceCulture);
             }
         }
         
@@ -1084,7 +1091,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Regex {
             get {
-                return ResourceManager.GetString("Word_Regex", resourceCulture);
+                return LocalizationManager.GetString("Word_Regex", ResourceManager, resourceCulture);
             }
         }
         
@@ -1093,7 +1100,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Remove {
             get {
-                return ResourceManager.GetString("Word_Remove", resourceCulture);
+                return LocalizationManager.GetString("Word_Remove", ResourceManager, resourceCulture);
             }
         }
         
@@ -1102,7 +1109,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Reset {
             get {
-                return ResourceManager.GetString("Word_Reset", resourceCulture);
+                return LocalizationManager.GetString("Word_Reset", ResourceManager, resourceCulture);
             }
         }
         
@@ -1111,7 +1118,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_RowHeaderIndex {
             get {
-                return ResourceManager.GetString("Word_RowHeaderIndex", resourceCulture);
+                return LocalizationManager.GetString("Word_RowHeaderIndex", ResourceManager, resourceCulture);
             }
         }
         
@@ -1120,7 +1127,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_RowHeaderName {
             get {
-                return ResourceManager.GetString("Word_RowHeaderName", resourceCulture);
+                return LocalizationManager.GetString("Word_RowHeaderName", ResourceManager, resourceCulture);
             }
         }
         
@@ -1129,7 +1136,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Search {
             get {
-                return ResourceManager.GetString("Word_Search", resourceCulture);
+                return LocalizationManager.GetString("Word_Search", ResourceManager, resourceCulture);
             }
         }
         
@@ -1138,7 +1145,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Setting {
             get {
-                return ResourceManager.GetString("Word_Setting", resourceCulture);
+                return LocalizationManager.GetString("Word_Setting", ResourceManager, resourceCulture);
             }
         }
         
@@ -1147,7 +1154,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Sheet {
             get {
-                return ResourceManager.GetString("Word_Sheet", resourceCulture);
+                return LocalizationManager.GetString("Word_Sheet", ResourceManager, resourceCulture);
             }
         }
         
@@ -1156,7 +1163,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_SheetIndex {
             get {
-                return ResourceManager.GetString("Word_SheetIndex", resourceCulture);
+                return LocalizationManager.GetString("Word_SheetIndex", ResourceManager, resourceCulture);
             }
         }
         
@@ -1165,7 +1172,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_SheetName {
             get {
-                return ResourceManager.GetString("Word_SheetName", resourceCulture);
+                return LocalizationManager.GetString("Word_SheetName", ResourceManager, resourceCulture);
             }
         }
         
@@ -1174,7 +1181,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_SrcFile {
             get {
-                return ResourceManager.GetString("Word_SrcFile", resourceCulture);
+                return LocalizationManager.GetString("Word_SrcFile", ResourceManager, resourceCulture);
             }
         }
         
@@ -1183,7 +1190,7 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_StartupSheet {
             get {
-                return ResourceManager.GetString("Word_StartupSheet", resourceCulture);
+                return LocalizationManager.GetString("Word_StartupSheet", ResourceManager, resourceCulture);
             }
         }
         
@@ -1192,7 +1199,49 @@ namespace ExcelMerge.GUI.Properties {
         /// </summary>
         public static string Word_Tool {
             get {
-                return ResourceManager.GetString("Word_Tool", resourceCulture);
+                return LocalizationManager.GetString("Word_Tool", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Word_System {
+            get {
+                return LocalizationManager.GetString("Word_System", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Label_StartOnBoot {
+            get {
+                return LocalizationManager.GetString("Label_StartOnBoot", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Label_RunInBackground {
+            get {
+                return LocalizationManager.GetString("Label_RunInBackground", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Word_Open {
+            get {
+                return LocalizationManager.GetString("Word_Open", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Word_Exit {
+            get {
+                return LocalizationManager.GetString("Word_Exit", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Word_OK {
+            get {
+                return LocalizationManager.GetString("Word_OK", ResourceManager, resourceCulture);
+            }
+        }
+        
+        public static string Word_Close {
+            get {
+                return LocalizationManager.GetString("Word_Close", ResourceManager, resourceCulture);
             }
         }
     }

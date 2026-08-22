@@ -1,4 +1,4 @@
-Ôªøusing System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,13 +16,14 @@ using System.Windows.Shapes;
 namespace ExcelMerge.GUI.Views
 {
     /// <summary>
-    /// ProgressWindow.xaml „ÅÆÁõ∏‰∫í‰ΩúÁî®„É≠„Ç∏„ÉÉ„ÇØ
+    /// ProgressWindow.xaml §Œœ‡ª•◊˜”√•Ì•∏•√•Ø
     /// </summary>
     public partial class ProgressWindow : Window
     {
         public ProgressWindow()
         {
             InitializeComponent();
+
         }
 
         public static void DoWorkWithModal(Action<IProgress<string>> work)

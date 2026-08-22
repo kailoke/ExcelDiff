@@ -64,8 +64,30 @@ namespace ExcelMerge.GUI.Models
 
             columnCount = SheetDiff.Rows.Max(r => r.Value.Cells.Count);
             rowCount = SheetDiff.Rows.Count();
-            
+
+            BuildRowStatusIndexes();
+
             App.Instance.OnSettingUpdated += () => { InvalidateAll(); };
+        }
+
+        private HashSet<int> modifiedRows;
+        private HashSet<int> addedRows;
+        private HashSet<int> removedRows;
+
+        private void BuildRowStatusIndexes()
+        {
+            modifiedRows = new HashSet<int>();
+            addedRows = new HashSet<int>();
+            removedRows = new HashSet<int>();
+            foreach (var row in SheetDiff.Rows)
+            {
+                if (row.Value.IsModified())
+                    modifiedRows.Add(row.Key);
+                if (row.Value.IsAdded())
+                    addedRows.Add(row.Key);
+                if (row.Value.IsRemoved())
+                    removedRows.Add(row.Key);
+            }
         }
 
         public override string GetColumnHeaderText(int column)
@@ -162,16 +184,36 @@ namespace ExcelMerge.GUI.Models
             return null;
         }
 
+        /// <summary>
+        /// Lightweight color computation used by the location (minimap) grid.
+        /// Avoids the overhead of the full GetCell path.
+        /// </summary>
+        public Color? GetCellColor(int row, int column)
+        {
+            ExcelCellDiff cellDiff;
+            var status = ExcelCellStatus.None;
+            if (TryGetCellDiff(row, column, out cellDiff, true))
+            {
+                status = cellDiff.Status;
+                if (status == ExcelCellStatus.Added && DiffType == DiffType.Source)
+                    status = ExcelCellStatus.Removed;
+                else if (status == ExcelCellStatus.Removed && DiffType == DiffType.Source)
+                    status = ExcelCellStatus.Added;
+            }
+
+            Color? backgroundColor = null;
+            if (App.Instance.Setting.ColorModifiedRow && IsModifiedRow(row, true))
+                backgroundColor = App.Instance.Setting.ModifiedRowColor;
+
+            return GetColor(status) ?? backgroundColor;
+        }
+
         public bool IsModifiedRow(int row, bool direct)
         {
             if (direct)
                 row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
 
-            ExcelRowDiff rowDiff;
-            if (SheetDiff.Rows.TryGetValue(row, out rowDiff))
-                return rowDiff.IsModified();
-
-            return false;
+            return modifiedRows.Contains(row);
         }
 
         public bool IsRemovedRow(int row, bool direct)
@@ -179,11 +221,7 @@ namespace ExcelMerge.GUI.Models
             if (direct)
                 row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
 
-            ExcelRowDiff rowDiff;
-            if (SheetDiff.Rows.TryGetValue(row, out rowDiff))
-                return rowDiff.IsRemoved();
-
-            return false;
+            return removedRows.Contains(row);
         }
 
         public bool IsAddedRow(int row, bool direct)
@@ -191,11 +229,7 @@ namespace ExcelMerge.GUI.Models
             if (direct)
                 row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
 
-            ExcelRowDiff rowDiff;
-            if (SheetDiff.Rows.TryGetValue(row, out rowDiff))
-                return rowDiff.IsAdded();
-
-            return false;
+            return addedRows.Contains(row);
         }
 
         public override IFastGridCell GetRowHeader(IFastGridView view, int row)
