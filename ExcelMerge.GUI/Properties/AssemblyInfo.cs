@@ -7,11 +7,18 @@ using System.Windows;
 // アセンブリに関する一般情報は以下の属性セットをとおして制御されます。
 // アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更してください。
-[assembly: AssemblyTitle("ExcelMerge.GUI")]
+// FileDescription/ProductName follow the build variant so the two products
+// are distinguishable in Task Manager (EM vs EME).
+#if EDR_READ
+[assembly: AssemblyTitle("ExcelMergeEDR")]
+[assembly: AssemblyProduct("ExcelMergeEDR")]
+#else
+[assembly: AssemblyTitle("ExcelMerge")]
+[assembly: AssemblyProduct("ExcelMerge")]
+#endif
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ExcelMerge.GUI")]
 [assembly: AssemblyCopyright("Copyright ©skanmera  2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
