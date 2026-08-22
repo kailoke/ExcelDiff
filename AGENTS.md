@@ -58,7 +58,8 @@ lang\                            # 外置语言文件 en-US.json / zh-CN.json（
 packages\refs\                   # .NET Framework 参考程序集（构建必需，见 §5）
 backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
-verify.ps1                       # 一键验证门禁（构建双版 + 单测 + lang 同步 + WIP 快照）
+verify.ps1                       # 一键验证门禁（构建双版 + 单测 + lang 同步 + §8.3 坑扫描 + WIP 快照）
+Invoke-ExcelMergeDiff.ps1        # 安全启动 GUI diff（fire-and-forget + 轮询窗口，替代 -Wait，见 §8.3）
 CODEX.md / INVARIANTS.md / ADR.md# 代码索引 / 硬约束清单 / 决策记录（见 §2）
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 ```
@@ -146,7 +147,9 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 1. **UTF-8 破坏**：PowerShell 5.1 的 `Get-Content`/`Set-Content -Encoding UTF8` 按 ANSI 读写，破坏含中文的 YAML/JSON → 解析崩溃。改写非 ASCII 文件必须用文件写入工具（UTF-8 无 BOM）或 `[System.IO.File]::WriteAllText` + 显式 UTF8。
 2. **MSBuild 增量互删**：不能在同一条命令里连续构建两个变体——增量构建会把另一变体的 exe 当过期输出清掉。必须分步（EM 与 EME 分开 build/部署）。
-3. **`-Wait` 挂起**：对转发进程 `Start-Process -Wait` 会挂起（无常驻进程时转发器变常驻永不退出）。改用 fire-and-forget + 轮询窗口。
+3. **`-Wait` 挂起**：对转发进程 `Start-Process -Wait` 会挂起（无常驻进程时转发器变常驻永不退出）。
+   - **检测**：`verify.ps1` 已内置坑扫描——任一入库 `*.ps1`（注释除外）出现 `Start-Process ... -Wait ... ExcelMerge` 即门禁失败（verify.ps1 自身排除）。
+   - **预防**：需要等待 diff 会话完成时用根目录 `Invoke-ExcelMergeDiff.ps1`（fire-and-forget 启动 + 轮询主窗口出现/关闭，绝不 `-Wait` 等进程退出）；禁止手工对转发进程 `-Wait`。
 4. **IPC 不得阻塞**：管道线程只能用 `Dispatcher.BeginInvoke` 投递，绝不能同步等待模态框，否则模态框存在时死锁。
 5. **`bin`/`obj`/`Build` 均 gitignore**：构建产物不入库，改代码后构建不污染 git 状态。`backup_installed_*` 是部署前快照，勿动。
 

@@ -85,7 +85,29 @@ foreach ($pair in @(@('en-US', 'Resources.resx'), @('zh-CN', 'Resources.zh-CN.re
     else { FailStep "$culture lang\json out of sync: " + ($diffs -join '; ') }
 }
 
-# --- 6. WIP snapshot ---
+# --- 6. AGENTS 8.3 pitfall scan: no Start-Process -Wait on ExcelMerge ---
+# Waiting on the forwarder with -Wait hangs when no resident instance exists
+# (the forwarder becomes resident and never exits). Enforce the fire-and-forget
+# rule in every checked-in script.
+$psFiles = Get-ChildItem -Path $root -Filter '*.ps1' -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.FullName -ne $PSCommandPath -and
+        $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\backup_installed_|\\packages\\|\\\.git\\'
+    }
+$pitfall = @()
+foreach ($psf in $psFiles) {
+    $lines = [System.IO.File]::ReadAllLines($psf.FullName)
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].TrimStart().StartsWith('#')) { continue }
+        if ($lines[$i] -match 'Start-Process' -and $lines[$i] -match '-Wait' -and $lines[$i] -match 'ExcelMerge') {
+            $pitfall += ($psf.FullName + ':' + ($i + 1))
+        }
+    }
+}
+if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelMerge (AGENTS 8.3 pitfall)' }
+else { FailStep ('Start-Process -Wait on ExcelMerge found: ' + ($pitfall -join '; ')) }
+
+# --- 7. WIP snapshot ---
 Write-Host ''
 Write-Host '--- WIP snapshot (git status) ---'
 git -C $root status --short | ForEach-Object { Write-Host '        ' $_ }
