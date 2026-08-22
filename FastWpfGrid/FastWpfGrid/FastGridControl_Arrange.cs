@@ -271,6 +271,23 @@ namespace FastWpfGrid
             AdjustScrollBarPositions();
         }
 
+        public void ScrollIntoViewTop(FastGridCellAddress cell)
+        {
+            if (cell.Row.HasValue)
+            {
+                if (cell.Row.Value >= _rowSizes.FrozenCount)
+                {
+                    int newRow = cell.Row.Value - _rowSizes.FrozenCount;
+                    if (newRow > (int)vscroll.Maximum) newRow = (int)vscroll.Maximum;
+                    ScrollContent(newRow, FirstVisibleColumnScrollIndex);
+                }
+            }
+
+            AdjustInlineEditorPosition();
+            AdjustSelectionMenuPosition();
+            AdjustScrollBarPositions();
+        }
+
         public FastGridCellAddress CurrentCell
         {
             get { return _currentCell; }

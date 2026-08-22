@@ -594,7 +594,11 @@ namespace ExcelMerge.GUI.Views
             }
 
             if (App.Instance.Setting.FocusFirstDiff)
+            {
                 MoveNextModifiedCell();
+                if (!SrcDataGrid.CurrentCell.IsEmpty)
+                    SrcDataGrid.ScrollIntoViewTop(SrcDataGrid.CurrentCell);
+            }
         }
 
         private FileSetting FindFilseSetting(string fileName, int sheetIndex, string sheetName, bool isStartup)
