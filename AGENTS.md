@@ -145,15 +145,15 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 ## 9. 当前工作区状态（并行开发须知）
 
-当前分支 `master`，工作区有**大量未提交改动（WIP）**，属于一套正在进行的“常驻 + 本地化 + EDR”特性集。**并行对话开工前先 `git status`/`git diff`，避免与以下改动冲突**：
+当前分支 `master`。**此前未提交的 WIP（常驻 + 本地化 + EDR 特性集）已拆成两个基线提交**：
+`12ac86d`（代码基线：EDR 双读变体 / 单实例 IPC / 托盘 / 窗口持久化 / 外置 JSON 本地化 / NetDiff.TestRunner）、`9fa3d8d`（工程文档 + verify.ps1）。
+新开分支/功能请基于 `master` 最新提交，改动前仍先 `git status`/`git log --oneline -5` 确认基线。
 
-- **单实例 + IPC + 托盘常驻**：`App.xaml.cs`、`SingleInstance.cs`（新）、`TrayIconManager.cs`（新）、`StartupHelper.cs`（新）
-- **外置 JSON 本地化（中文）**：`Localization/`、`LocalizationManager.cs`（新）、`lang/`（新）、`Resources*.resx`、`GenerateLangJson.ps1`（新）
+WIP 特性集涉及的文件（现已入库）：
+- **单实例 + IPC + 托盘常驻**：`App.xaml.cs`、`SingleInstance.cs`、`TrayIconManager.cs`、`StartupHelper.cs`
+- **外置 JSON 本地化（中文）**：`Localization/`、`LocalizationManager.cs`、`lang/`、`Resources*.resx`、`GenerateLangJson.ps1`
 - **EDR 双读变体 EME**：`ExcelWorkbook.cs`、`ExcelSheet.cs`、`ExcelReader.cs`、`ExcelUtility.cs`、`ExcelSheetDiff.cs`、`ExcelMerge.csproj`、`packages.config`（+ExcelDataReader 3.9.0）
-- **窗口状态持久化 / 无差异窗口 / 计时**：`ApplicationSetting.cs`、`MainWindow.xaml(.cs)`、`NoDiffWindow.xaml(.cs)`（新）、`Timing.cs`（新）、`DiffGridModel.cs`、`DiffView.xaml.cs`、`FastGridControl_Render.cs`
-- **未跟踪**：`AGENTS.md`、`ARCHITECTURE.md`、`CODEX.md`、`INVARIANTS.md`、`ADR.md`、`verify.ps1`、`ExcelMerge.GUI/Localization/`、`lang/`、`GenerateLangJson.ps1`、`NetDiff/NetDiff.TestRunner/`、上述新文件
-
-未提交改动涉及 31 个文件（~1100 行增）。新开分支/功能时优先基于这些文件完成后的状态，或先与既有改动协调。
+- **窗口状态持久化 / 无差异窗口 / 计时**：`ApplicationSetting.cs`、`MainWindow.xaml(.cs)`、`NoDiffWindow.xaml(.cs)`、`Timing.cs`、`DiffGridModel.cs`、`DiffView.xaml.cs`、`FastGridControl_Render.cs`
 
 ## 10. 编码规范（沿用既有代码）
 
