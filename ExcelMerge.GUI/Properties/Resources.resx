@@ -151,7 +151,7 @@
     <value>Recent File Sets</value>
   </data>
   <data name="Message_Reboot" xml:space="preserve">
-    <value>Please restart to apply the changes.</value>
+    <value>ExcelMerge will close to change the language.</value>
   </data>
   <data name="Title_ExternalCommandEditorWindow" xml:space="preserve">
     <value>Edit External Command</value>
@@ -205,7 +205,7 @@
     <value>Japanese</value>
   </data>
   <data name="Word_Language" xml:space="preserve">
-    <value>Launguage</value>
+    <value>Language</value>
   </data>
   <data name="Word_Name" xml:space="preserve">
     <value>Name</value>
@@ -473,6 +473,9 @@ If you don't want to apply file settings, enable "Ignore File Setting".</value>
   <data name="Message_NoDiff" xml:space="preserve">
     <value>There is no difference.</value>
   </data>
+  <data name="Message_NoDiffFormat" xml:space="preserve">
+    <value>Left[{0}] - Right[{1}] = There is no difference.</value>
+  </data>
   <data name="GroupBox_Behavior" xml:space="preserve">
     <value>Behavior</value>
   </data>
@@ -496,5 +499,26 @@ If you don't want to apply file settings, enable "Ignore File Setting".</value>
   </data>
   <data name="ContextMenu_CopyAsTsv" xml:space="preserve">
     <value>Copy as TSV</value>
+  </data>
+  <data name="Word_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Label_StartOnBoot" xml:space="preserve">
+    <value>Start ExcelMerge when Windows starts</value>
+  </data>
+  <data name="Label_RunInBackground" xml:space="preserve">
+    <value>Keep ExcelMerge running in the background after closing the window</value>
+  </data>
+  <data name="Word_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Word_Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Word_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Word_Close" xml:space="preserve">
+    <value>Close</value>
   </data>
 </root>

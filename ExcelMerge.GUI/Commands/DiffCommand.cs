@@ -28,8 +28,15 @@ namespace ExcelMerge.GUI.Commands
             window.DataContext = windowViewModel;
             diffView.DataContext = diffViewModel;
 
+            App.Instance.CurrentDiffView = diffView;
             App.Current.MainWindow = window;
             window.Show();
+
+            // The static event dispatchers keep per-view handlers registered; release them
+            // once the window is really closed so a later DiffView never dispatches to them.
+            window.Closed += (s, e) => diffView.RemoveEventListeners();
+
+            ExcelMerge.GUI.Timing.Mark("WindowShown");
         }
 
         public void ValidateOption()

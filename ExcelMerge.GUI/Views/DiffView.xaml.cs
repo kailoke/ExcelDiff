@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -17,6 +18,7 @@ using ExcelMerge.GUI.ViewModels;
 using ExcelMerge.GUI.Settings;
 using ExcelMerge.GUI.Models;
 using ExcelMerge.GUI.Styles;
+using ExcelMerge.GUI.Commands;
 
 namespace ExcelMerge.GUI.Views
 {
@@ -28,6 +30,11 @@ namespace ExcelMerge.GUI.Views
         private const string dstKey = "dst";
 
         private FastGridControl copyTargetGrid;
+
+        private NoDiffWindow noDiffWindow;
+
+        private DiffViewEventHandler srcEventHandler;
+        private DiffViewEventHandler dstEventHandler;
 
         public DiffView()
         {
@@ -64,8 +71,8 @@ namespace ExcelMerge.GUI.Views
 
         private void InitializeEventListeners()
         {
-            var srcEventHandler = new DiffViewEventHandler(srcKey);
-            var dstEventHandler = new DiffViewEventHandler(dstKey);
+            srcEventHandler = new DiffViewEventHandler(srcKey);
+            dstEventHandler = new DiffViewEventHandler(dstKey);
 
             DataGridEventDispatcher.Instance.Listeners.Add(srcEventHandler);
             DataGridEventDispatcher.Instance.Listeners.Add(dstEventHandler);
@@ -75,6 +82,35 @@ namespace ExcelMerge.GUI.Views
             ViewportEventDispatcher.Instance.Listeners.Add(dstEventHandler);
             ValueTextBoxEventDispatcher.Instance.Listeners.Add(srcEventHandler);
             ValueTextBoxEventDispatcher.Instance.Listeners.Add(dstEventHandler);
+        }
+
+        /// <summary>
+        /// Removes this view's event handlers from the static dispatchers. The dispatchers
+        /// are process-wide singletons, so a DiffView that is closed must unregister its
+        /// handlers; otherwise a later DiffView firing an event (e.g. ShowAllRadioButton
+        /// during XAML load) would dispatch to this closed view with a null container.
+        /// </summary>
+        public void RemoveEventListeners()
+        {
+            if (srcEventHandler != null)
+            {
+                DataGridEventDispatcher.Instance.Listeners.Remove(srcEventHandler);
+                LocationGridEventDispatcher.Instance.Listeners.Remove(srcEventHandler);
+                ViewportEventDispatcher.Instance.Listeners.Remove(srcEventHandler);
+                ValueTextBoxEventDispatcher.Instance.Listeners.Remove(srcEventHandler);
+                srcEventHandler = null;
+            }
+
+            if (dstEventHandler != null)
+            {
+                DataGridEventDispatcher.Instance.Listeners.Remove(dstEventHandler);
+                LocationGridEventDispatcher.Instance.Listeners.Remove(dstEventHandler);
+                ViewportEventDispatcher.Instance.Listeners.Remove(dstEventHandler);
+                ValueTextBoxEventDispatcher.Instance.Listeners.Remove(dstEventHandler);
+                dstEventHandler = null;
+            }
+
+            App.Instance.OnSettingUpdated -= OnApplicationSettingUpdated;
         }
 
         private void OnApplicationSettingUpdated()
@@ -360,6 +396,34 @@ namespace ExcelMerge.GUI.Views
             ExecuteDiff();
         }
 
+        public void ApplyDiff(CommandLineOption option)
+        {
+            SrcPathTextBox.Text = option.SrcPath;
+            DstPathTextBox.Text = option.DstPath;
+            ExecuteDiff();
+        }
+
+        /// <summary>
+        /// Dismisses any open modal dialog (e.g. the "no difference" window) so that a
+        /// newly received compare command can take effect immediately.
+        /// </summary>
+        public void DismissModalWindows()
+        {
+            if (noDiffWindow != null)
+            {
+                try
+                {
+                    noDiffWindow.DialogResult = true;
+                    noDiffWindow.Close();
+                }
+                catch
+                {
+                }
+
+                noDiffWindow = null;
+            }
+        }
+
         private ExcelSheetReadConfig CreateReadConfig()
         {
             var setting = ((App)Application.Current).Setting;
@@ -379,15 +443,45 @@ namespace ExcelMerge.GUI.Views
             ExcelWorkbook dwb = null;
             var srcPath = SrcPathTextBox.Text;
             var dstPath = DstPathTextBox.Text;
+#if PERF_TIMING
+            var totalSw = System.Diagnostics.Stopwatch.StartNew();
+#endif
             ProgressWindow.DoWorkWithModal(progress =>
             {
                 progress.Report(Properties.Resources.Msg_ReadingFiles);
 
                 var config = CreateReadConfig();
-                swb = ExcelWorkbook.Create(srcPath, config);
-                dwb = ExcelWorkbook.Create(dstPath, config);
-            });
 
+                // Read both workbooks in parallel to cut down open time.
+                var srcTask = Task.Run(() =>
+                {
+#if PERF_TIMING
+                    var t = System.Diagnostics.Stopwatch.StartNew();
+#endif
+                    var w = ExcelWorkbook.Create(srcPath, config);
+#if PERF_TIMING
+                    Timing.Log("ReadFile(src)", t.ElapsedMilliseconds);
+#endif
+                    return w;
+                });
+                var dstTask = Task.Run(() =>
+                {
+#if PERF_TIMING
+                    var t = System.Diagnostics.Stopwatch.StartNew();
+#endif
+                    var w = ExcelWorkbook.Create(dstPath, config);
+#if PERF_TIMING
+                    Timing.Log("ReadFile(dst)", t.ElapsedMilliseconds);
+#endif
+                    return w;
+                });
+                Task.WaitAll(srcTask, dstTask);
+                swb = srcTask.Result;
+                dwb = dstTask.Result;
+            });
+#if PERF_TIMING
+            Timing.Log("ReadingFilesTotal", totalSw.ElapsedMilliseconds);
+#endif
             return Tuple.Create(swb, dwb);
         }
 
@@ -421,12 +515,17 @@ namespace ExcelMerge.GUI.Views
         private ExcelSheetDiff ExecuteDiff(ExcelSheet srcSheet, ExcelSheet dstSheet)
         {
             ExcelSheetDiff diff = null;
+#if PERF_TIMING
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+#endif
             ProgressWindow.DoWorkWithModal(progress =>
             {
                 progress.Report(Properties.Resources.Msg_ExtractingDiff);
                 diff = ExcelSheet.Diff(srcSheet, dstSheet, diffConfig);
             });
-
+#if PERF_TIMING
+            Timing.Log("ExtractingDiff", sw.ElapsedMilliseconds);
+#endif
             return diff;
         }
 
@@ -449,13 +548,19 @@ namespace ExcelMerge.GUI.Views
             SrcSheetCombobox.SelectedIndex = diffConfig.SrcSheetIndex;
             DstSheetCombobox.SelectedIndex = diffConfig.DstSheetIndex;
 
-            var srcSheet = srcWorkbook.Sheets[SrcSheetCombobox.SelectedItem.ToString()];
-            var dstSheet = dstWorkbook.Sheets[DstSheetCombobox.SelectedItem.ToString()];
+            var srcSheetName = SrcSheetCombobox.SelectedItem.ToString();
+            var dstSheetName = DstSheetCombobox.SelectedItem.ToString();
+
+            var srcSheet = srcWorkbook.Sheets[srcSheetName];
+            var dstSheet = dstWorkbook.Sheets[dstSheetName];
 
             if (srcSheet.Rows.Count > 10000 || dstSheet.Rows.Count > 10000)
                 MessageBox.Show(Properties.Resources.Msg_WarnSize);
 
             var diff = ExecuteDiff(srcSheet, dstSheet);
+#if PERF_TIMING
+            var postSw = System.Diagnostics.Stopwatch.StartNew();
+#endif
             SrcDataGrid.Model = new DiffGridModel(diff, DiffType.Source);
             DstDataGrid.Model = new DiffGridModel(diff, DiffType.Dest);
 
@@ -471,12 +576,22 @@ namespace ExcelMerge.GUI.Views
 
             var summary = diff.CreateSummary();
             GetViewModel().UpdateDiffSummary(summary);
+#if PERF_TIMING
+            Timing.Log("PostModel", postSw.ElapsedMilliseconds);
+#endif
 
             if (!App.Instance.KeepFileHistory)
                 App.Instance.UpdateRecentFiles(SrcPathTextBox.Text, DstPathTextBox.Text);
 
             if (App.Instance.Setting.NotifyEqual && !summary.HasDiff)
-                MessageBox.Show(Properties.Resources.Message_NoDiff);
+            {
+                noDiffWindow = new NoDiffWindow(srcSheetName, dstSheetName)
+                {
+                    Owner = Window.GetWindow(this),
+                };
+                noDiffWindow.ShowDialog();
+                noDiffWindow = null;
+            }
 
             if (App.Instance.Setting.FocusFirstDiff)
                 MoveNextModifiedCell();
@@ -611,12 +726,18 @@ namespace ExcelMerge.GUI.Views
 
         private void ShowAllRadioButton_Checked(object sender, RoutedEventArgs e)
         {
+            if (container == null)
+                return;
+
             var args = new DiffViewEventArgs<FastGridControl>(null, container, TargetType.First);
             DataGridEventDispatcher.Instance.DispatchDisplayFormatChangeEvent(args, false);
         }
 
         private void ShowOnlyDiffRadioButton_Checked(object sender, RoutedEventArgs e)
         {
+            if (container == null)
+                return;
+
             var args = new DiffViewEventArgs<FastGridControl>(null, container, TargetType.First);
             DataGridEventDispatcher.Instance.DispatchDisplayFormatChangeEvent(args, true);
         }

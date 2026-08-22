@@ -143,13 +143,19 @@ namespace ExcelMerge.GUI.Views
 
             var rowCount = e.Sender.Model.RowCount - e.Sender.Model.GetHiddenRows(e.Sender).Count;
             var colCount = e.Sender.Model.ColumnCount;
-            UpdateLocationGridDefinisions(locationGrid, locationGrid.RenderSize, rowCount, colCount);
-
             var viewport = e.Container.Resolve<Rectangle>(Key);
-            RecalculateViewport(viewport, e.Sender);
 
-            var colorMap = CreateColorMap(e.Sender);
-            UpdateLocationGridColors(locationGrid, colorMap, viewport);
+            // Update the location (minimap) grid asynchronously so the main content
+            // renders first instead of blocking on the full minimap layout.
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    UpdateLocationGridDefinisions(locationGrid, locationGrid.RenderSize, rowCount, colCount);
+                    RecalculateViewport(viewport, e.Sender);
+
+                    var colorMap = CreateColorMap(e.Sender);
+                    UpdateLocationGridColors(locationGrid, colorMap, viewport);
+                }), System.Windows.Threading.DispatcherPriority.Background);
 
             e.Sender.NotifyRefresh();
         }
@@ -512,7 +518,7 @@ namespace ExcelMerge.GUI.Views
                 var columnColorMap = new Dictionary<int, Color?>();
                 for (int j = 0, ccount = dataGrid.Model.ColumnCount; j < ccount; j++)
                 {
-                    columnColorMap.Add(j, model.GetCell(dataGrid, i, j, true)?.BackgroundColor);
+                    columnColorMap.Add(j, model.GetCellColor(i, j));
                 }
 
                 ret.Add(columnColorMap);

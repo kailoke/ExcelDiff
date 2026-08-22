@@ -118,7 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="Button_ExtractDiff" xml:space="preserve">
-    <value>只显示差异</value>
+    <value>提取差异</value>
   </data>
   <data name="Label_SkipFirstBlankRows" xml:space="preserve">
     <value>忽略第一个空白行</value>
@@ -151,7 +151,7 @@
     <value>最近打开的文件对比</value>
   </data>
   <data name="Message_Reboot" xml:space="preserve">
-    <value>请重新启动以应用更改。</value>
+    <value>ExcelMerge将关闭以变更语言</value>
   </data>
   <data name="Title_ExternalCommandEditorWindow" xml:space="preserve">
     <value>编辑外部命令</value>
@@ -172,7 +172,7 @@
     <value>左边的文件路径</value>
   </data>
   <data name="ToolTip_SrcSheet" xml:space="preserve">
-    <value>左边的文件</value>
+    <value>左边的表格</value>
   </data>
   <data name="Word_Apply" xml:space="preserve">
     <value>应用</value>
@@ -349,7 +349,7 @@
     <value>最大行标题宽度</value>
   </data>
   <data name="Msg_ExtractingDiff" xml:space="preserve">
-    <value>显示差异...</value>
+    <value>提取差异...</value>
   </data>
   <data name="Msg_ReadingFiles" xml:space="preserve">
     <value>读取文件 ...</value>
@@ -391,7 +391,7 @@
     <value>日志</value>
   </data>
   <data name="MenuItem_View" xml:space="preserve">
-    <value>窗口</value>
+    <value>视图</value>
   </data>
   <data name="Msg_Undisplayable" xml:space="preserve">
     <value>不会显示</value>
@@ -468,10 +468,13 @@
     <value>样式</value>
   </data>
   <data name="Label_NotifyEqual" xml:space="preserve">
-    <value>如果没有差异显示对话框</value>
+    <value>若无差异则显示对话框</value>
   </data>
   <data name="Message_NoDiff" xml:space="preserve">
     <value>没有区别。</value>
+  </data>
+  <data name="Message_NoDiffFormat" xml:space="preserve">
+    <value>左边[{0}] - 右边[{1}] = 没有区别</value>
   </data>
   <data name="GroupBox_Behavior" xml:space="preserve">
     <value>操作</value>
@@ -499,5 +502,26 @@
   </data>
   <data name="Word_Chinese" xml:space="preserve">
     <value>中文</value>
+  </data>
+  <data name="Word_System" xml:space="preserve">
+    <value>系统</value>
+  </data>
+  <data name="Label_StartOnBoot" xml:space="preserve">
+    <value>开机自动启动 ExcelMerge</value>
+  </data>
+  <data name="Label_RunInBackground" xml:space="preserve">
+    <value>关闭窗口后继续在后台运行</value>
+  </data>
+  <data name="Word_Open" xml:space="preserve">
+    <value>打开</value>
+  </data>
+  <data name="Word_Exit" xml:space="preserve">
+    <value>退出</value>
+  </data>
+  <data name="Word_OK" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="Word_Close" xml:space="preserve">
+    <value>关闭</value>
   </data>
 </root>

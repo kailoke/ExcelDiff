@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Threading;
 using ExcelMerge.GUI.Commands;
+using ExcelMerge.GUI.Localization;
 using ExcelMerge.GUI.Settings;
+using ExcelMerge.GUI.Views;
 
 namespace ExcelMerge.GUI
 {
@@ -13,6 +16,12 @@ namespace ExcelMerge.GUI
         public CommandLineOption CommandLineOption { get; private set; }
 
         public event Action OnSettingUpdated;
+
+        public DiffView CurrentDiffView { get; set; }
+
+        public bool IsExiting { get; private set; }
+
+        private TrayIconManager trayIcon;
 
         [STAThread()]
         public static void Main()
@@ -34,13 +43,50 @@ namespace ExcelMerge.GUI
             get { return (App)Current; }
         }
 
+        /// <summary>
+        /// Application display name. Compile-time constant, distinct per build:
+        /// authoritative (EM) build = "ExcelMerge", EDR (EME) build = "ExcelMergeEDR".
+        /// </summary>
+#if EDR_READ
+        public const string DisplayName = "ExcelMergeEDR";
+#else
+        public const string DisplayName = "ExcelMerge";
+#endif
+
         protected override void OnStartup(StartupEventArgs e)
         {
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
             base.OnStartup(e);
 
+            Timing.Mark("StartupBegin");
+
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             var args = Environment.GetCommandLineArgs().Skip(1).ToList();
+
+            if (!SingleInstance.TryAcquire())
+            {
+                // Another instance is already running: forward the command and exit.
+                SingleInstance.SendToRunningInstance(args.ToArray());
+                Shutdown();
+                return;
+            }
+
+            // First instance: become the resident process.
+            SingleInstance.StartServer(OnRemoteCommand);
+            InitializeTray();
+
+            StartupHelper.SetEnabled(Setting.StartOnBoot);
+
+            if (args.Contains("--startup"))
+            {
+                // Started from the Run key at login: run hidden in the tray.
+                if (trayIcon != null)
+                    trayIcon.Show();
+                return;
+            }
+
             if (!args.Any())
                 args.Add(CommandType.Diff.ToString());
 
@@ -49,6 +95,121 @@ namespace ExcelMerge.GUI
             var command = CreateCommand(args.ToArray());
             command.ValidateOption();
             command.Execute();
+        }
+
+        private void InitializeTray()
+        {
+            trayIcon = new TrayIconManager(ShowMainWindow, ExitApplication);
+        }
+
+        public void HideToTray()
+        {
+            if (trayIcon != null)
+                trayIcon.Show();
+
+            if (MainWindow != null)
+                MainWindow.Hide();
+        }
+
+        public void ShowMainWindow()
+        {
+            if (trayIcon != null)
+                trayIcon.Hide();
+
+            if (MainWindow == null)
+                return;
+
+            if (!MainWindow.IsVisible)
+                MainWindow.Show();
+
+            // Only restore from minimized; keep maximized/fullscreen state the user chose.
+            if (MainWindow.WindowState == WindowState.Minimized)
+                MainWindow.WindowState = WindowState.Normal;
+
+            MainWindow.Activate();
+            MainWindow.Focus();
+        }
+
+        public void ExitApplication()
+        {
+            IsExiting = true;
+
+            try
+            {
+                if (trayIcon != null)
+                    trayIcon.Hide();
+            }
+            catch
+            {
+            }
+
+            Shutdown();
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            if (trayIcon != null)
+            {
+                trayIcon.Dispose();
+                trayIcon = null;
+            }
+
+            base.OnExit(e);
+        }
+
+        private void OnRemoteCommand(string[] args)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                // Post asynchronously so the pipe thread never blocks on a modal dialog.
+                Dispatcher.BeginInvoke(new Action(() => OnRemoteCommand(args)));
+                return;
+            }
+
+            if (args == null || args.Length == 0)
+                return;
+
+            var filtered = args.Where(a => a != "--startup").ToArray();
+            if (filtered.Length == 0)
+                return;
+
+            CommandLineOption option;
+            if (!TryParseOption(filtered, out option))
+                return;
+
+            // Force-dismiss any open modal (e.g. "no difference") so the new command takes effect.
+            if (CurrentDiffView != null)
+                CurrentDiffView.DismissModalWindows();
+
+            if (MainWindow != null)
+                ShowMainWindow();
+
+            RouteCommand(option);
+        }
+
+        private bool TryParseOption(string[] args, out CommandLineOption option)
+        {
+            option = new CommandLineOption();
+            if (CommandLine.Parser.Default.ParseArguments(args, option))
+            {
+                option.ConvertToFullPath();
+                return true;
+            }
+
+            return false;
+        }
+
+        private void RouteCommand(CommandLineOption option)
+        {
+            CommandLineOption = option;
+
+            if (CurrentDiffView == null)
+            {
+                new DiffCommand(option).Execute();
+                return;
+            }
+
+            CurrentDiffView.ApplyDiff(option);
         }
 
         private void StoreOption()
@@ -136,20 +297,61 @@ namespace ExcelMerge.GUI
             Setting.Save();
         }
 
+        private string activeCulture;
+
+        public bool IsClosingMainWindow { get; private set; }
+
         public void UpdateResourceCulture()
         {
             if (string.IsNullOrEmpty(Setting.Culture))
                 return;
 
+            LocalizationManager.SetCulture(Setting.Culture);
+
+            var changed = activeCulture != null && activeCulture != Setting.Culture;
+
             if (GUI.Properties.Resources.Culture != null)
             {
                 if (GUI.Properties.Resources.Culture.Name == Setting.Culture)
+                {
+                    activeCulture = Setting.Culture;
                     return;
+                }
 
                 MessageBox.Show(GUI.Properties.Resources.Message_Reboot);
             }
 
             GUI.Properties.Resources.Culture = new System.Globalization.CultureInfo(Setting.Culture);
+            activeCulture = Setting.Culture;
+
+            // XAML static resources are resolved at load time. Instead of rebuilding the
+            // window (which re-runs the whole diff synchronously and freezes the UI), close
+            // the comparison window immediately. The next diff command creates a fresh window
+            // that loads with the new culture, so the language applies from the next compare.
+            if (changed && CurrentDiffView != null)
+                CloseMainWindowForLanguageChange();
+        }
+
+        private void CloseMainWindowForLanguageChange()
+        {
+            var window = MainWindow;
+            if (window == null)
+                return;
+
+            IsClosingMainWindow = true;
+            try
+            {
+                // Hide first so the comparison window disappears instantly, then tear it down.
+                window.Hide();
+                window.Close();
+            }
+            finally
+            {
+                IsClosingMainWindow = false;
+            }
+
+            MainWindow = null;
+            CurrentDiffView = null;
         }
 
         public IEnumerable<string> GetRecentFiles()

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NPOI.SS.UserModel;
@@ -16,10 +16,17 @@ namespace ExcelMerge
             Rows = new SortedDictionary<int, ExcelRow>();
         }
 
+#if PERF_TIMING || NPOI_READ
         public static ExcelSheet Create(ISheet srcSheet, ExcelSheetReadConfig config)
         {
             var rows = ExcelReader.Read(srcSheet);
 
+            return CreateSheet(rows, config);
+        }
+#endif
+
+        public static ExcelSheet Create(IEnumerable<ExcelRow> rows, ExcelSheetReadConfig config)
+        {
             return CreateSheet(rows, config);
         }
 
@@ -311,17 +318,25 @@ namespace ExcelMerge
                     else if (columnStatusMap[columnIndex] == ExcelColumnStatus.Inserted)
                         status = ExcelCellStatus.Added;
 
+                    // Suppress noise: a structural column change where both cells are
+                    // empty is not a real modification to the user.
+                    if ((status == ExcelCellStatus.Added || status == ExcelCellStatus.Removed) &&
+                        string.IsNullOrEmpty(srcCell.Value) && string.IsNullOrEmpty(dstCell.Value))
+                        status = ExcelCellStatus.None;
+
                     row.CreateCell(srcCell, dstCell, columnIndex, status);
                 }
                 else if (srcCell != null && dstCell == null)
                 {
                     dstCell = new ExcelCell(string.Empty, srcCell.OriginalColumnIndex, srcCell.OriginalColumnIndex);
-                    row.CreateCell(srcCell, dstCell, columnIndex, ExcelCellStatus.Removed);
+                    var status = string.IsNullOrEmpty(srcCell.Value) ? ExcelCellStatus.None : ExcelCellStatus.Removed;
+                    row.CreateCell(srcCell, dstCell, columnIndex, status);
                 }
                 else if (srcCell == null && dstCell != null)
                 {
                     srcCell = new ExcelCell(string.Empty, dstCell.OriginalColumnIndex, dstCell.OriginalColumnIndex);
-                    row.CreateCell(srcCell, dstCell, columnIndex, ExcelCellStatus.Added);
+                    var status = string.IsNullOrEmpty(dstCell.Value) ? ExcelCellStatus.None : ExcelCellStatus.Added;
+                    row.CreateCell(srcCell, dstCell, columnIndex, status);
                 }
                 else
                 {

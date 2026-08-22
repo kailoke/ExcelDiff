@@ -8,8 +8,9 @@
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ExcelMerge.GUI</RootNamespace>
-    <AssemblyName>ExcelMerge.GUI</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <AssemblyName Condition="'$(EdrRead)' == 'true'">ExcelMergeEDR.GUI</AssemblyName>
+    <AssemblyName Condition="'$(EdrRead)' != 'true'">ExcelMerge.GUI</AssemblyName>
+    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
@@ -34,6 +35,10 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants Condition="'$(EnablePerfTiming)' == 'true'">$(DefineConstants);PERF_TIMING</DefineConstants>
+    <DefineConstants Condition="'$(EdrRead)' == 'true'">$(DefineConstants);EDR_READ</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>app.ico</ApplicationIcon>
@@ -82,6 +87,7 @@
       <HintPath>..\packages\System.Management.Automation.6.1.7601.17515\lib\net45\System.Management.Automation.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Prism.Wpf.6.3.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
       <Private>True</Private>
@@ -130,6 +136,11 @@
   <ItemGroup>
     <Compile Include="Controls\PowerShellConsole.cs" />
     <Compile Include="IgnoreEqualAttribute.cs" />
+    <Compile Include="Localization\LocalizationManager.cs" />
+    <Compile Include="SingleInstance.cs" />
+    <Compile Include="StartupHelper.cs" />
+    <Compile Include="Timing.cs" />
+    <Compile Include="TrayIconManager.cs" />
     <Compile Include="Settings\ISetting.cs" />
     <Compile Include="SerializableBindableBase.cs" />
     <Compile Include="Settings\ExternalCommandCollection.cs" />
@@ -217,6 +228,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Views\NoDiffWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -232,6 +247,10 @@
     </Compile>
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Views\NoDiffWindow.xaml.cs">
+      <DependentUpon>NoDiffWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Page Include="Views\DiffView.xaml">
@@ -260,9 +279,6 @@
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.ja-JP.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="app.manifest" />
@@ -299,6 +315,13 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildToolsPath)\Sdks\Microsoft.NET.Sdk.WindowsDesktop\targets\Microsoft.WinFX.targets" Condition="Exists('$(MSBuildToolsPath)\Sdks\Microsoft.NET.Sdk.WindowsDesktop\targets\Microsoft.WinFX.targets')" />
+  <Target Name="CopyLangFiles" AfterTargets="Build">
+    <ItemGroup>
+      <LangFiles Include="..\lang\*.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LangFiles)" DestinationFolder="$(OutputPath)lang\" SkipUnchangedFiles="true" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

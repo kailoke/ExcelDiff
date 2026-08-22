@@ -62,13 +62,6 @@ namespace ExcelMerge.GUI.ViewModels
             set { SetProperty(ref dstPath, value); }
         }
 
-        private string cultureName;
-        public string CultureName
-        {
-            get { return cultureName; }
-            private set { SetProperty(ref cultureName, value); }
-        }
-
         public DelegateCommand<ExternalCommand> ExecuteExternalCommandCommand { get; private set; }
         public DelegateCommand OpenExternalCommandsWindowCommand { get; private set; }
         public DelegateCommand OpenFileSettingsWindowCommand { get; private set; }
@@ -77,7 +70,6 @@ namespace ExcelMerge.GUI.ViewModels
         public DelegateCommand<string> OpenAsSrcFileCommand { get; private set; }
         public DelegateCommand<string> OpenAsDstFileCommand { get; private set; }
         public DelegateCommand<string> OpenFileSetCommand { get; private set; }
-        public DelegateCommand<string> ChangeLanguageCommand{ get; private set; }
 
         public MainWindowViewModel(ContentControl content)
         {
@@ -93,7 +85,6 @@ namespace ExcelMerge.GUI.ViewModels
             OpenAsSrcFileCommand = new DelegateCommand<string>(OpenAsSrcFile);
             OpenAsDstFileCommand = new DelegateCommand<string>(OpenAsDstFile);
             OpenFileSetCommand = new DelegateCommand<string>(OpenFileSet);
-            ChangeLanguageCommand = new DelegateCommand<string>(ChangeLanguage);
 
             App.Instance.Setting.PropertyChanged += Setting_PropertyChanged;
         }
@@ -109,7 +100,6 @@ namespace ExcelMerge.GUI.ViewModels
             ExternalCommands = App.Instance.Setting.ExternalCommands.ToList();
             FileSettings = App.Instance.Setting.FileSettings.ToList();
             RecentFileSets = App.Instance.GetRecentFileSets().Select(i => $"{i.Item1} | {i.Item2}").ToList();
-            CultureName = App.Instance.Setting.Culture;
         }
 
         private void OpenExternalCommandsWindow()
@@ -166,13 +156,6 @@ namespace ExcelMerge.GUI.ViewModels
 
             SrcPath = fs.ElementAtOrDefault(0).Trim();
             DstPath = fs.ElementAtOrDefault(1).Trim();
-        }
-
-        private void ChangeLanguage(string calture)
-        {
-            App.Instance.Setting.Culture = calture;
-            App.Instance.Setting.Save();
-            App.Instance.UpdateResourceCulture();
         }
     }
 }

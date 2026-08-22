@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Media;
 using Prism.Mvvm;
 using Prism.Commands;
+using ExcelMerge.GUI.Localization;
 using ExcelMerge.GUI.Settings;
 
 namespace ExcelMerge.GUI.ViewModels
@@ -37,6 +38,11 @@ namespace ExcelMerge.GUI.ViewModels
         public List<string> FontNames
         {
             get { return System.Drawing.FontFamily.Families.Select(f => f.Name).ToList(); }
+        }
+
+        public List<LanguageInfo> AvailableLanguages
+        {
+            get { return LocalizationManager.GetAvailableLanguages(); }
         }
 
         public DelegateCommand<Window> DoneCommand { get; private set; }
@@ -93,12 +99,21 @@ namespace ExcelMerge.GUI.ViewModels
 
         private void Apply()
         {
+            var cultureChanged = !string.Equals(originalSetting.Culture, Setting.Culture, StringComparison.OrdinalIgnoreCase);
+            var startOnBootChanged = originalSetting.StartOnBoot != Setting.StartOnBoot;
+
             App.Instance.UpdateSetting(Setting);
             App.Instance.Setting.Save();
 
             originalSetting = App.Instance.Setting;
 
             IsDirty = false;
+
+            if (cultureChanged)
+                App.Instance.UpdateResourceCulture();
+
+            if (startOnBootChanged)
+                StartupHelper.SetEnabled(Setting.StartOnBoot);
         }
 
         private void EditAlternationColor(object parameter)
