@@ -124,7 +124,7 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 6. **窗口状态持久化**：`WindowLeft/Top/Width/Height/WindowState` 存于 `ApplicationSetting`；最大化时保存 `RestoreBounds`；移动/缩放去抖 600ms 保存；启动延迟到 Show 后再最大化。
 7. **常驻 IPC 不得阻塞**：管道线程只用 `BeginInvoke` 投递，绝不能同步等待模态框。
 8. **配置分离**：`ApplicationSetting.Location` 用 `Assembly.GetExecutingAssembly().GetName().Name` 派生命名空间，EM/EME 天然隔离；`lang` 目录同理按 exe 目录隔离。
-9. **测试准则**：回归用仓库内真实文件（git 可回滚），禁止伪造缓存文件；差异比对用 7 对 git-SHA 抽样的 `v2_*_auth/test` 输出。
+9. **测试准则**：回归用仓库内真实文件（git 可回滚），禁止伪造缓存文件；特定需求回归用的 SHA 基线对比不作为通用准则，后续若有必须的回归对比单独建文件记录。
 
 ## 8. 部署布局
 
@@ -146,7 +146,7 @@ D:\Program Files\ExcelMergeEDR\     → EME（ExcelMergeEDR.GUI.exe + ExcelMerge
 2. 常驻进程重启后做 4 项冒烟：无差异窗口聚焦回车关闭；窗口状态跨会话/跨重启保持；语言切换后对比窗口重建生效；模态框存在时新命令强制生效。
 3. 对比对必须用**同一文件的两个版本**（git `HEAD` vs 工作区），严禁拿两个不同文件互相对比。用 `cmd /c "git -C <repo> show HEAD:<path> > <tmp>"` 提取 HEAD 版（二进制安全），工作区文件直接引用。
 4. **坑**：对转发进程使用 `-Wait` 会挂起——当常驻进程不在时，转发器会变成新的常驻进程永不退出。改用 fire-and-forget（`Start-Process` 不带 `-Wait`）再定时轮询窗口。
-5. diff 输出回归：用 `C:\Users\ADMINI~1\AppData\Local\Temp\opencode\diffcompare` 对比 EM/EME 的 modified 单元格输出与 7 对 SHA 基线（`pairs.xml`）。GUI 摘要只显示当前工作表，与 harness 全表输出对比时按 sheet 对齐。
+5. diff 输出回归：对比 EM/EME 两版的 modified 单元格输出，对比对象必须是同一文件的两个版本（见本条 3）。GUI 摘要只显示当前工作表，与全表输出对比时按 sheet 对齐。
 6. 单点读取校验：`ExcelWorkbook.VerifyRead(path, config)` 双读对比（EDR vs NPOI 值级一致）。
 7. **坑**：PowerShell 5.1 的 `Get-Content`/`Set-Content -Encoding UTF8` 会按 ANSI 读入再写回，破坏 UTF-8 中文 → YAML 解析崩溃（`YamlDotNet.Core.SemanticErrorException`）。改写含非 ASCII 的 YAML 必须用文件写入工具（UTF-8 无 BOM）或 `[System.IO.File]::WriteAllText` + 显式 UTF8。
 
