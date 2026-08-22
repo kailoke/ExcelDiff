@@ -134,7 +134,7 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。⚠️ 特定开发需求曾用的 SHA 基线对比（diffcompare 7 对基线）**不作为通用准则**；后续若有必须的回归对比，单独建文件记录。
 5. **读取层唯一差异源**：EM=NPOI（权威），EME=EDR（性能验证）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移，权威版不可迁移到 EDR。
 6. **构建与部署次序**：构建 EME → 部署 EME → 构建 EM → 部署 EM，分步进行（见陷阱 §8.2）。
-7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。方法：用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取 HEAD 版（二进制安全），工作区文件直接引用 → 得同一文件两个版本做 EM/EME 对比。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。
+7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。
 
 ## 8. 已知陷阱（务必遵守，全部踩过坑）
 
