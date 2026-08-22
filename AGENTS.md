@@ -50,6 +50,7 @@ ExcelMerge.GUI\                  # WPF 可执行：UI、命令层、设置、IPC
 NetDiff\NetDiff\                 # 类库：Myers/EditGraph 文本差异算法
 NetDiff\NetDiff.Test\            # MSTest 单元测试源码（Test.cs，31 个用例）
 NetDiff\NetDiff.TestRunner\      # 离线测试 runner（MSTest shim + 反射执行，零第三方依赖，见 §4）
+DiffHarness\                     # headless diff 对比工具（库层直调，EM/EME 输出对比，见 §7.9）
 FastWpfGrid\                     # 高性能虚拟化网格控件 + WriteableBitmapEx 位图扩展
 ExcelMerge.ShellExtension\       # COM 外壳扩展（资源管理器右键菜单）
 ExcelMerge.Installer\            # VDProj MSI 打包（不参与日常构建）
@@ -139,6 +140,7 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
    - **无差异弹窗 `NoDiffWindow`**：两文件无差异且 `NotifyEqual` 开启时，由 `DiffView.ShowDiff` `ShowDialog` 弹出（模态）。识别：无系统标题栏（`WindowStyle=None`）、顶部绿色条（`#FF43A047`）带自定义"✕"、正文为 `Message_NoDiffFormat`（如"左[...] - 右[...] = 没有区别"）。**关闭 = 点右上角"✕"**（`CloseButton_Click`：仅关弹窗、不关对比窗口；ESC 等效）；红色"退出"按钮是 `IsDefault`（回车触发）会连对比窗口一起关，脚本注意区分。
    - **重启确认 MessageBox**：切换多语言后由 `App.UpdateResourceCulture` 弹出（`Message_Reboot`：en "ExcelMerge will close to change the language." / zh "ExcelMerge将关闭以变更语言"）。**处理 = 点"确定/OK"**；确认后应用关对比窗口，下次 diff 命令以新语言重建。
    - 两者均为强制模态，会阻断后续命令；脚本需先探测（窗口/文案特征）再处理，否则测试挂起。
+9. **headless diff harness（L1 主测试工具）**：`DiffHarness\` 零第三方离线对比，直接调库层（`ExcelWorkbook.Create` → `ExcelSheet.Diff` → `CreateSummary`）输出确定性 diff 文本，用于 EM/EME 对比。用法：`powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1 -RelPath Config/Data/Level.xlsx`（自动提取 HEAD → 构建/运行双变体 → 比对，忽略 READER 行）；可用 `-NoBuild` 跳过重编译。产出 `DiffHarness.exe`（NPOI）/ `DiffHarnessEDR.exe`（EDR），输出 UTF-8。
 
 ## 8. 已知陷阱（务必遵守，全部踩过坑）
 
