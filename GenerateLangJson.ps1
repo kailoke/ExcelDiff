@@ -19,10 +19,10 @@ function Read-Resx([string]$path) {
 }
 
 # Union of all keys so every language file contains the complete set.
+# Only Chinese and English are supported (Japanese removed).
 $sources = @(
     @{ Culture='en-US'; File='Resources.resx' },
-    @{ Culture='zh-CN'; File='Resources.zh-CN.resx' },
-    @{ Culture='ja-JP'; File='Resources.ja-JP.resx' }
+    @{ Culture='zh-CN'; File='Resources.zh-CN.resx' }
 )
 
 $neutral = Read-Resx (Join-Path $resxDir 'Resources.resx')

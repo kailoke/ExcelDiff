@@ -315,9 +315,13 @@ namespace ExcelMerge.GUI.Settings
 
         public bool EnsureCulture(bool isChanged = false)
         {
-            if (string.IsNullOrEmpty(Culture))
+            // Only Chinese and English are supported; Chinese is the default.
+            var culture = Culture;
+            if (string.IsNullOrEmpty(culture) ||
+                (!culture.Equals("zh-CN", StringComparison.OrdinalIgnoreCase) &&
+                 !culture.Equals("en-US", StringComparison.OrdinalIgnoreCase)))
             {
-                Culture = System.Threading.Thread.CurrentThread.CurrentCulture.Name;
+                Culture = "zh-CN";
                 isChanged |= true;
             }
 

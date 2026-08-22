@@ -133,16 +133,16 @@
     <value>通用设置</value>
   </data>
   <data name="MenuItem_OpenAsDstFile" xml:space="preserve">
-    <value>打开右边的文件</value>
+    <value>打开右侧的文件</value>
   </data>
   <data name="MenuItem_OpenAsSrcFile" xml:space="preserve">
-    <value>打开左边的文件</value>
+    <value>打开左侧的文件</value>
   </data>
   <data name="MenuItem_OpenDstFile" xml:space="preserve">
-    <value>打开文件到右边</value>
+    <value>打开文件到右侧</value>
   </data>
   <data name="MenuItem_OpenSrcFile" xml:space="preserve">
-    <value>打开文件到左边</value>
+    <value>打开文件到左侧</value>
   </data>
   <data name="MenuItem_RecentFiles" xml:space="preserve">
     <value>最近打开的文件</value>
@@ -163,16 +163,16 @@
     <value>通用设置</value>
   </data>
   <data name="ToolTip_DstFilePath" xml:space="preserve">
-    <value>右边的文件路径</value>
+    <value>右侧的文件路径</value>
   </data>
   <data name="ToolTip_DstSheet" xml:space="preserve">
-    <value>右边的表格</value>
+    <value>右侧的表格</value>
   </data>
   <data name="ToolTip_SrcFilePath" xml:space="preserve">
-    <value>左边的文件路径</value>
+    <value>左侧的文件路径</value>
   </data>
   <data name="ToolTip_SrcSheet" xml:space="preserve">
-    <value>左边的表格</value>
+    <value>左侧的表格</value>
   </data>
   <data name="Word_Apply" xml:space="preserve">
     <value>应用</value>
@@ -262,10 +262,10 @@
     <value>表格</value>
   </data>
   <data name="Word_DstFile" xml:space="preserve">
-    <value>右边的文件</value>
+    <value>右侧的文件</value>
   </data>
   <data name="Word_SrcFile" xml:space="preserve">
-    <value>左边的文件</value>
+    <value>左侧的文件</value>
   </data>
   <data name="Label_AddedColor" xml:space="preserve">
     <value>添加颜色</value>
@@ -474,7 +474,7 @@
     <value>没有区别。</value>
   </data>
   <data name="Message_NoDiffFormat" xml:space="preserve">
-    <value>左边[{0}] - 右边[{1}] = 没有区别</value>
+    <value>左侧[{0}] - 右侧[{1}] = 没有区别</value>
   </data>
   <data name="GroupBox_Behavior" xml:space="preserve">
     <value>操作</value>
