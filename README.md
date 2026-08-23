@@ -38,7 +38,7 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 ### EME（优先/基准版，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
 ### EM（保底版，NPOI 读取）— 产物 `ExcelDiff.GUI.exe`

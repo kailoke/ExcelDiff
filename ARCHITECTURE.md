@@ -48,7 +48,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 
 - `EnablePerfTiming=true` → 编译期定义 `PERF_TIMING`，注入阶段计时（GUI 与库同步开关）。
 - 构建命令（GUI 必须携带 workaround 参数，见 `AGENTS.md` 摘要）：
-  - EME：`dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
+  - EME：`dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
   - EM：同上，去掉 `/p:EdrRead=true`（默认）
 - 依赖顺序：库→FastWpfGrid→GUI。`ExcelDiff.csproj` 中 `EdrRead != true` 才定义 `NPOI_READ`。
 

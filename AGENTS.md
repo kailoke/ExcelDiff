@@ -69,13 +69,13 @@ GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 ## 4. 构建工具链（已验证 2026-08-23）
 
 - 本机仅有 `dotnet SDK 8.0`（`C:\Program Files\dotnet\dotnet.exe`），**没有独立 msbuild**，用 `dotnet msbuild`。
-- 关键：.NET Framework 引用程序集不在本机 SDK 里，**必须**传 `TargetFrameworkRootPath="D:\ExcelMerge\packages\refs"`。
+- 关键：.NET Framework 引用程序集不在本机 SDK 里，**必须**传 `TargetFrameworkRootPath="D:\ExcelDiff\packages\refs"`。
 - 下列命令均已在本机验证可编译（Release, AnyCPU）。
 
 ### EME（优先/基准版，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
 ### EM（保底版，NPOI 读取）— 产物 `ExcelDiff.GUI.exe`
@@ -85,7 +85,7 @@ dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:Ed
 ### 只构建核心库（快速验证读取层改动）
 
 ```
-dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /t:Build /v:m /nologo
 ```
 
 ### NetDiff 单测（离线 runner，零第三方依赖）
@@ -93,7 +93,7 @@ dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:TargetFram
 本机无 VS/vstest，MSTest 程序集不在 `packages\refs`；`NetDiff.TestRunner` 用自带 MSTest shim + 反射执行 `NetDiff.Test\Test.cs` 的 31 个用例。
 
 ```
-dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /t:Build /v:m /nologo
+dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /t:Build /v:m /nologo
 & "NetDiff\NetDiff.TestRunner\bin\Release\NetDiff.TestRunner.exe"
 ```
 
