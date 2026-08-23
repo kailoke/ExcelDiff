@@ -137,8 +137,8 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 3. **测试**：NetDiff 算法改动用 `NetDiff.TestRunner`（31 用例，命令见 §4）。GUI 层回归用手工/脚本冒烟（见 ARCHITECTURE.md §9）。任何改动完成后跑 `verify.ps1` 一键门禁。
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。⚠️ 特定开发需求曾用的 SHA 基线对比（diffcompare 7 对基线）**不作为通用准则**；后续若有必须的回归对比，单独建文件记录。
 5. **读取层定位**：**EDE=EDR 优先/基准**（读取快约 72%）；**ED=NPOI 保底对照**（NPOI 语义最全）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 ED 保底存在的意义，**不得移除 ED**。基准测试以 EDE 为准，ED 作保底验证。
-6. **构建与部署次序**：构建 EDE → 部署 EDE → 构建 ED → 部署 ED，分步进行（见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。
-7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。
+6. **构建与部署次序**：构建 EDE → 部署 EDE → 构建 ED → 部署 ED，分步进行（见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。**部署动作（提权写 Program Files）**：用 `Start-Process powershell -Verb RunAs`（**不带 `-Wait`**）启动提权脚本 → 轮询其日志文件出现 `DONE` → 再重启常驻（见陷阱 §8.6）。
+7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。常用测试文件：`Level.xlsx`（**有差异**）、`PostMatchDefeat.xlsx`（**无差异**）。
 8. **测试模态弹窗注意事项**（自动化/脚本测试会被强制阻塞）：
    - **无差异弹窗 `NoDiffWindow`**：两文件无差异且 `NotifyEqual` 开启时，由 `DiffView.ExecuteDiff` `ShowDialog` 弹出（模态）。识别：无系统标题栏（`WindowStyle=None`）、顶部绿色条（`#FF43A047`）带自定义"✕"、正文为 `Message_NoDiffFormat`（如"左[...] - 右[...] = 没有区别"）。**关闭 = 点右上角"✕"**（`CloseButton_Click`：仅关弹窗、不关对比窗口；ESC 等效）；红色"退出"按钮是 `IsDefault`（回车触发）会连对比窗口一起关，脚本注意区分。
    - **重启确认 MessageBox**：切换多语言后由 `App.UpdateResourceCulture` 弹出（`Message_Reboot`：en "ExcelDiff will close to change the language." / zh "ExcelDiff将关闭以变更语言"）。**处理 = 点"确定/OK"**；确认后应用关对比窗口，下次 diff 命令以新语言重建。
@@ -155,6 +155,7 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
    - **预防**：需要等待 diff 会话完成时用根目录 `Invoke-ExcelDiff.ps1`（fire-and-forget 启动 + 轮询主窗口出现/关闭，绝不 `-Wait` 等进程退出）；禁止手工对转发进程 `-Wait`。
 4. **IPC 不得阻塞**：管道线程只能用 `Dispatcher.BeginInvoke` 投递，绝不能同步等待模态框，否则模态框存在时死锁。
 5. **`bin`/`obj`/`Build` 均 gitignore**：构建产物不入库，改代码后构建不污染 git 状态。`backup_installed_*` 是部署前快照，勿动。
+6. **提权部署 `-Wait` 挂起**：`Start-Process powershell -Verb RunAs -Wait` 在 UAC 提权 + msbuild 子进程场景下**不返回**，bash 会卡到超时（部署实际 10-30 秒已完成）。预防：提权启动**不带 `-Wait`** → 轮询部署脚本写出的日志文件（出现 `DONE`）再继续，然后重启常驻。
 
 ## 9. 当前工作区状态（并行开发须知）
 
@@ -162,6 +163,8 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 - **版本定位**：EDE=EDR 优先/基准（读取快约 72%），ED=NPOI 保底对照（见 §7.5）。
 - **关键基线**：`12ac86d`（代码基线：EDR 双读 / 单实例 IPC / 托盘 / 窗口持久化 / 外置 JSON 本地化 / TestRunner）、`9fa3d8d`（工程文档 + verify.ps1）、`ae90b7c`（EDE 优先/基准）、`e0390a7`（ExcelMerge→ExcelDiff 全局重命名）。
+- **审计优化已完成并部署（2026-08-23 手工测试通过）**：`84c17db`（8 项高危 bug 修复）、`d1c9f3a`（6 项性能优化）、`cf1f295`（可读性：算法注释/拼写/死代码）、`b5294dc`（EqualizeColumnCount 分配优化）、`1d02aab`（EditGraph 前沿 Limit=2000 守卫）。
+- **架构决策**：EditGraph **不重写**（31 测试编码当前路径平局规则；O(D²) 仅病态全不同大表触发，已用 Limit 守卫兜底，见 ADR-010）。
 - 新开分支/功能请基于 `master` 最新提交，改动前先 `git status`/`git log --oneline -5` 确认。
 - 任何改动完成后跑 `verify.ps1`；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。
 
@@ -172,4 +175,13 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 - ViewModel 继承 Prism `BindableBase`；设置类走 `Setting<T>`（继承 `SerializableBindableBase`）+ `IgnoreEqualAttribute`。
 - 条件编译用 `#if NPOI_READ / EDR_READ / PERF_TIMING`，不引入新第三方依赖（除非有充分理由并同步 packages.config）。
 - 字符串一律走 `Resources.*`（经 `LocalizationManager` 桥接），禁止硬编码 UI 文本。
-- **不主动添加代码注释**；改动遵循现有代码风格与既有模式。
+- **不主动添加代码注释**；改动遵循现有代码风格与既有模式（核心算法/易错/设计动机处应保留或补充注释，见 ADR-010 对 EditGraph 的注释处理）。
+
+## 11. 工程负责人职责（AI 会话共同遵循）
+
+AI 会话以资深主程序视角工作，对整体工程质量负责：
+1. **框架与维护**：改动前读本文 + ARCHITECTURE + CODEX + INVARIANTS + ADR；保持架构一致性，不引入与既有模式冲突的方案。
+2. **代码性能**：改动后评估性能影响（diff 管道、渲染、事件、持久化）；触及 `#if` 双版本/读取层/网格渲染等热路径先核对 INVARIANTS F 区与性能项清单。
+3. **测试纪律**：任何功能改动跑完整测试（verify.ps1 + DiffHarness 双文件回归），见 StartPrompt 验收节；动 IPC/生命周期/读取层先核对 INVARIANTS。
+4. **指导其他会话**：本文件 + ARCHITECTURE/CODEX/INVARIANTS/ADR 即权威上下文；其他会话用 `StartPrompt.md` 开工；发现文档与代码不一致时修正文档。
+5. **质量门**：不擅自提交 git（§7.10）；改动给出 commit subject/description 供审查；高危区（diff 算法、读取层、生命周期）改动需在提交说明中注明测试证据。

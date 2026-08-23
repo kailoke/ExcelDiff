@@ -47,3 +47,5 @@
 
 - [ ] **F1 虚拟化不回归**：对比视图依赖 FastWpfGrid 虚拟化，百 MB 级工作簿可用的前提；DiffGridModel 的行状态用预计算 HashSet，避免逐行字典查询热路径。（DiffGridModel.cs:67-93）
 - [ ] **F2 PERF_TIMING 隔离**：计时代码放 `#if PERF_TIMING` 或 `[Conditional("PERF_TIMING")]`，正式构建必须裁掉。
+- [ ] **F3 EditGraph 前沿守卫**：行级 diff 的 `option.Limit = 2000` 必须保留（EditGraph 最坏 O(D²)，Limit 兜底病态全不同大表）。正常差异（<数百行）前沿远低于阈值；`CaseMultiSameScore_*` 等 31 测试编码当前路径平局规则，**重写 EditGraph 前必须评估测试契约**（ADR-010）。
+- [ ] **F4 提权部署禁 `-Wait`**：`Start-Process powershell -Verb RunAs -Wait` 会挂起（UAC + msbuild 子进程）。提权部署必须 fire-and-forget + 轮询日志 `DONE`。（ADR-011 / AGENTS §8.6）

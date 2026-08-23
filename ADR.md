@@ -55,7 +55,7 @@
 
 - **状态**：已定
 - **背景**：大文件打开慢，src/dst 读取彼此独立。
-- **决策**：`CreateWorkbookTuple` 内 `Task.Run`×2 并行读，结果回 UI 线程组装。
+- **决策**：`ReadWorkbooks` 内 `Task.Run`×2 并行读，结果回 UI 线程组装。
 - **后果**：读取层必须线程安全（ExcelWorkbook.Create 是纯函数，无共享状态，安全）；`#if PERF_TIMING` 注入分段计时。
 - **被否**：串行读——慢一倍；多核并行整体管道——进度/取消复杂度高。
 
@@ -74,3 +74,19 @@
 - **决策**：`MainWindow.OnSourceInitialized` 挂 `HwndSource.AddHook(WndProc)`；ESC 在消息级处理：下拉框/菜单打开时让路，输入控件聚焦时先移焦点，否则关窗/隐藏。
 - **后果**：与 NoDiffWindow 自己的 ESC 处理共存（NoDiff 用 PreviewKeyDown，职责分离）。
 - **被否**：仅 `KeyDown`——焦点问题无法解决；全局键盘钩子——过度、有系统副作用。
+
+## ADR-010 EditGraph 不重写，用 Limit 前沿守卫兜底
+
+- **状态**：已定（2026-08-23）
+- **背景**：审计发现 `EditGraph` 是 Myers 启发式 BFS，最坏 O(D²) 节点分配（病态"两表几乎全不同"时 1 万行 ≈ 10⁸ 节点 → OOM/冻结）。经典 Myers V-array 重写可降到 O((N+M)D)。
+- **决策**：**不重写算法**，在 `ExcelSheet.Diff` 行级 diff 调用处设 `option.Limit = 2000`（复用现有 beam 截断）：前沿超阈值后保留单路径，退化为 O(D) 快速搜索，结果有效但可能非最小。正常差异（数百行变更）前沿远低于阈值，路径不变。
+- **后果**：31 个 NetDiff 测试（编码当前路径平局规则，尤其 `CaseMultiSameScore_*`）不被破坏；病态输入 2 秒内完成且 ED/EDE 一致。若未来出现真实的全不同大表崩溃报告，再走"独立分支 + 差分 oracle（新旧算法跑随机输入比对 `CreateSrc/CreateDst` 还原）"路线重写。
+- **被否**：直接重写——会改变平局路径选择导致测试失败；改测试期望则形成自证循环；收益仅限病态场景，对日常 Excel 差异（多数行匹配，D 小）无感。
+
+## ADR-011 提权部署禁止 `-Wait`
+
+- **状态**：已定
+- **背景**：`Start-Process powershell -Verb RunAs -Wait` 在 UAC 提权 + msbuild 子进程场景下不返回，bash 卡到超时（部署实际 10-30 秒已完成）。
+- **决策**：提权启动**不带 `-Wait`**（fire-and-forget），轮询提权脚本写出的日志文件出现 `DONE` 后再继续；随后杀进程、部署、`--startup` 重启常驻。
+- **后果**：部署命令秒回、不挂起。写 `Program Files` 需提权（UAC），部署脚本必须输出日志供轮询。
+- **被否**：`-Wait`——挂起；同步提权后直接部署——与 UAC 生命周期冲突。

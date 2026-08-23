@@ -44,7 +44,7 @@ exe diff -s <src> -d <dst> ...
        ├─ ShowMainWindow()                                                保留最大化状态恢复窗口
        └─ RouteCommand(option)                    App.xaml.cs:202
              ├─ CurrentDiffView==null → new DiffCommand(option).Execute()
-             └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:398
+             └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:392
 ```
 
 ## 2. GUI 关键类型（ExcelDiff.GUI）
@@ -60,7 +60,7 @@ exe diff -s <src> -d <dst> ...
 | `CommandFactory` | Commands/CommandFactory.cs:3 | `Create(option)` → DiffCommand |
 | `CommandLineOption` | Commands/CommandLineOption.cs:9 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e/-k`）；`MainCommand`（首参→`CommandType`） |
 | `MainWindow` | Views/MainWindow.xaml.cs:18 | PowerShell 宿主；窗口状态持久化（600ms 去抖 timer）；`OnClosing`（托盘/退出二分）；`WndProc` ESC 钩子；`RestoreWindowState/SaveWindowState` |
-| `DiffView` | Views/DiffView.xaml.cs:29 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`CreateWorkbookTuple`、`ExecuteDiff`、`ShowDiff`、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
+| `DiffView` | Views/DiffView.xaml.cs:29 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`ReadWorkbooks`、`ExecuteDiff`（双重载）、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
 | `NoDiffWindow` | Views/NoDiffWindow.xaml.cs:13 | 无差异模态窗；ESC=仅关本窗；红色"退出"按钮连对比窗口一起关 |
 | `ProgressWindow` | Views/ProgressWindow.xaml.cs | `DoWorkWithModal(Action<ProgressReporter>)`，后台执行+进度 UI |
 | `DiffGridModel` | Models/DiffGridModel.cs | `FastGridModelBase` 派生；ctor 预计算 `modifiedRows/addedRows/removedRows` 三个 HashSet；`GetCellColor`（minimap 轻量路径）；`IsModifiedRow/IsAddedRow/IsRemovedRow` |
