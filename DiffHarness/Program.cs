@@ -20,6 +20,10 @@ namespace DiffHarness
                 var outFile = (string)null;
                 var srcHeader = -1;
                 var dstHeader = -1;
+                var trimFirstBlankRows = false;
+                var trimFirstBlankColumns = false;
+                var trimLastBlankRows = false;
+                var trimLastBlankColumns = false;
 
                 for (int i = 0; i < args.Length; i++)
                 {
@@ -30,15 +34,25 @@ namespace DiffHarness
                         case "--out": outFile = args[++i]; break;
                         case "--src-header": srcHeader = int.Parse(args[++i]); break;
                         case "--dst-header": dstHeader = int.Parse(args[++i]); break;
+                        case "--skip-first-blank-rows": trimFirstBlankRows = true; break;
+                        case "--skip-first-blank-columns": trimFirstBlankColumns = true; break;
+                        case "--trim-last-blank-rows": trimLastBlankRows = true; break;
+                        case "--trim-last-blank-columns": trimLastBlankColumns = true; break;
                         default:
                             throw new Exception("unknown argument: " + args[i]);
                     }
                 }
 
                 if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dst))
-                    throw new Exception("usage: DiffHarness --src <xlsx> --dst <xlsx> [--out <file>] [--src-header N] [--dst-header N]");
+                    throw new Exception("usage: DiffHarness --src <xlsx> --dst <xlsx> [--out <file>] [--src-header N] [--dst-header N] [--skip-first-blank-rows] [--skip-first-blank-columns] [--trim-last-blank-rows] [--trim-last-blank-columns]");
 
-                var readConfig = new ExcelMerge.ExcelSheetReadConfig();
+                var readConfig = new ExcelMerge.ExcelSheetReadConfig
+                {
+                    TrimFirstBlankRows = trimFirstBlankRows,
+                    TrimFirstBlankColumns = trimFirstBlankColumns,
+                    TrimLastBlankRows = trimLastBlankRows,
+                    TrimLastBlankColumns = trimLastBlankColumns,
+                };
                 var diffConfig = new ExcelMerge.ExcelSheetDiffConfig
                 {
                     SrcHeaderIndex = srcHeader,

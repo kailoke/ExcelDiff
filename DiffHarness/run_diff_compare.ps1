@@ -12,7 +12,11 @@ param(
     [string]$Repo = 'D:\P\BackPack\baggame',
     [switch]$NoBuild,
     [int]$SrcHeader = -1,
-    [int]$DstHeader = -1
+    [int]$DstHeader = -1,
+    [switch]$SkipFirstBlankRows,
+    [switch]$SkipFirstBlankColumns,
+    [switch]$TrimLastBlankRows,
+    [switch]$TrimLastBlankColumns
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -20,6 +24,12 @@ $refs = Join-Path $root 'packages\refs'
 $harnessProj = Join-Path $PSScriptRoot 'DiffHarness.csproj'
 $emExe = Join-Path $PSScriptRoot 'bin\Release\DiffHarness.exe'
 $emeExe = Join-Path $PSScriptRoot 'bin\Release-EDR\DiffHarnessEDR.exe'
+
+$trimArgs = @()
+if ($SkipFirstBlankRows)    { $trimArgs += '--skip-first-blank-rows' }
+if ($SkipFirstBlankColumns) { $trimArgs += '--skip-first-blank-columns' }
+if ($TrimLastBlankRows)     { $trimArgs += '--trim-last-blank-rows' }
+if ($TrimLastBlankColumns)  { $trimArgs += '--trim-last-blank-columns' }
 
 $tmpDir = Join-Path $env:TEMP 'opencode\diffcompare'
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
@@ -42,10 +52,10 @@ if (-not (Test-Path $head)) { throw 'HEAD extraction failed' }
 $work = Join-Path $Repo ($RelPath -replace '/', '\')
 
 Write-Host 'Running EME harness ...'
-& $emeExe --src $head --dst $work --out $emeOut --src-header $SrcHeader --dst-header $DstHeader
+& $emeExe @('--src', $head, '--dst', $work, '--out', $emeOut, '--src-header', "$SrcHeader", '--dst-header', "$DstHeader") @trimArgs
 if ($LASTEXITCODE -ne 0) { throw 'EME harness run failed' }
 Write-Host 'Running EM harness ...'
-& $emExe --src $head --dst $work --out $emOut --src-header $SrcHeader --dst-header $DstHeader
+& $emExe @('--src', $head, '--dst', $work, '--out', $emOut, '--src-header', "$SrcHeader", '--dst-header', "$DstHeader") @trimArgs
 if ($LASTEXITCODE -ne 0) { throw 'EM harness run failed' }
 
 $emLines = [System.IO.File]::ReadAllLines($emOut, [System.Text.Encoding]::UTF8) | Where-Object { $_ -notlike 'READER=*' }
