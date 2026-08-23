@@ -66,15 +66,29 @@ namespace NetDiff
         }
     }
 
+    /// <summary>
+    /// Breadth-first search over the edit graph. Start at (0,0); each step advances a
+    /// frontier of "heads" by one delete (Right), one insert (Bottom) or, when the two
+    /// sequences agree, along a whole run of equal items (Diagonal via Snake). The path
+    /// to the far corner (N,M) is recovered by walking the Parent chain. This is a
+    /// Myers-inspired BFS rather than the classic O(ND) Myers V-array, so worst-case cost
+    /// is O(D^2) node allocations for fully-different inputs.
+    /// </summary>
     internal class EditGraph<T>
     {
         private T[] seq1;
         private T[] seq2;
         private DiffOption<T> option;
+        // Current frontier: endpoints of the shortest known edit paths, one Node per path.
         private List<Node> heads;
+        // Destination corner (seq1.Length, seq2.Length).
         private Point endpoint;
+        // Per-diagonal pruning: farthest Y already reached on diagonal k (k = X - Y).
+        // Keeps only the dominant path per diagonal, so the frontier stays bounded.
         private int[] farthestPoints;
+        // Index bias so diagonal k = X - Y maps into the non-negative array slot k + offset.
         private int offset;
+        // Set once a head reaches the endpoint so the next BFS layer stops.
         private bool isEnd;
 
         public EditGraph(
@@ -120,19 +134,19 @@ namespace NetDiff
 
         private List<Point> EndCalculatePath()
         {
-            var wayponit = new List<Point>();
+            var waypoint = new List<Point>();
 
             var current = heads.Where(h => h.Point.Equals(endpoint)).FirstOrDefault();
             while (current != null)
             {
-                wayponit.Add(current.Point);
+                waypoint.Add(current.Point);
 
                 current = current.Parent;
             }
 
-            wayponit.Reverse();
+            waypoint.Reverse();
 
-            return wayponit;
+            return waypoint;
         }
 
         private bool Next()
@@ -147,6 +161,8 @@ namespace NetDiff
 
         private void UpdateHeads()
         {
+            // Beam truncation: when the frontier exceeds the limit only the first path is
+            // kept. This bounds memory but the result is no longer guaranteed minimal.
             if (option.Limit > 0 && heads.Count > option.Limit)
             {
                 var tmp = heads.First();
@@ -159,6 +175,7 @@ namespace NetDiff
 
             foreach (var head in heads)
             {
+                // Right = delete the next item of seq1; Bottom = insert the next item of seq2.
                 Node rightHead;
                 if (TryCreateHead(head, Direction.Right, out rightHead))
                 {
@@ -174,6 +191,7 @@ namespace NetDiff
 
             heads = updated;
 
+            // Extend every new head along the diagonal while the two sequences match.
             Snake();
         }
 
@@ -264,6 +282,8 @@ namespace NetDiff
 
         private bool UpdateFarthestPoint(Point point)
         {
+            // Keep only the path that reaches farthest on this diagonal; any later path
+            // reaching no further on the same diagonal is dominated and can be dropped.
             var k = point.X - point.Y;
             var y = farthestPoints[k + offset];
 

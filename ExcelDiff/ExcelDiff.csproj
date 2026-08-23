@@ -83,7 +83,6 @@
     <Compile Include="ExcelCell.cs" />
     <Compile Include="ExcelCellDiff.cs" />
     <Compile Include="ExcelCellStatus.cs" />
-    <Compile Include="ExcelCellValueComparer.cs" />
     <Compile Include="ExcelColumn.cs" />
     <Compile Include="ExcelColumnStatus.cs" />
     <Compile Include="ExcelReader.cs" />

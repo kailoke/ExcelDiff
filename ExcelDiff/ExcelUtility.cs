@@ -103,7 +103,13 @@ namespace ExcelDiff
             return ExcelWorkbookType.None;
         }
 
+        [System.Obsolete("Use GetWorkbookTypeStrict instead.")]
         public static ExcelWorkbookType GetWorkboolTypeStrict(string path)
+        {
+            return GetWorkbookTypeStrict(path);
+        }
+
+        public static ExcelWorkbookType GetWorkbookTypeStrict(string path)
         {
             var type = GetWorkbookType(path);
 

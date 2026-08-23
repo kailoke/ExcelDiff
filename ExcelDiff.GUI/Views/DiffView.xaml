@@ -321,7 +321,7 @@
                  Focusable="True"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
-                 ScrollViewer.ScrollChanged ="ValuteTextBox_ScrollChanged"
+                 ScrollViewer.ScrollChanged ="ValueTextBox_ScrollChanged"
                  />
 
     <GridSplitter Grid.Column="3" Grid.Row="2" Width="5" HorizontalAlignment="Center"/>
@@ -365,7 +365,7 @@
                  Focusable="True"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
-                 ScrollViewer.ScrollChanged ="ValuteTextBox_ScrollChanged"
+                 ScrollViewer.ScrollChanged ="ValueTextBox_ScrollChanged"
                  />
 
   </Grid>
