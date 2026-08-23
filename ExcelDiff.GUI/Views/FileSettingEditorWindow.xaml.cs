@@ -14,9 +14,6 @@ using System.Windows.Shapes;
 
 namespace ExcelDiff.GUI.Views
 {
-    /// <summary>
-    /// Interaction logic for FileSettingEditorWindow.xaml
-    /// </summary>
     public partial class FileSettingEditorWindow : Window
     {
         public FileSettingEditorWindow()

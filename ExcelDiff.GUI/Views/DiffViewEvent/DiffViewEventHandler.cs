@@ -62,7 +62,6 @@ namespace ExcelDiff.GUI.Views
 
         public void OnPostExecuteDiff(DiffViewEventArgs<FastGridControl> e)
         {
-            //SyncRowHeight(e.Container);
         }
 
         public void OnFileSettingUpdated(DiffViewEventArgs<FastGridControl> e, FileSetting fileSetting)
