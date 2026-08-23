@@ -9,7 +9,7 @@
 - 用途：Excel/CSV/TSV 的 GUI 差异对比工具，可作 Git/Mercurial difftool。
 - 技术栈：WPF (.NET Framework 4.6.2, WinExe) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock/Extended.Wpf.Toolkit。
 - 核心库：ExcelMerge（读取/解析）、NetDiff（差异算法）、FastWpfGrid（虚拟化网格）。
-- 双构建：同一份源码可编译出**权威版 EM**（NPOI 读取）与**测试版 EME**（ExcelDataReader 读取），进程/程序集/配置/显示名完全隔离。
+- 双构建：同一份源码可编译出**优先/基准版 EME**（ExcelDataReader 读取）与**保底版 EM**（NPOI 读取），进程/程序集/配置/显示名完全隔离。开发与基准测试以 EME 为准，EM 作保底验证对照。
 
 ## 2. 解决方案结构
 
@@ -37,7 +37,7 @@ ExcelMerge ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 
 由 MSBuild 属性开关决定，GUI 项目 `AssemblyName`/`DefineConstants` 联动：
 
-| 属性 | `EdrRead` 未指定（EM，权威） | `EdrRead=true`（EME，测试） |
+| 属性 | `EdrRead` 未指定（EM，保底） | `EdrRead=true`（EME，优先/基准） |
 |------|------------------------------|------------------------------|
 | GUI 程序集 | `ExcelMerge.GUI` | `ExcelMergeEDR.GUI` |
 | GUI 定义 | 无 `EDR_READ` | `EDR_READ` |
@@ -103,8 +103,8 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
    → FastWpfGrid 渲染 + NoDiffWindow/进度提示
 ```
 
-- 读取层是唯一差异来源（EM=权威 NPOI；EME=EDR 性能验证）。两版输出需用 diff 输出对比回归。
-- 已知限制：EDR 读不到仅含样式无值的单元格 → 列错位 → 漏报真实变更。权威版本不可迁移到 EDR。
+- 读取层是唯一差异来源（EME=EDR 优先/基准；EM=NPOI 保底对照）。两版输出需用 diff 输出对比回归，以 EME 为准。
+- 已知限制：EDR 读不到仅含样式无值的单元格 → 列错位 → 漏报真实变更。这正是 EM（NPOI）保底对照存在的意义，EM 不得移除。
 
 ## 6. 生命周期与常驻机制
 
@@ -116,7 +116,7 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 
 ## 7. 关键设计决策与约束
 
-1. **双版本隔离**：EM 权威（NPOI），EME 实验（EDR）。任何 UI/行为改动必须两版同步编译、部署、回归。
+1. **双版本隔离**：EME 优先/基准（EDR，读取快约 72%），EM 保底（NPOI）。任何 UI/行为改动必须两版同步编译、部署；基准测试以 EME 为准，EM 作保底验证对照。
 2. **本地化热替换**：语言文件外置可改；`{x:Static}` 在 XAML 加载时固化。语言变更时**不重建窗口**（重建会同步重跑整个 diff，导致 UI 冻结约 5 秒），而是弹"重启确认"→ 点确定后由 `App.CloseMainWindowForLanguageChange()` 立即关闭对比窗口（实测 274ms），并置空 `MainWindow`/`CurrentDiffView`；下一条 diff 命令创建的新窗口即用新语言（无需整机重启）。
 3. **DiffView 事件监听器生命周期（易崩溃点）**：`DiffViewEventDispatcher` 是进程级静态单例，`DiffView` 构造时把 `srcEventHandler`/`dstEventHandler` 加入其 `Listeners`。若 DiffView 关闭后不移除，后续新建 DiffView 时，XAML 加载中 `ShowAllRadioButton_Checked`（此时该视图的 `container` 字段尚未初始化）会分发到旧处理器 → `e.Container.ResolveAll<FastGridControl>()` 空引用崩溃。**必须**在窗口真正关闭（`window.Closed`）时调用 `DiffView.RemoveEventListeners()` 卸载监听。另：radio 处理器对 `container==null` 做了防护。
 4. **两类聚焦态对话框（非真正模态，需正确处置）**：① 无差异弹窗 `NoDiffWindow`——关闭按钮 `IsDefault`，回车可关，右上角 X 亦可；X 按钮使用带白色描边+悬停高亮样式的圆角按钮以增强可视度；② 重启确认弹窗——点"确定"。
@@ -152,7 +152,7 @@ D:\Program Files\ExcelMergeEDR\     → EME（ExcelMergeEDR.GUI.exe + ExcelMerge
 
 ## 10. 已知限制 / 风险
 
-- EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。权威路线必须保持 NPOI。
+- EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 EM（NPOI）保底对照兜底，EM 不得移除。
 - `backup_installed_*` 目录为部署前快照，勿改动。
 - `ExcelMerge.Installer.vdproj` 未纳入当前构建流程。
 - `%APPDATA%\ExcelMerge\`、`%APPDATA%\ExcelMergeTest.GUI\` 为旧名残留，孤儿数据待清理。

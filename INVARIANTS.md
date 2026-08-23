@@ -12,9 +12,9 @@
 
 ## B. 读取层（核心库 ExcelMerge）
 
-- [ ] **B1 NPOI 权威**：EM=NPOI 是唯一权威读取；EDR 仅性能验证。**禁止把权威路线迁到 EDR**。（ARCH §5/§10）
+- [ ] **B1 版本定位**：EME=EDR **优先/基准**（读取快约 72%）；EM=NPOI **保底对照**（语义最全）。开发与基准测试以 EME 为准；**EM 保底不得移除**（EDR 盲区兜底）。（ARCH §5/§10）
 - [ ] **B2 EDR 语义对齐**：EDR 路径必须跳整空行、裁剪尾空单元格，保持与 NPOI 行/列语义一致。（ExcelWorkbook.cs:132-141）
-- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景的改动需用 `ExcelWorkbook.VerifyRead` 双读校验。（ARCH §9.6）
+- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景用 `ExcelWorkbook.VerifyRead` 双读校验 / EM（NPOI）保底对照。（ARCH §9.6）
 - [ ] **B4 回归基线**：EM/EME 输出比对对象必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件/跨版本互比。（AGENTS §7.4/§7.7）
 - [ ] **B5 扩展名分发**：新增文件类型解析在 `ExcelWorkbook.Create` 里统一分发，CSV/TSV 保持自研零依赖。
 

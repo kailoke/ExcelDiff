@@ -8,7 +8,7 @@
 
 ExcelMerge：Windows 桌面 GUI 差异对比工具（xls/xlsx/csv/tsv），可作 Git/Mercurial difftool。
 WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock。
-同一份源码可编译出**两套产品**：EM（权威版，NPOI 读取）与 EME（测试版，ExcelDataReader 读取），进程/程序集/配置/显示名全隔离。
+同一份源码可编译出**两套产品**：**EME（优先/基准版，ExcelDataReader 读取，读取效率约 +72%）**与 **EM（保底版，NPOI 读取）**，进程/程序集/配置/显示名全隔离。**开发与基准测试以 EME 为准，EM 作保底验证对照**。
 
 ## 2. 必读文档
 
@@ -72,13 +72,13 @@ GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 - 关键：.NET Framework 引用程序集不在本机 SDK 里，**必须**传 `TargetFrameworkRootPath="D:\ExcelMerge\packages\refs"`。
 - 下列命令均已在本机验证可编译（Release, AnyCPU）。
 
-### EM（权威版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
+### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
 
 ```
 dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### EME（测试版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
+### EME（优先/基准版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
 
 同上，追加 `/p:EdrRead=true`。
 
@@ -108,8 +108,8 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 | MSBuild 属性 | 效果（GUI 与库联动） |
 |------|------|
-| `EdrRead`（默认空） | GUI `AssemblyName=ExcelMerge.GUI`、`DisplayName=ExcelMerge`；库定义 `NPOI_READ`（NPOI 读取） |
-| `EdrRead=true` | GUI `AssemblyName=ExcelMergeEDR.GUI`、定义 `EDR_READ`、`DisplayName=ExcelMergeEDR`；库**不**定义 `NPOI_READ`（走 EDR） |
+| `EdrRead`（默认空，EM 保底） | GUI `AssemblyName=ExcelMerge.GUI`、`DisplayName=ExcelMerge`；库定义 `NPOI_READ`（NPOI 读取） |
+| `EdrRead=true`（EME 优先/基准） | GUI `AssemblyName=ExcelMergeEDR.GUI`、定义 `EDR_READ`、`DisplayName=ExcelMergeEDR`；库**不**定义 `NPOI_READ`（走 EDR） |
 | `EnablePerfTiming=true` | GUI 与库同时定义 `PERF_TIMING`，注入分段计时 |
 
 - 配置目录天然隔离：`%APPDATA%\ExcelMerge.GUI\`（EM） vs `%APPDATA%\ExcelMergeEDR.GUI\`（EME）。
@@ -134,14 +134,14 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 2. **本地化流程**：字符串改动进 `Resources.resx`（en-US 中性）+ `Resources.zh-CN.resx`（仅 zh/en 两语言，默认 zh-CN）→ 运行 `GenerateLangJson.ps1` 重新生成 `lang\*.json`（UTF-8 BOM）。`{x:Static Resources.*}` 在窗口加载时固化 → 语言切换通过 `App.CloseMainWindowForLanguageChange()` 关窗，下次 diff 命令以新语言重建。
 3. **测试**：NetDiff 算法改动用 `NetDiff.TestRunner`（31 用例，命令见 §4）。GUI 层回归用手工/脚本冒烟（见 ARCHITECTURE.md §9）。任何改动完成后跑 `verify.ps1` 一键门禁。
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。⚠️ 特定开发需求曾用的 SHA 基线对比（diffcompare 7 对基线）**不作为通用准则**；后续若有必须的回归对比，单独建文件记录。
-5. **读取层唯一差异源**：EM=NPOI（权威），EME=EDR（性能验证）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移，权威版不可迁移到 EDR。
+5. **读取层定位**：**EME=EDR 优先/基准**（读取快约 72%）；**EM=NPOI 保底对照**（NPOI 语义最全）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 EM 保底存在的意义，**不得移除 EM**。基准测试以 EME 为准，EM 作保底验证。
 6. **构建与部署次序**：构建 EME → 部署 EME → 构建 EM → 部署 EM，分步进行（见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。
 7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。
 8. **测试模态弹窗注意事项**（自动化/脚本测试会被强制阻塞）：
    - **无差异弹窗 `NoDiffWindow`**：两文件无差异且 `NotifyEqual` 开启时，由 `DiffView.ShowDiff` `ShowDialog` 弹出（模态）。识别：无系统标题栏（`WindowStyle=None`）、顶部绿色条（`#FF43A047`）带自定义"✕"、正文为 `Message_NoDiffFormat`（如"左[...] - 右[...] = 没有区别"）。**关闭 = 点右上角"✕"**（`CloseButton_Click`：仅关弹窗、不关对比窗口；ESC 等效）；红色"退出"按钮是 `IsDefault`（回车触发）会连对比窗口一起关，脚本注意区分。
    - **重启确认 MessageBox**：切换多语言后由 `App.UpdateResourceCulture` 弹出（`Message_Reboot`：en "ExcelMerge will close to change the language." / zh "ExcelMerge将关闭以变更语言"）。**处理 = 点"确定/OK"**；确认后应用关对比窗口，下次 diff 命令以新语言重建。
    - 两者均为强制模态，会阻断后续命令；脚本需先探测（窗口/文案特征）再处理，否则测试挂起。
-9. **headless diff harness（L1 主测试工具）**：`DiffHarness\` 零第三方离线对比，直接调库层（`ExcelWorkbook.Create` → `ExcelSheet.Diff` → `CreateSummary`）输出确定性 diff 文本，用于 EM/EME 对比。用法：`powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1 -RelPath Config/Data/Level.xlsx`（自动提取 HEAD → 构建/运行双变体 → 比对，忽略 READER 行）；可用 `-NoBuild` 跳过重编译。产出 `DiffHarness.exe`（NPOI）/ `DiffHarnessEDR.exe`（EDR），输出 UTF-8。
+9. **headless diff harness（L1 主测试工具）**：`DiffHarness\` 零第三方离线对比，直接调库层（`ExcelWorkbook.Create` → `ExcelSheet.Diff` → `CreateSummary`）输出确定性 diff 文本，以 EME（基准）为准、EM（保底）作验证对照。用法：`powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1 -RelPath Config/Data/Level.xlsx`（自动提取 HEAD → 构建/运行双变体 → 比对，忽略 READER 行）；可用 `-NoBuild` 跳过重编译。产出 `DiffHarness.exe`（NPOI）/ `DiffHarnessEDR.exe`（EDR），输出 UTF-8。
 
 ## 8. 已知陷阱（务必遵守，全部踩过坑）
 
