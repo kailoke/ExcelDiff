@@ -1,3 +1,8 @@
+- [中文](https://github.com/kailoke/ExcelDiff/blob/master/README.md)
+- [English](https://github.com/kailoke/ExcelDiff/blob/master/README.en)
+
+![logo](media/logo.png)
+
 # ExcelDiff
 
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
@@ -7,6 +12,10 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 - **EM**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，作为 EDR 盲区兜底与验证对照。
 
 两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
+
+![Demo](media/demo.gif)
+
+![cell diff](media/cell_diff.png)
 
 ## 功能特性
 
@@ -63,6 +72,10 @@ powershell -ExecutionPolicy Bypass -File verify.ps1
 
 ## 使用方式
 
+### 从快捷方式
+
+![shortcut](media/shortcut.png)
+
 ### 命令行
 
 ```
@@ -116,9 +129,13 @@ vdiff = exceldiff
 
 安装 `ExcelDiff.ShellExtension`（COM 外壳扩展）后，从资源管理器右键菜单直接对比。
 
+![context menu](media/context.png)
+
 ## 外部命令注册
 
 通过命令行参数 `--external-cmd` 指定外部命令。
+
+![external command window](media/ext_cmd_win.png)
 
 ### 可用变量
 
@@ -129,10 +146,16 @@ vdiff = exceldiff
 
 也可在工具内执行。
 
+![external command](media/ext_cmd.png)
+
 ## 文件设置 / 颜色设置
 
 - 文件设置：为每个文件指定行头或列头。
 - 颜色设置：自定义背景色（交替行 / 列头 / 行头 / 新增 / 删除 / 修改 / 修改行）。
+
+![file settings](media/file_settings.png)
+
+![color settings](media/settings.png)
 
 ## 快捷键
 
@@ -158,6 +181,8 @@ vdiff = exceldiff
 
 按 `Ctrl + D` 或从右键菜单选择 "Output log"，可将差异输出为日志。
 格式可在"差异提取设置"中修改。
+
+![log](media/log.png)
 
 ## 无差异窗口与语言切换
 
