@@ -15,9 +15,6 @@ using System.Windows.Shapes;
 
 namespace ExcelDiff.GUI.Views
 {
-    /// <summary>
-    /// ProgressWindow.xaml ���໥���å���å�
-    /// </summary>
     public partial class ProgressWindow : Window
     {
         public ProgressWindow()

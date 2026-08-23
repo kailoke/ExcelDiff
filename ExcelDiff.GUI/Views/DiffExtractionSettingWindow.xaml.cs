@@ -14,9 +14,6 @@ using System.Windows.Shapes;
 
 namespace ExcelDiff.GUI.Views
 {
-    /// <summary>
-    /// Interaction logic for DiffExtractionSettingWindow.xaml
-    /// </summary>
     public partial class DiffExtractionSettingWindow : Window
     {
         public DiffExtractionSettingWindow()

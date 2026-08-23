@@ -43,6 +43,5 @@ namespace ExcelDiff
         }
 
 
-        // TODO: Add row status field and implemnt UpdateStaus method.
     }
 }

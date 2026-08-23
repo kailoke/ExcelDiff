@@ -8,9 +8,6 @@ using ExcelDiff.GUI.Shell;
 
 namespace ExcelDiff.GUI.Views
 {
-    /// <summary>
-    /// MainWindow.xaml ���໥���å����å�
-    /// </summary>
     public partial class MainWindow : Window
     {
         private GridLength previousConsoleHeight = new GridLength(0);
