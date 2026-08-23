@@ -97,7 +97,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 ```
 CLI/difftool ─> CommandLineOption ─> DiffCommand
    → ExcelWorkbook.Create(src) + Create(dst)   [读取：NPOI 或 EDR]
-   → ExcelSheetDiff.BuildPerSheet (NetDiff 行匹配 + 单元格比对)
+   → ExcelSheet.Diff（NetDiff 行匹配 + 单元格比对，行级前沿 Limit=2000 守卫）
    → DiffViewModel/DiffGridModel（行状态预计算、延迟 minimap）
    → FastWpfGrid 渲染 + NoDiffWindow/进度提示
 ```
@@ -152,6 +152,7 @@ D:\Program Files\ExcelDiffTool\        → ED（ExcelDiff.GUI.exe + ExcelDiff.dl
 ## 10. 已知限制 / 风险
 
 - EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 ED（NPOI）保底对照兜底，ED 不得移除。
+- `EditGraph`（NetDiff）为 Myers 启发式 BFS，最坏 O(D²) 节点分配（病态"两表几乎全不同"大表）。已用行级 `Limit=2000` 前沿守卫兜底（ADR-010）；不重写（31 测试编码当前路径平局规则）。
 - `backup_installed_*` 目录为部署前快照，勿改动。
 - `ExcelDiff.Installer.vdproj` 未纳入当前构建流程。
 - `%APPDATA%\ExcelDiff\`、`%APPDATA%\ExcelDiffTest.GUI\` 为旧名残留，孤儿数据待清理。
