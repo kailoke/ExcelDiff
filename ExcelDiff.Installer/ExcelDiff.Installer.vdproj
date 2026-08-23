@@ -4433,7 +4433,7 @@
                     "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_47C9C1EB00EC4496A0AF4F684959109A"
                     {
                     "Sequence" = "3:200"
-                    "DisplayName" = "8:インストール フォルダー"
+                    "DisplayName" = "8:Installation Folder"
                     "UseDynamicProperties" = "11:TRUE"
                     "IsDependency" = "11:FALSE"
                     "SourcePath" = "8:<VsdDialogDir>\\VsdFolderDlg.wid"
@@ -4468,7 +4468,7 @@
                     "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_49642A15ACEA4301A2570C9492B40D2C"
                     {
                     "Sequence" = "3:100"
-                    "DisplayName" = "8:ようこそ"
+                    "DisplayName" = "8:Welcome"
                     "UseDynamicProperties" = "11:TRUE"
                     "IsDependency" = "11:FALSE"
                     "SourcePath" = "8:<VsdDialogDir>\\VsdWelcomeDlg.wid"
@@ -4516,7 +4516,7 @@
                     "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_B3B91399957C4DFEBF22CA33598D220A"
                     {
                     "Sequence" = "3:300"
-                    "DisplayName" = "8:インストールの確認"
+                    "DisplayName" = "8:Confirm Installation"
                     "UseDynamicProperties" = "11:TRUE"
                     "IsDependency" = "11:FALSE"
                     "SourcePath" = "8:<VsdDialogDir>\\VsdConfirmDlg.wid"
@@ -4635,7 +4635,7 @@
                     "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_4FA948E5369E4045A4BB971E685A3FE4"
                     {
                     "Sequence" = "3:100"
-                    "DisplayName" = "8:ようこそ"
+                    "DisplayName" = "8:Welcome"
                     "UseDynamicProperties" = "11:TRUE"
                     "IsDependency" = "11:FALSE"
                     "SourcePath" = "8:<VsdDialogDir>\\VsdAdminWelcomeDlg.wid"
@@ -4683,7 +4683,7 @@
                     "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_6FF20A58DFA24DD384F4E9B2AFBC9488"
                     {
                     "Sequence" = "3:200"
-                    "DisplayName" = "8:インストール フォルダー"
+                    "DisplayName" = "8:Installation Folder"
                     "UseDynamicProperties" = "11:TRUE"
                     "IsDependency" = "11:FALSE"
                     "SourcePath" = "8:<VsdDialogDir>\\VsdAdminFolderDlg.wid"
@@ -4705,7 +4705,7 @@
                     "{688940B3-5CA9-4162-8DEE-2993FA9D8CBC}:_B4C26D44B3E445649F5C342DEB763136"
                     {
                     "Sequence" = "3:300"
-                    "DisplayName" = "8:インストールの確認"
+                    "DisplayName" = "8:Confirm Installation"
                     "UseDynamicProperties" = "11:TRUE"
                     "IsDependency" = "11:FALSE"
                     "SourcePath" = "8:<VsdDialogDir>\\VsdAdminConfirmDlg.wid"

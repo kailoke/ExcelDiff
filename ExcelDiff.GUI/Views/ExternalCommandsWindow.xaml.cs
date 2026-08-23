@@ -15,7 +15,7 @@ using System.Windows.Shapes;
 namespace ExcelDiff.GUI.Views
 {
     /// <summary>
-    /// ExternalCommandsWindow.xaml の相互作用ロジック
+    /// Interaction logic for ExternalCommandsWindow.xaml
     /// </summary>
     public partial class ExternalCommandsWindow : Window
     {
