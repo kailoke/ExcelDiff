@@ -16,6 +16,8 @@ namespace ExcelDiff.GUI.Models
         private CellDecoration decoration = CellDecoration.None;
         private string toolTipText = string.Empty;
         private Dictionary<int, int> rowIndexMap = new Dictionary<int, int>();
+        private Dictionary<int, int> reverseRowIndexMap = new Dictionary<int, int>();
+        private Action onSettingUpdatedHandler;
 
         public override int ColumnCount
         {
@@ -67,7 +69,21 @@ namespace ExcelDiff.GUI.Models
 
             BuildRowStatusIndexes();
 
-            App.Instance.OnSettingUpdated += () => { InvalidateAll(); };
+            onSettingUpdatedHandler = () => { InvalidateAll(); };
+            App.Instance.OnSettingUpdated += onSettingUpdatedHandler;
+        }
+
+        /// <summary>
+        /// Releases the subscription to settings changes so an abandoned model does not
+        /// keep the whole diff (and the workbook data behind it) alive.
+        /// </summary>
+        public void UnsubscribeFromSettings()
+        {
+            if (onSettingUpdatedHandler != null)
+            {
+                App.Instance.OnSettingUpdated -= onSettingUpdatedHandler;
+                onSettingUpdatedHandler = null;
+            }
         }
 
         private HashSet<int> modifiedRows;
@@ -293,9 +309,8 @@ namespace ExcelDiff.GUI.Models
             if (realCellAddress.IsEmpty)
                 return FastGridCellAddress.Empty;
 
-            var swapped = rowIndexMap.ToDictionary(i => i.Value, i => i.Key);
             int visualRow;
-            if (swapped.TryGetValue(realCellAddress.Row.Value, out visualRow))
+            if (reverseRowIndexMap.TryGetValue(realCellAddress.Row.Value, out visualRow))
                 return new FastGridCellAddress(visualRow, realCellAddress.Column.Value, realCellAddress.IsGridHeader);
 
             return rowIndexMap.Any() ? FastGridCellAddress.Empty : realCellAddress;
@@ -537,6 +552,7 @@ namespace ExcelDiff.GUI.Models
         public void HideEqualRows()
         {
             rowIndexMap.Clear();
+            reverseRowIndexMap.Clear();
             var equalRows = new HashSet<int>();
             var originalIndex = 0;
             var index = 0;
@@ -544,9 +560,15 @@ namespace ExcelDiff.GUI.Models
             foreach (var r in SheetDiff.Rows)
             {
                 if (!r.Value.Cells.All(c => c.Value.Status == ExcelCellStatus.None))
-                    rowIndexMap.Add(index++, originalIndex);
+                {
+                    rowIndexMap.Add(index, originalIndex);
+                    reverseRowIndexMap[originalIndex] = index;
+                    index++;
+                }
                 else
+                {
                     equalRows.Add(r.Key);
+                }
 
                 originalIndex++;
             }
@@ -559,6 +581,7 @@ namespace ExcelDiff.GUI.Models
             SetRowArrange(new HashSet<int>(), new HashSet<int>());
 
             rowIndexMap.Clear();
+            reverseRowIndexMap.Clear();
         }
     }
 }

@@ -178,17 +178,28 @@ namespace ExcelDiff
             var resultArray = DiffUtil.OptimizeCaseDeletedFirst(r).ToArray();
             if (resultArray.Length > 10000)
             {
+                // Keep the first rows plus a window around each changed row so very large
+                // workbooks stay usable without rendering the full result set.
+                var keep = new HashSet<int>();
+                var headLimit = System.Math.Min(100, resultArray.Length);
+                for (var i = 0; i < headLimit; i++)
+                    keep.Add(i);
+
                 var count = 0;
-                var indices = Enumerable.Range(0, 100).ToList();
                 foreach (var result in resultArray)
                 {
                     if (result.Status != DiffStatus.Equal)
-                        indices.AddRange(Enumerable.Range(Math.Max(0, count - 100), 200));
+                    {
+                        var start = System.Math.Max(0, count - 100);
+                        var end = System.Math.Min(resultArray.Length - 1, count + 199);
+                        for (var i = start; i <= end; i++)
+                            keep.Add(i);
+                    }
 
                     count++;
                 }
-                indices = indices.Distinct().ToList();
-                resultArray = indices.Where(i => i < resultArray.Length).Select(i => resultArray[i]).ToArray();
+
+                resultArray = resultArray.Where((res, i) => keep.Contains(i)).ToArray();
             }
 
             var sheetDiff = new ExcelSheetDiff();

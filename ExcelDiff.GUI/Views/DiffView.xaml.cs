@@ -111,6 +111,9 @@ namespace ExcelDiff.GUI.Views
             }
 
             App.Instance.OnSettingUpdated -= OnApplicationSettingUpdated;
+
+            (SrcDataGrid.Model as DiffGridModel)?.UnsubscribeFromSettings();
+            (DstDataGrid.Model as DiffGridModel)?.UnsubscribeFromSettings();
         }
 
         private void OnApplicationSettingUpdated()
