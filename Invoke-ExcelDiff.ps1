@@ -10,7 +10,7 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File Invoke-ExcelDiffDiff.ps1 `
-#       -Executable D:\Program Files\ExcelDiff\ExcelDiff.GUI.exe `
+#       -Executable D:\Program Files\ExcelDiffTool\ExcelDiff.GUI.exe `
 #       -SrcPath <src> -DstPath <dst> [-WaitClose] [-TimeoutSeconds 90]
 #
 # -WaitClose: additionally poll until the diff window closes (session end).

@@ -104,7 +104,7 @@ ExcelDiff.GUI diff [Options]
 tool = ExcelDiff
 
 [difftool "ExcelDiff"]
-cmd = \"D:/Program Files/ExcelDiff/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+cmd = \"D:/Program Files/ExcelDiffTool/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
 
 [alias]
 windiff = difftool -g -y -t ExcelDiff
@@ -116,7 +116,7 @@ windiff = difftool -g -y -t ExcelDiff
 
 ```
 [merge-tools]
-exceldiff.executable = D:\Program Files\ExcelDiff\ExcelDiff.GUI.exe
+exceldiff.executable = D:\Program Files\ExcelDiffTool\ExcelDiff.GUI.exe
 exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 
 [tortoisehg]
