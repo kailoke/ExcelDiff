@@ -91,7 +91,7 @@ ExcelDiff.GUI diff [Options]
 tool = ExcelDiff
 
 [difftool "ExcelDiff"]
-cmd = \"C:/Program Files (x86)/ExcelDiff/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+cmd = \"D:/Program Files/ExcelDiff/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
 
 [alias]
 windiff = difftool -g -y -t ExcelDiff
@@ -103,11 +103,11 @@ windiff = difftool -g -y -t ExcelDiff
 
 ```
 [merge-tools]
-excelmerge.executable = C:\Program Files (x86)\ExcelDiff\ExcelDiff.GUI.exe
-excelmerge.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
+exceldiff.executable = D:\Program Files\ExcelDiff\ExcelDiff.GUI.exe
+exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 
 [tortoisehg]
-vdiff = excelmerge
+vdiff = exceldiff
 ```
 
 > 路径请按实际部署目录调整；基准对比以 EME 为准，EM 作保底验证对照。
