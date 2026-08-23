@@ -1,0 +1,226 @@
+- [English](https://github.com/kailoke/ExcelDiff/blob/master/README.en)
+- [中文](https://github.com/kailoke/ExcelDiff/blob/master/README.md)
+
+![logo](media/logo.png)
+
+# ExcelDiff
+
+A Windows desktop GUI diff tool for Excel / CSV / TSV. Can be used as a Git / Mercurial difftool.
+Two products are built from the same source:
+
+- **EME** (priority / benchmark build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of EM's time, ~72% faster); development and benchmark testing use EME as the baseline.
+- **EM** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; serves as the fallback for EDR blind spots and as a validation reference.
+
+The two builds are fully isolated (process / assembly / config / display name). The UI defaults to Simplified Chinese and supports Chinese/English switching.
+
+![Demo](media/demo.gif)
+
+![cell diff](media/cell_diff.png)
+
+## Features
+
+- Diff comparison: row-level + cell-level highlighting (`xls` / `xlsx` / `csv` / `tsv`).
+- Resident + tray: single instance stays in the background; show / hide / exit.
+- Single-instance IPC: a second invocation is routed to the resident instance over a named pipe, avoiding multiple windows.
+- No-diff notification window: optional popup when the two files are identical (`NotifyEqual`).
+- Window persistence: position / size / column width / row height / font / search history auto-saved.
+- External localization: `lang\en-US.json` / `lang\zh-CN.json` (UTF-8).
+- External command / file settings / color settings / diff log output.
+- Start on boot (`StartOnBoot`).
+
+## System Requirements
+
+- Windows 7 or later
+- .NET Framework 4.6.2
+
+## Supported File Types
+
+- `.xls`
+- `.xlsx`
+- `.csv`
+- `.tsv`
+
+## Build & Deploy
+
+Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must be specified.
+
+### EME (priority / benchmark, EDR read) — output `ExcelDiffEDR.GUI.exe`
+
+```
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+```
+
+### EM (fallback, NPOI read) — output `ExcelDiff.GUI.exe`
+
+Same as above without `/p:EdrRead=true` (default).
+
+### Deploy order & resident restart
+
+1. Build EME → deploy EME.
+2. Build EM → deploy EM.
+3. **Restart the matching resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
+
+Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results. Note: do not build both variants in one command line (incremental builds delete each other's output); build them step by step.
+
+### One-command verification gate
+
+```
+powershell -ExecutionPolicy Bypass -File verify.ps1
+```
+
+All green = both variants compile + 31 NetDiff tests pass + lang↔resx in sync.
+
+## Usage
+
+### From shortcut
+
+![shortcut](media/shortcut.png)
+
+### From command line
+
+```
+ExcelDiff.GUI diff [Options]
+```
+
+| Option | Description | Type | Default |
+|--------|-------------|------|---------|
+| `-s` `--src-path` | Source file path. | string | |
+| `-d` `--dst-path` | Dest file path. | string | |
+| `-c` `--external-cmd` | Activate an external tool for unsupported file types or on exception. | string | |
+| `-i` `--immediately-execute-external-cmd` | Execute external cmd without an error dialog. | bool | false |
+| `-w` `--wait-external-cmd` | Wait for the external process to finish. | bool | false |
+| `-v` `--validate-extension` | Validate extension before opening a file. | bool | false |
+| `-e` `--empty-file-name` | Empty file name. | string | |
+| `-k` `--keep-file-history` | Do not record recent files. | bool | false |
+
+> Single-instance IPC: if a resident instance is already running, a new command-line invocation is forwarded to it over a named pipe and the caller exits immediately. A resident launched with `--startup` runs hidden in the tray.
+
+### Git difftool
+
+`.gitconfig`
+
+```
+[diff]
+tool = ExcelDiff
+
+[difftool "ExcelDiff"]
+cmd = \"D:/Program Files/ExcelDiff/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+
+[alias]
+windiff = difftool -g -y -t ExcelDiff
+```
+
+### Mercurial difftool
+
+`mercurial.ini`
+
+```
+[merge-tools]
+exceldiff.executable = D:\Program Files\ExcelDiff\ExcelDiff.GUI.exe
+exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
+
+[tortoisehg]
+vdiff = exceldiff
+```
+
+> Adjust paths to your actual deployment directory; benchmark comparisons use EME, EM serves as the fallback validation reference.
+
+### Explorer context menu
+
+After installing `ExcelDiff.ShellExtension` (COM shell extension), compare directly from the Explorer right-click menu.
+
+![context menu](media/context.png)
+
+## Register External Command
+
+Specify an external command via the `--external-cmd` command-line argument.
+
+![external command window](media/ext_cmd_win.png)
+
+### Available Variables
+
+| Value | Description |
+|-------|-------------|
+| `${SRC}` | Source file path |
+| `${DST}` | Dest file path |
+
+It can also be executed from within the tool.
+
+![external command](media/ext_cmd.png)
+
+## File Settings / Color Settings
+
+- File settings: specify a row header or a column header for each file.
+- Color settings: customize background colors (alternating rows / column header / row header / added / removed / modified / modified row).
+
+![file settings](media/file_settings.png)
+
+![color settings](media/settings.png)
+
+## Shortcut Keys
+
+| Shortcut Key | Description |
+|--------------|-------------|
+| Ctrl + → | Next modified cell |
+| Ctrl + ← | Previous modified cell |
+| Ctrl + ↓ | Next modified row |
+| Ctrl + ↑ | Previous modified row |
+| Ctrl + K | Next added row |
+| Ctrl + I | Previous added row |
+| Ctrl + L | Next removed row |
+| Ctrl + O | Previous removed row |
+| Ctrl + F | Search cell |
+| F9 | Next match cell |
+| F8 | Previous match cell |
+| Ctrl + C | Copy selected cells as TSV |
+| Ctrl + Shift + C | Copy selected cells as CSV |
+| Ctrl + D | Show(Hide) console |
+| Ctrl + B | Output selected cells diff as log |
+
+## Output Diff as Log
+
+Press `Ctrl + D` or choose "Output log" from the context menu to output the diff as a log.
+The format can be changed in the "diff extraction settings".
+
+![log](media/log.png)
+
+## No-Diff Window & Language Switch
+
+- **No-diff window**: shown when the two files are identical and `NotifyEqual` is enabled. Close it with the top-right "X" or ESC (closes only the dialog); the red "Exit" button (triggered by Enter) also closes the comparison window.
+- **Language switch**: after switching the language in settings, the app closes to apply the change; the next diff command recreates the window with the new language.
+
+## Settings & Persistence
+
+Settings are saved as YAML at:
+
+```
+%APPDATA%\<assembly name>\<assembly name>.yml
+```
+
+- EME: `%APPDATA%\ExcelDiffEDR.GUI\`
+- EM: `%APPDATA%\ExcelDiff.GUI\`
+
+## Regression Verification
+
+- `verify.ps1`: one-command gate (both variants compile + 31 NetDiff tests + lang↔resx sync).
+- `DiffHarness\`: headless diff comparison (deterministic diff text of EM/EME outputs).
+- `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
+
+## Known Problems
+
+- If there are column deletions or additions, they may not be displayed at the expected position. Specify an appropriate header and re-extract the diff:
+  1. Select the appropriate header cell.
+  2. Right-click to show the context menu.
+  3. Choose "Extract diff with this row as header".
+
+## LICENSE
+
+#### MIT License
+
+Copyright (c)2017 skanmera
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
