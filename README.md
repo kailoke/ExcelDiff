@@ -3,8 +3,8 @@
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
 同一份源码编译出两套产品：
 
-- **EM**（权威版，`ExcelMerge.GUI.exe`）：NPOI 读取。
-- **EME**（测试版，`ExcelMergeEDR.GUI.exe`）：ExcelDataReader 读取，用于性能验证。
+- **EME**（优先/基准版，`ExcelMergeEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 EM 的 28%，提升约 72%），开发与基准测试以 EME 为准。
+- **EM**（保底版，`ExcelMerge.GUI.exe`）：NPOI 读取。语义最全，作为 EDR 盲区兜底与验证对照。
 
 两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
 
@@ -35,13 +35,13 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录。
 
-### EM（权威版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
+### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
 
 ```
 dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### EME（测试版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
+### EME（优先/基准版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
 
 同上，追加 `/p:EdrRead=true`。
 
@@ -110,7 +110,7 @@ excelmerge.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -
 vdiff = excelmerge
 ```
 
-> 路径请按实际部署目录调整；EME 仅供测试，权威对比请使用 EM。
+> 路径请按实际部署目录调整；基准对比以 EME 为准，EM 作保底验证对照。
 
 ### 资源管理器右键菜单
 
