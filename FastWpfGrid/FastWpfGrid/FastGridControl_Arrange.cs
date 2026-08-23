@@ -279,6 +279,7 @@ namespace FastWpfGrid
                 {
                     int newRow = cell.Row.Value - _rowSizes.FrozenCount;
                     if (newRow > (int)vscroll.Maximum) newRow = (int)vscroll.Maximum;
+                    vscroll.Value = newRow;
                     ScrollContent(newRow, FirstVisibleColumnScrollIndex);
                 }
             }
