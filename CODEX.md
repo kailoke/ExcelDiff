@@ -22,7 +22,7 @@ exe diff -s <src> -d <dst> ...
        └─ window.Closed → diffView.RemoveEventListeners()           防静态分发器泄漏
   └─ DiffView 内（用户点“显示差异”或启动即跑）
        ├─ CreateWorkbookTuple()                   DiffView.xaml.cs:432
-       │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EME:EDR / EM:NPOI
+       │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EDE:EDR / ED:NPOI
        ├─ ExecuteDiff(src,dst)                    DiffView.xaml.cs:514
        │     ProgressWindow.DoWorkWithModal → ExcelSheet.Diff(src,dst,config)
        └─ ShowDiff()                              DiffView.xaml.cs:543

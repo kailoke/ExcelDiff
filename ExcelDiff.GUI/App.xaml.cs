@@ -45,7 +45,7 @@ namespace ExcelDiff.GUI
 
         /// <summary>
         /// Application display name. Compile-time constant, distinct per build:
-        /// authoritative (EM) build = "ExcelDiff", EDR (EME) build = "ExcelDiffEDR".
+        /// authoritative (ED) build = "ExcelDiff", EDR (EDE) build = "ExcelDiffEDR".
         /// </summary>
 #if EDR_READ
         public const string DisplayName = "ExcelDiffEDR";
