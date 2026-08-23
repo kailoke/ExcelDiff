@@ -16,7 +16,7 @@ namespace ExcelDiff
                     var columnIndex = 0;
                     var cells = new List<ExcelCell>();
                     foreach (var c in sr.ReadLine().Split('\t'))
-                        cells.Add(new ExcelCell(c, columnIndex, rowIndex));
+                        cells.Add(new ExcelCell(c, columnIndex++, rowIndex));
 
                     yield return new ExcelRow(rowIndex++, cells);
                 }

@@ -29,8 +29,6 @@ namespace ExcelDiff.GUI.ViewModels
             Setting = setting.DeepClone();
             Setting.Clean();
 
-            Setting = setting;
-
             CancelCommand = new DelegateCommand<Window>((w) =>
             {
                 IsCancelled = true;

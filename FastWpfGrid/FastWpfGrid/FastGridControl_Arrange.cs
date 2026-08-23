@@ -166,7 +166,7 @@ namespace FastWpfGrid
 
         private IntRect GetFrozenRowsRect()
         {
-            return new IntRect(new IntPoint(HeaderWidth, HeaderHeight), new IntSize(GridScrollAreaHeight, _rowSizes.FrozenSize + 1));
+            return new IntRect(new IntPoint(HeaderWidth, HeaderHeight), new IntSize(GridScrollAreaWidth, _rowSizes.FrozenSize + 1));
         }
 
         public Rect GetColumnHeaderRectangle(int modelColumnIndex)

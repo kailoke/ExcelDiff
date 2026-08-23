@@ -81,7 +81,7 @@ namespace ExcelDiff
             var columns = CreateColumns();
             var indices = columns.Select((v, i) => new { v, i }).TakeWhile(c => c.v.IsBlank()).Select(c => c.i);
 
-            foreach (var i in indices)
+            foreach (var i in indices.Reverse())
                 RemoveColumn(i);
         }
 

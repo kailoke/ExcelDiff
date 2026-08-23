@@ -72,10 +72,8 @@ namespace ExcelDiff
             var index = 0;
             foreach (var cell in obj.Cells)
             {
-                if (IgnoreColumns.Contains(index))
-                    continue;
-
-                hash = hash * 13 + cell.Value.GetHashCode();
+                if (!IgnoreColumns.Contains(index))
+                    hash = hash * 13 + cell.Value.GetHashCode();
 
                 index++;
             }
