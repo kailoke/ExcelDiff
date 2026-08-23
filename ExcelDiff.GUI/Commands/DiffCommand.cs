@@ -9,7 +9,7 @@ namespace ExcelDiff.GUI.Commands
     {
         public static readonly List<string> DefaultEnabledExtensions = new List<string>
         {
-            ".xls", ".xlsx", ".csv", "tsv",
+            ".xls", ".xlsx", ".csv", ".tsv",
         };
 
         public CommandLineOption Option { get; }
@@ -34,7 +34,17 @@ namespace ExcelDiff.GUI.Commands
 
             // The static event dispatchers keep per-view handlers registered; release them
             // once the window is really closed so a later DiffView never dispatches to them.
-            window.Closed += (s, e) => diffView.RemoveEventListeners();
+            // Also clear the app-level references so a later command starts a fresh window.
+            window.Closed += (s, e) =>
+            {
+                diffView.RemoveEventListeners();
+
+                if (App.Current.MainWindow == window)
+                    App.Current.MainWindow = null;
+
+                if (App.Instance.CurrentDiffView == diffView)
+                    App.Instance.CurrentDiffView = null;
+            };
 
             ExcelDiff.GUI.Timing.Mark("WindowShown");
         }

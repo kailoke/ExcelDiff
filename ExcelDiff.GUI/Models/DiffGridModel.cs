@@ -442,7 +442,7 @@ namespace ExcelDiff.GUI.Models
             if (useRegex)
             {
                 var regex = new Regex(target);
-                return regex.IsMatch(srcValue) || regex.IsMatch(srcValue);
+                return regex.IsMatch(srcValue) || regex.IsMatch(dstValue);
             }
 
             if (exactMatch)
