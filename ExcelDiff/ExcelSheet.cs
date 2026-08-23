@@ -293,19 +293,18 @@ namespace ExcelDiff
         }
 
         private static IEnumerable<Tuple<ExcelCell, ExcelCell>> EqualizeColumnCount(
-            IEnumerable<ExcelCell> srcCells, IEnumerable<ExcelCell> dstCells, Dictionary<int, ExcelColumnStatus> columnStausMap)
+            IEnumerable<ExcelCell> srcCells, IEnumerable<ExcelCell> dstCells, Dictionary<int, ExcelColumnStatus> columnStatusMap)
         {
-            var srcQueue = new Queue<ExcelCell>(srcCells);
-            var dstQueue = new Queue<ExcelCell>(dstCells);
-            foreach (var status in columnStausMap)
+            using (var srcEnum = srcCells.GetEnumerator())
+            using (var dstEnum = dstCells.GetEnumerator())
             {
-                ExcelCell src = null;
-                ExcelCell dst = null;
-
-                if (srcQueue.Any()) src = srcQueue.Dequeue();
-                if (dstQueue.Any()) dst = dstQueue.Dequeue();
-
-                yield return Tuple.Create(src, dst);
+                var count = columnStatusMap.Count;
+                for (var i = 0; i < count; i++)
+                {
+                    var src = srcEnum.MoveNext() ? srcEnum.Current : null;
+                    var dst = dstEnum.MoveNext() ? dstEnum.Current : null;
+                    yield return Tuple.Create(src, dst);
+                }
             }
         }
 
