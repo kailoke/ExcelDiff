@@ -422,7 +422,7 @@ namespace ExcelMerge.GUI.Views
 
         private void SyncScroll(FastGridControl src, FastGridControl dst)
         {
-            dst.Scroll(src.FirstVisibleRowScrollIndex, src.FirstVisibleColumnScrollIndex, src.VerticalScrollBarOffset, src.HorizontalScrollBarOffset);
+            dst.Scroll(src.FirstVisibleRowScrollIndex, src.FirstVisibleColumnScrollIndex, src.FirstVisibleRowScrollIndex, src.FirstVisibleColumnScrollIndex);
         }
 
         private void RecalculateViewport(Rectangle viewport, FastGridControl dataGrid)
