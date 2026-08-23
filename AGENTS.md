@@ -29,7 +29,7 @@ ExcelDiff.sln                  # 解决方案（VS2015 格式，dotnet msbuild �
 ExcelDiff\                      # 类库：工作簿/工作表/单元格读取、Diff 模型构建、CSV/TSV 解析
   ExcelWorkbook.cs               #   入口工厂：按扩展名分发读取（#if NPOI_READ → NPOI，否则 EDR）
   ExcelSheet.cs / ExcelSheetDiff.cs / ExcelRowDiff.cs / ExcelCellDiff.cs
-  ExcelReader.cs / ExcelUtility.cs / ExcelCellValueComparer.cs / ExcelWorkbookType.cs
+  ExcelReader.cs / ExcelUtility.cs / ExcelWorkbookType.cs
   CsvReader.cs / TsvReader.cs    #   自研解析器，无第三方依赖
 ExcelDiff.GUI\                  # WPF 可执行：UI、命令层、设置、IPC、托盘、本地化、常驻生命周期
   App.xaml.cs                    #   入口/生命周期（SingleInstance、托盘、远程命令路由、DisplayName 随 EDR_READ 切换）

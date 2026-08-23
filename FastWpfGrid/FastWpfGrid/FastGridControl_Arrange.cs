@@ -181,17 +181,17 @@ namespace FastWpfGrid
             if (pt.Y > HeaderHeight) return null;
 
             int frozenWidth = FrozenWidth;
-            if ((int) pt.X - HeaderWidth <= frozenWidth + ColumnResizeTheresold)
+            if ((int) pt.X - HeaderWidth <= frozenWidth + ColumnResizeThreshold)
             {
-                if ((int) pt.X - HeaderWidth >= frozenWidth - ColumnResizeTheresold && (int) pt.X - HeaderWidth <= FrozenWidth - ColumnResizeTheresold)
+                if ((int) pt.X - HeaderWidth >= frozenWidth - ColumnResizeThreshold && (int) pt.X - HeaderWidth <= FrozenWidth - ColumnResizeThreshold)
                 {
                     return _columnSizes.FrozenCount - 1;
                 }
                 int index = _columnSizes.GetFrozenIndexOnPosition((int) pt.X - HeaderWidth);
                 int begin = _columnSizes.GetPositionByRealIndex(index) + HeaderWidth;
                 int end = begin + _columnSizes.GetSizeByRealIndex(index);
-                if (pt.X >= begin - ColumnResizeTheresold && pt.X <= begin + ColumnResizeTheresold) return index - 1;
-                if (pt.X >= end - ColumnResizeTheresold && pt.X <= end + ColumnResizeTheresold) return index;
+                if (pt.X >= begin - ColumnResizeThreshold && pt.X <= begin + ColumnResizeThreshold) return index - 1;
+                if (pt.X >= end - ColumnResizeThreshold && pt.X <= end + ColumnResizeThreshold) return index;
             }
             else
             {
@@ -199,8 +199,8 @@ namespace FastWpfGrid
                 int index = _columnSizes.GetScrollIndexOnPosition((int) pt.X - HeaderWidth - frozenWidth + scrollXStart);
                 int begin = _columnSizes.GetPositionByScrollIndex(index) + HeaderWidth + frozenWidth - scrollXStart;
                 int end = begin + _columnSizes.GetSizeByScrollIndex(index);
-                if (pt.X >= begin - ColumnResizeTheresold && pt.X <= begin + ColumnResizeTheresold) return index - 1 + _columnSizes.FrozenCount;
-                if (pt.X >= end - ColumnResizeTheresold && pt.X <= end + ColumnResizeTheresold) return index + _columnSizes.FrozenCount;
+                if (pt.X >= begin - ColumnResizeThreshold && pt.X <= begin + ColumnResizeThreshold) return index - 1 + _columnSizes.FrozenCount;
+                if (pt.X >= end - ColumnResizeThreshold && pt.X <= end + ColumnResizeThreshold) return index + _columnSizes.FrozenCount;
             }
             return null;
         }

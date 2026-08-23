@@ -88,7 +88,7 @@ namespace ExcelDiff.GUI.Views
             Dispatch((l) => l.OnColumnHeaderReset(e), e);
         }
 
-        public void DispatchRowHeaderChagneEvent(DiffViewEventArgs<FastGridControl> e)
+        public void DispatchRowHeaderChangeEvent(DiffViewEventArgs<FastGridControl> e)
         {
             Dispatch((l) => l.OnRowHeaderChanged(e), e);
         }

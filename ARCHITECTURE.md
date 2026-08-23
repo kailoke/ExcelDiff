@@ -81,7 +81,6 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 | `ExcelSheetDiff` | 列对齐 + 行匹配（NetDiff）+ 单元格级差异；`ExcelSheetDiffConfig` 控制提取/忽略规则 |
 | `ExcelRowDiff`/`ExcelCellDiff` | 行/单元格差异条目（Added/Removed/Modified/None） |
 | `ExcelReader`/`ExcelUtility` | 读取配置、工作簿类型判定、创建空工作簿 |
-| `ExcelCellValueComparer` | 值比较（含空值抑制差异的规则） |
 | CSV/TSV | `CsvReader`/`TsvReader`（自研解析器，无第三方依赖） |
 
 ### 4.3 NetDiff

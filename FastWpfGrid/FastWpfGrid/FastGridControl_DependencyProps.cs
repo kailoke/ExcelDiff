@@ -388,20 +388,20 @@ namespace FastWpfGrid
 
         #endregion
 
-        #region ColumnResizeTheresold
+        #region ColumnResizeThreshold
 
-        public int ColumnResizeTheresold
+        public int ColumnResizeThreshold
         {
-            get { return (int)this.GetValue(ColumnResizeTheresoldProperty); }
-            set { this.SetValue(ColumnResizeTheresoldProperty, value); }
+            get { return (int)this.GetValue(ColumnResizeThresholdProperty); }
+            set { this.SetValue(ColumnResizeThresholdProperty, value); }
         }
 
-        public static readonly DependencyProperty ColumnResizeTheresoldProperty = DependencyProperty.Register(
-            "ColumnResizeTheresold", typeof(int), typeof(FastGridControl), new PropertyMetadata(2, OnColumnResizeTheresoldPropertyChanged));
+        public static readonly DependencyProperty ColumnResizeThresholdProperty = DependencyProperty.Register(
+            "ColumnResizeThreshold", typeof(int), typeof(FastGridControl), new PropertyMetadata(2, OnColumnResizeThresholdPropertyChanged));
 
-        private static void OnColumnResizeTheresoldPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+        private static void OnColumnResizeThresholdPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
         {
-            ((FastGridControl)dependencyObject).OnColumnResizeTheresoldChanged();
+            ((FastGridControl)dependencyObject).OnColumnResizeThresholdChanged();
         }
 
         #endregion
@@ -560,7 +560,7 @@ namespace FastWpfGrid
             InvalidateAll();
         }
 
-        private void OnColumnResizeTheresoldChanged() { }
+        private void OnColumnResizeThresholdChanged() { }
 
         public void OnMouseOverRowColorChanged() { }
 

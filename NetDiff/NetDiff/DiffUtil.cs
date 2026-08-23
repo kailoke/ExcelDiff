@@ -109,6 +109,13 @@ namespace NetDiff
                 throw new Exception();
         }
 
+        /// <summary>
+        /// Orders a diff result so that insertions and deletions are presented together as
+        /// blocks, choosing a preferred emit order. Within a block of a deleted and an
+        /// inserted run, the four DiffOrderType values decide which side is emitted first:
+        /// Greedy* always leads with that side; Lazy* alternates so the same side is never
+        /// emitted twice in a row.
+        /// </summary>
         public static IEnumerable<DiffResult<T>> Order<T>(IEnumerable<DiffResult<T>> results, DiffOrderType orderType)
         {
             var resultArray = results.ToArray();
@@ -160,7 +167,7 @@ namespace NetDiff
                     }
                 }
 
-                var latestReturenStatus = DiffStatus.Equal;
+                var latestReturnStatus = DiffStatus.Equal;
                 while (true)
                 {
                     if (additionQueue.Any() && !deletionQueue.Any())
@@ -177,34 +184,34 @@ namespace NetDiff
                         {
                             case DiffOrderType.GreedyDeleteFirst:
                                 yield return deletionQueue.Dequeue();
-                                latestReturenStatus = DiffStatus.Deleted;
+                                latestReturnStatus = DiffStatus.Deleted;
                                 break;
                             case DiffOrderType.GreedyInsertFirst:
                                 yield return additionQueue.Dequeue();
-                                latestReturenStatus = DiffStatus.Inserted;
+                                latestReturnStatus = DiffStatus.Inserted;
                                 break;
                             case DiffOrderType.LazyDeleteFirst:
-                                if (latestReturenStatus != DiffStatus.Deleted)
+                                if (latestReturnStatus != DiffStatus.Deleted)
                                 {
                                     yield return deletionQueue.Dequeue();
-                                    latestReturenStatus = DiffStatus.Deleted;
+                                    latestReturnStatus = DiffStatus.Deleted;
                                 }
                                 else
                                 {
                                     yield return additionQueue.Dequeue();
-                                    latestReturenStatus = DiffStatus.Inserted;
+                                    latestReturnStatus = DiffStatus.Inserted;
                                 }
                                 break;
                             case DiffOrderType.LazyInsertFirst:
-                                if (latestReturenStatus != DiffStatus.Inserted)
+                                if (latestReturnStatus != DiffStatus.Inserted)
                                 {
                                     yield return additionQueue.Dequeue();
-                                    latestReturenStatus = DiffStatus.Inserted;
+                                    latestReturnStatus = DiffStatus.Inserted;
                                 }
                                 else
                                 {
                                     yield return deletionQueue.Dequeue();
-                                    latestReturenStatus = DiffStatus.Deleted;
+                                    latestReturnStatus = DiffStatus.Deleted;
                                 }
                                 break;
                         }

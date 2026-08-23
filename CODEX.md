@@ -78,7 +78,6 @@ exe diff -s <src> -d <dst> ...
 | `ExcelSheetDiff` | ExcelSheetDiff.cs:6 | `Rows: SortedDictionary<int,ExcelRowDiff>`；`CreateRow`；`CreateSummary`（Added/Removed/Modified 行列计数） |
 | `ExcelRowDiff` | ExcelRowDiff.cs | `IsModified/IsAdded/IsRemoved/ModifiedCellCount` |
 | `ExcelCellDiff` | ExcelCellDiff.cs | 单元格差异条目 |
-| `ExcelCellValueComparer` | ExcelCellValueComparer.cs | 值比较（空值抑制差异规则） |
 | `ExcelSheetDiffConfig` | ExcelSheetDiffConfig.cs | 提取/忽略规则、header 索引 |
 | `ExcelSheetReadConfig` | ExcelSheetReadConfig.cs | 读取配置（跳首空行/列、去尾空行/列） |
 | `ExcelUtility` | ExcelUtility.cs | `GetWorkbookType`、`CreateWorkbook`（空文件模板） |

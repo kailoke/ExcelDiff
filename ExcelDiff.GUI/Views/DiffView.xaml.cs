@@ -216,8 +216,6 @@ namespace ExcelDiff.GUI.Views
             if (grid == null)
                 return;
 
-            copyTargetGrid = grid;
-
             var args = new DiffViewEventArgs<FastGridControl>(sender as FastGridControl, container);
             DataGridEventDispatcher.Instance.DispatchSelectedCellChangeEvent(args);
 
@@ -280,14 +278,6 @@ namespace ExcelDiff.GUI.Views
                     return '　';
 
             }).ToArray());
-        }
-
-        private string ConvertWhiteSpaces(char c)
-        {
-            if (Encoding.UTF8.GetByteCount(c.ToString()) == 1)
-                return " ";
-            else
-                return "　";
         }
 
         private void DiffModifiedLine(IEnumerable<DiffResult<char>> results, List<Tuple<string, Color?>> ranges, bool isSrc)
@@ -497,10 +487,10 @@ namespace ExcelDiff.GUI.Views
             if (!IgnoreFileSettingCheckbox.IsChecked.Value)
             {
                 srcSetting =
-                    FindFilseSetting(Path.GetFileName(srcPath), SrcSheetCombobox.SelectedIndex, SrcSheetCombobox.SelectedItem.ToString(), isStartup);
+                    FindFileSetting(Path.GetFileName(srcPath), SrcSheetCombobox.SelectedIndex, SrcSheetCombobox.SelectedItem.ToString(), isStartup);
 
                 dstSetting =
-                    FindFilseSetting(Path.GetFileName(dstPath), DstSheetCombobox.SelectedIndex, DstSheetCombobox.SelectedItem.ToString(), isStartup);
+                    FindFileSetting(Path.GetFileName(dstPath), DstSheetCombobox.SelectedIndex, DstSheetCombobox.SelectedItem.ToString(), isStartup);
 
                 diffConfig = CreateDiffConfig(srcSetting, dstSetting, isStartup);
             }
@@ -604,7 +594,7 @@ namespace ExcelDiff.GUI.Views
             }
         }
 
-        private FileSetting FindFilseSetting(string fileName, int sheetIndex, string sheetName, bool isStartup)
+        private FileSetting FindFileSetting(string fileName, int sheetIndex, string sheetName, bool isStartup)
         {
             var results = new List<FileSetting>();
             foreach (var setting in App.Instance.Setting.FileSettings)
@@ -646,7 +636,7 @@ namespace ExcelDiff.GUI.Views
                 if (dataGrid != null)
                 {
                     var args = new DiffViewEventArgs<FastGridControl>(dataGrid, container, TargetType.First);
-                    DataGridEventDispatcher.Instance.DispatchRowHeaderChagneEvent(args);
+                    DataGridEventDispatcher.Instance.DispatchRowHeaderChangeEvent(args);
                 }
             }
         }
@@ -754,7 +744,7 @@ namespace ExcelDiff.GUI.Views
             return SrcDataGrid.Model != null && DstDataGrid.Model != null;
         }
 
-        private void ValuteTextBox_ScrollChanged(object sender, RoutedEventArgs e)
+        private void ValueTextBox_ScrollChanged(object sender, RoutedEventArgs e)
         {
             var args = new DiffViewEventArgs<RichTextBox>(sender as RichTextBox, container);
             ValueTextBoxEventDispatcher.Instance.DispatchScrolledEvent(args, (ScrollChangedEventArgs)e);

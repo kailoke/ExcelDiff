@@ -4,15 +4,10 @@
     {
         public static ICommand Create(CommandLineOption option)
         {
-            switch (option.MainCommand)
-            {
-                case CommandType.None:
-                    return new DiffCommand(option);
-                case CommandType.Diff:
-                    return new DiffCommand(option);
-            }
+            if (option.MainCommand == CommandType.None || option.MainCommand == CommandType.Diff)
+                return new DiffCommand(option);
 
-            throw new Exceptions.ExcelDiffException(true, $"{option.MainCommand} is unkown command");
+            throw new Exceptions.ExcelDiffException(true, $"{option.MainCommand} is unknown command");
         }
     }
 }

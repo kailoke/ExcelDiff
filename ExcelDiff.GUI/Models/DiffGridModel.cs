@@ -162,10 +162,21 @@ namespace ExcelDiff.GUI.Models
 
         private bool TryGetRowDiff(int row, out ExcelRowDiff rowDiff, bool direct = false)
         {
-            if (direct)
-                row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
+            row = MapRow(row, direct);
 
             return SheetDiff.Rows.TryGetValue(row, out rowDiff);
+        }
+
+        private int MapRow(int row, bool direct)
+        {
+            if (direct)
+            {
+                int mapped;
+                if (rowIndexMap.TryGetValue(row, out mapped))
+                    return mapped;
+            }
+
+            return row;
         }
 
         private string GetCellText(ExcelCellDiff cellDiff)
@@ -226,24 +237,21 @@ namespace ExcelDiff.GUI.Models
 
         public bool IsModifiedRow(int row, bool direct)
         {
-            if (direct)
-                row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
+            row = MapRow(row, direct);
 
             return modifiedRows.Contains(row);
         }
 
         public bool IsRemovedRow(int row, bool direct)
         {
-            if (direct)
-                row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
+            row = MapRow(row, direct);
 
             return removedRows.Contains(row);
         }
 
         public bool IsAddedRow(int row, bool direct)
         {
-            if (direct)
-                row = rowIndexMap.ContainsKey(row) ? rowIndexMap[row] : row;
+            row = MapRow(row, direct);
 
             return addedRows.Contains(row);
         }

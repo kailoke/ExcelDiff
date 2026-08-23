@@ -22,7 +22,7 @@ namespace FastWpfGrid
 
         public abstract int RowCount { get; }
 
-        public bool IsFrozenColulmn(int col)
+        public bool IsFrozenColumn(int col)
         {
             if (_frozenColumns != null)
             {
