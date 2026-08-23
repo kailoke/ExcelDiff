@@ -1,80 +1,106 @@
-- [English](https://github.com/skanmera/ExcelMerge/blob/master/README.md)
-- [日本語](https://github.com/skanmera/ExcelMerge/blob/master/README.jp.md)
+# ExcelMerge
 
+Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
+同一份源码编译出两套产品：
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/logo.png)
+- **EM**（权威版，`ExcelMerge.GUI.exe`）：NPOI 读取。
+- **EME**（测试版，`ExcelMergeEDR.GUI.exe`）：ExcelDataReader 读取，用于性能验证。
 
-### GUI Diff Tool for Excel
+两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
 
-![Demo](https://github.com/skanmera/ExcelMerge/blob/media/media/demo.gif)
+## 功能特性
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/cell_diff.png)
+- 差异对比：行级 + 单元格级高亮（`xls` / `xlsx` / `csv` / `tsv`）。
+- 常驻 + 托盘：单实例驻留后台，隐藏/恢复/退出。
+- 单实例 IPC：二次调用经命名管道路由给常驻实例，避免多开。
+- 无差异通知窗口：两文件相同时按需弹窗提示（`NotifyEqual`）。
+- 窗口持久化：位置/尺寸/列宽/行高/字体/搜索历史自动保存。
+- 外置本地化：`lang\en-US.json` / `lang\zh-CN.json`（UTF-8）。
+- 外部命令 / 文件设置 / 颜色设置 / 差异日志输出。
+- 开机自启（`StartOnBoot`）。
 
-## Description
+## 系统要求
 
-ExcelMerge is a graphical display tool for Excel or CSV Diff.
-The current feature is limited only to the display of Diff, but the goal is to implement the merge feature.
-It can also be used as a diff tool for Git or Mercurial.
+- Windows 7 或更高版本
+- .NET Framework 4.6.2
 
-## System Requirements
+## 支持的文件类型
 
-- Windows 7 or later
+- `.xls`
+- `.xlsx`
+- `.csv`
+- `.tsv`
 
-## Supported file types
+## 构建与部署
 
-- .xls
-- .xlsx
-- .csv
-- .tsv
+本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录。
 
-## Installation
+### EM（权威版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
 
-Download ExcelMergeSetup.msi from [here](https://github.com/skanmera/ExcelMerge/releases/) and Run.
+```
+dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+```
 
-## Usage
+### EME（测试版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
 
-### From shortcut
+同上，追加 `/p:EdrRead=true`。
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/shortcut.png)
+### 部署次序与常驻进程重启
 
-### From exproler context menu
+1. 构建 EME → 部署 EME。
+2. 构建 EM → 部署 EM。
+3. **每次部署后立即重启对应常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/context.png)
+原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。注意：不能在同一条命令里连续构建两个变体（增量构建会互删输出），必须分步。
 
-### From command line
+### 一键验证门禁
+
+```
+powershell -ExecutionPolicy Bypass -File verify.ps1
+```
+
+全绿 = 双版编译通过 + NetDiff 31 用例通过 + lang↔resx 同步。
+
+## 使用方式
+
+### 命令行
 
 ```
 ExcelMerge.GUI diff [Options]
 ```
 
-|Option|Description|Type|Default|
-|------|-----------|----|-------|
-|```-s``` ```--src-path```|Source file path.|string|
-|```-d``` ```--dst-path``` |Dest file path.| string
-|```-c``` ```--external-cmd```|It is used to activate other tools for unsupported file types and occured any exception.| string
-|```-i``` ```--immediately-execute-external-cmd```|Execute external cmd without error dialog.| bool | false
-|```-w``` ```--wait-external-cmd```|Wait for the external process to finish.|bool|false
-|```-v``` ```--validate-extension```|Validate extension before open file.|bool|false
-|```-e``` ```--empty-file-name```|Empty file name.|string
-|```-k``` ```--keep-file-history```|Don't add recent files.|bool|false
+| Option | Description | Type | Default |
+|--------|-------------|------|---------|
+| `-s` `--src-path` | Source file path. | string | |
+| `-d` `--dst-path` | Dest file path. | string | |
+| `-c` `--external-cmd` | 用于不支持的文件类型或发生异常时激活外部工具。 | string | |
+| `-i` `--immediately-execute-external-cmd` | 直接执行外部命令，不弹错误对话框。 | bool | false |
+| `-w` `--wait-external-cmd` | 等待外部进程结束。 | bool | false |
+| `-v` `--validate-extension` | 打开前校验扩展名。 | bool | false |
+| `-e` `--empty-file-name` | 空文件名称。 | string | |
+| `-k` `--keep-file-history` | 不记录最近文件。 | bool | false |
 
-### From Git diff tool
+> 单实例 IPC：若已有常驻实例在运行，新的命令行调用会通过命名管道转发给常驻实例处理，随后立即退出。常驻实例启动参数含 `--startup` 时隐藏运行。
 
-.gitconfig
+### Git difftool
+
+`.gitconfig`
+
 ```
 [diff]
 tool = ExcelMerge
 
 [difftool "ExcelMerge"]
-cmd = \"C:/Program Files (x86)/ExcelMerge/ExcelMerge.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k 
+cmd = \"C:/Program Files (x86)/ExcelMerge/ExcelMerge.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
 
 [alias]
 windiff = difftool -g -y -t ExcelMerge
 ```
 
-### From Mercurial diff tool
+### Mercurial difftool
 
-mercurial.ini
+`mercurial.ini`
+
 ```
 [merge-tools]
 excelmerge.executable = C:\Program Files (x86)\ExcelMerge\ExcelMerge.GUI.exe
@@ -84,77 +110,87 @@ excelmerge.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -
 vdiff = excelmerge
 ```
 
-## Register External Command
-Register the external command specified by the command line argument --external-cmd.
+> 路径请按实际部署目录调整；EME 仅供测试，权威对比请使用 EM。
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/ext_cmd_win.png)
+### 资源管理器右键菜单
 
-### Available Variables
-|Value|Description|
-|------|----------|
-|```${SRC}```|Source file path|
-|```${DST}```|Dest file path|  
-  
-  
-Can also be executed from within the tool.
+安装 `ExcelMerge.ShellExtension`（COM 外壳扩展）后，从资源管理器右键菜单直接对比。
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/ext_cmd.png)
+## 外部命令注册
 
-## File Settings
+通过命令行参数 `--external-cmd` 指定外部命令。
 
-For each file you can specify a line header or a column header.
+### 可用变量
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/file_settings.png)
+| Value | Description |
+|-------|-------------|
+| `${SRC}` | Source file path |
+| `${DST}` | Dest file path |
 
-## Color Settings
+也可在工具内执行。
 
-You can customize background colors.
+## 文件设置 / 颜色设置
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/settings.png)
+- 文件设置：为每个文件指定行头或列头。
+- 颜色设置：自定义背景色（交替行 / 列头 / 行头 / 新增 / 删除 / 修改 / 修改行）。
 
+## 快捷键
 
-## Shortcut Keys
+| Shortcut Key | Description |
+|--------------|-------------|
+| Ctrl + → | Next modified cell |
+| Ctrl + ← | Previous modified cell |
+| Ctrl + ↓ | Next modified row |
+| Ctrl + ↑ | Previous modified row |
+| Ctrl + K | Next added row |
+| Ctrl + I | Previous added row |
+| Ctrl + L | Next removed row |
+| Ctrl + O | Previous removed row |
+| Ctrl + F | Search cell |
+| F9 | Next match cell |
+| F8 | Previous match cell |
+| Ctrl + C | Copy selected cells as TSV |
+| Ctrl + Shift + C | Copy selected cells as CSV |
+| Ctrl + D | Show(Hide) console |
+| Ctrl + B | Output selected cells diff as log |
 
-|Shortcut Key|Description|
-|---|-----------|
-|Ctrl + →|Next modified cell|
-|Ctrl + ←|Previous modified cell|
-|Ctrl + ↓|Next modified row|
-|Ctrl + ↑|Previous modified row|
-|Ctrl + K|Next added row|
-|Ctrl + I|Previous added row|
-|Ctrl + L|Next removed row|
-|Ctrl + O|Previous removed row|
-|Ctrl + F|Search cell|
-|F9|Next match cell|
-|F8|Previous match cell|
-|Ctrl + C|Copy selected cells as TSV|
-|Ctrl + Shift + C|Copy selected cells as CSV|
-|Ctrl + D|Show(Hide) console|
-|Ctrl + B|Output selected cells diff as log|
+## 差异日志输出
 
+按 `Ctrl + D` 或从右键菜单选择 "Output log"，可将差异输出为日志。
+格式可在"差异提取设置"中修改。
 
-## Output diff as log
+## 无差异窗口与语言切换
 
-By selecting Ctrl + D or "Output log" from the context menu, you can output the change as a log.
-The format can be changed from "differential extraction setting".
+- **无差异窗口**：两文件无差异且 `NotifyEqual` 开启时弹出。关闭 = 点右上角"✕"或按 ESC（仅关弹窗）；红色"退出"按钮（回车触发）会连对比窗口一起关闭。
+- **语言切换**：在设置中切换语言后，应用将关闭以变更语言；下次 diff 命令以新语言重建窗口。
 
-![](https://github.com/skanmera/ExcelMerge/blob/media/media/log.png)
+## 设置与持久化
 
+设置以 YAML 保存于：
+
+```
+%APPDATA%\<程序集名>\<程序集名>.yml
+```
+
+- EM：`%APPDATA%\ExcelMerge.GUI\`
+- EME：`%APPDATA%\ExcelMergeEDR.GUI\`
+
+## 回归验证
+
+- `verify.ps1`：一键门禁（双版编译 + NetDiff 31 用例 + lang↔resx 同步）。
+- `DiffHarness\`：headless diff 对比（EM/EME 输出确定性 diff 文本）。
+- `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 
 ## Known problems
 
-- <h4>If there are column deletions or additions, they may not be displayed at the expected position.</h4>
-If the currently displayed header is not what you expect, you may resolve it by specifying the appropriate header and extract diff.
-Follow these steps.
-1. Select appropriate header cell.
-2. Right click to display the context menu.
-3. Select "Extract diff with this row as header"
-
+- 若出现列删除或添加，可能不会显示在预期位置。可指定合适的表头并重新提取差异解决：
+  1. 选中合适的表头单元格。
+  2. 右键显示上下文菜单。
+  3. 选择"以该行作为表头提取差异"。
 
 ## LICENSE
 
-#### MIT Licence
+#### MIT License
 
 Copyright (c)2017 skanmera
 
