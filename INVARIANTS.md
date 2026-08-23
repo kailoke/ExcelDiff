@@ -23,7 +23,7 @@
 - [ ] **C1 IPC 非阻塞**：管道线程只能用 `Dispatcher.BeginInvoke` 投递，**绝不同步等待模态框**，否则模态框存在时死锁。（ARCH §6.4、AGENTS §8.4）
 - [ ] **C2 事件分发器**：`*EventDispatcher.Instance` 是进程级单例；窗口真正关闭时必须 `DiffView.RemoveEventListeners()`，防泄漏/防派发到 `container==null` 的旧视图。（DiffCommand.cs:37）
 - [ ] **C3 关窗语义**：`RunInBackground=true` → 关窗仅隐藏到托盘；`IsClosingMainWindow`（语言切换）→ 允许真正关；`ExitApplication` 置 `IsExiting` 后 `Shutdown`。（MainWindow.xaml.cs:122）
-- [ ] **C4 转发进程不驻留**：对转发进程 `Start-Process -Wait` 会挂起（无常驻时转发器变常驻）。等待会话用 `Invoke-ExcelDiffDiff.ps1`（fire-and-forget + 轮询窗口）；入库脚本由 `verify.ps1` 坑扫描自动拦截 `Start-Process ... -Wait ... ExcelDiff`。（AGENTS §8.3）
+- [ ] **C4 转发进程不驻留**：对转发进程 `Start-Process -Wait` 会挂起（无常驻时转发器变常驻）。等待会话用 `Invoke-ExcelDiff.ps1`（fire-and-forget + 轮询窗口）；入库脚本由 `verify.ps1` 坑扫描自动拦截 `Start-Process ... -Wait ... ExcelDiff`。（AGENTS §8.3）
 - [ ] **C5 模态强关**：远程命令生效前 `CurrentDiffView.DismissModalWindows()` 强关无差异等模态，再 `ShowMainWindow`。（App.xaml.cs:181-185）
 
 ## D. 本地化
@@ -38,7 +38,7 @@
 
 - [ ] **E1 构建产物不入库**：`bin/`、`obj/`、`Build/` 均 gitignore；改代码后构建不污染 git 状态。（AGENTS §8.5）
 - [ ] **E2 快照勿动**：`backup_installed_*` 是部署前快照，禁止改动/删除。（AGENTS §3）
-- [ ] **E3 编码规范**：.NET Framework 4.6.2 老式 C#（无 nullable、无 target-typed new、无文件级 namespace）；命名空间=目录名；VM 继承 `SerializableBindableBase`。（AGENTS §10）
+- [ ] **E3 编码规范**：.NET Framework 4.6.2 老式 C#（无 nullable、无 target-typed new、无文件级 namespace）；命名空间=目录名；VM 继承 Prism `BindableBase`，设置类走 `Setting<T>`。（AGENTS §10）
 - [ ] **E4 不主动加注释**：沿用既有代码风格，改动不添加新注释（除非必须解释架构决策）。
 - [ ] **E5 NetDiff 算法**：改动 `EditGraph.cs`/`DiffUtil.cs` 后必须跑通 `NetDiff.TestRunner`（31 用例）。（AGENTS §7.3）
 - [ ] **E6 本地构建命令**：必须传 `TargetFrameworkRootPath="D:\ExcelDiff\packages\refs"`（.NET Framework 引用程序集不在 SDK 里）。（AGENTS §4）

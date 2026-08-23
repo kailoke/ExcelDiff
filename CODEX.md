@@ -21,11 +21,11 @@ exe diff -s <src> -d <dst> ...
        ├─ App.CurrentDiffView = diffView；window.Show()
        └─ window.Closed → diffView.RemoveEventListeners()           防静态分发器泄漏
   └─ DiffView 内（用户点“显示差异”或启动即跑）
-       ├─ CreateWorkbookTuple()                   DiffView.xaml.cs:432
+       ├─ ReadWorkbooks()                          DiffView.xaml.cs:440
        │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EDE:EDR / ED:NPOI
-       ├─ ExecuteDiff(src,dst)                    DiffView.xaml.cs:514
+       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:515
        │     ProgressWindow.DoWorkWithModal → ExcelSheet.Diff(src,dst,config)
-       └─ ShowDiff()                              DiffView.xaml.cs:543
+       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:532
              ├─ 选 sheet → ExecuteDiff → DiffGridModel(diff, Type)
              ├─ GetViewModel().UpdateDiffSummary(summary)
              ├─ NotifyEqual 且无差异 → NoDiffWindow.ShowDialog()     （原 MessageBox）
@@ -107,7 +107,7 @@ exe diff -s <src> -d <dst> ...
 ```
 UI 线程（Dispatcher）          : 所有 WPF 控件、命令、Diff 管道、窗口生命周期
 管道后台线程 (ServerLoop)      : 只收包→BeginInvoke 投递到 UI 线程；禁止同步等待模态框（死锁）
-Task.Run (CreateWorkbookTuple) : 读取工作簿并行化，结果回到 UI 线程组装模型
+Task.Run (ReadWorkbooks) : 读取工作簿并行化，结果回到 UI 线程组装模型
 ```
 
 - `#if PERF_TIMING` 代码在正式构建（未传 `EnablePerfTiming=true`）时全部裁掉，不影响线上。
