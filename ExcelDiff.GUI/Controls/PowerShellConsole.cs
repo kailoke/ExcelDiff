@@ -269,7 +269,7 @@ namespace ExcelDiff.GUI.Controls
 			private static extern uint MapVirtualKey(uint uCode, MapType uMapType);
 
 			/// <summary>
-			/// 入力されたキーの文字を返し、文字でない場合は null を返します。
+			/// Returns the character produced by the input key, or null if it is not a character.
 			/// </summary>
 			public static char? GetCharFromKey(Key key)
 			{

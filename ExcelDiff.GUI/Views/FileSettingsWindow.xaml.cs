@@ -15,7 +15,7 @@ using System.Windows.Shapes;
 namespace ExcelDiff.GUI.Views
 {
     /// <summary>
-    /// FileSettingsWindow.xaml の相互作用ロジック
+    /// Interaction logic for FileSettingsWindow.xaml
     /// </summary>
     public partial class FileSettingsWindow : Window
     {
