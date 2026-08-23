@@ -136,6 +136,12 @@ namespace ExcelDiff
             var option = new DiffOption<ExcelRow>();
             option.EqualityComparer =
                 new RowComparer(new HashSet<int>(columnStatusMap.Where(i => i.Value != ExcelColumnStatus.None).Select(i => i.Key)));
+            // Bound the edit-graph frontier: the frontier grows roughly with the edit
+            // distance, so a pathological input (nearly every row differs) would allocate
+            // O(D^2) nodes. Once the frontier exceeds the limit the search keeps a single
+            // path and degrades gracefully to O(D); the result is valid but possibly
+            // non-minimal. Normal diffs (up to ~1000 changed rows) stay far below it.
+            option.Limit = 2000;
 
             foreach (var row in src.Rows.Values)
             {
