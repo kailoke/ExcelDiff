@@ -37,19 +37,19 @@ ExcelMerge ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 
 由 MSBuild 属性开关决定，GUI 项目 `AssemblyName`/`DefineConstants` 联动：
 
-| 属性 | `EdrRead` 未指定（EM，保底） | `EdrRead=true`（EME，优先/基准） |
+| 属性 | `EdrRead=true`（EME，优先/基准） | `EdrRead` 未指定（EM，保底） |
 |------|------------------------------|------------------------------|
-| GUI 程序集 | `ExcelMerge.GUI` | `ExcelMergeEDR.GUI` |
-| GUI 定义 | 无 `EDR_READ` | `EDR_READ` |
-| 库定义 | `NPOI_READ`（NPOI 读取） | 无（EDR 读取） |
-| 显示名 | `ExcelMerge` | `ExcelMergeEDR` |
+| GUI 程序集 | `ExcelMergeEDR.GUI` | `ExcelMerge.GUI` |
+| GUI 定义 | `EDR_READ` | 无 `EDR_READ` |
+| 库定义 | 无（EDR 读取） | `NPOI_READ`（NPOI 读取） |
+| 显示名 | `ExcelMergeEDR` | `ExcelMerge` |
 | 常驻/IPC | channel 基于 exe 名，互不干扰 | 同左 |
-| 配置目录 | `%APPDATA%\ExcelMerge.GUI\ExcelMerge.GUI.yml` | `%APPDATA%\ExcelMergeEDR.GUI\ExcelMergeEDR.GUI.yml` |
+| 配置目录 | `%APPDATA%\ExcelMergeEDR.GUI\ExcelMergeEDR.GUI.yml` | `%APPDATA%\ExcelMerge.GUI\ExcelMerge.GUI.yml` |
 
 - `EnablePerfTiming=true` → 编译期定义 `PERF_TIMING`，注入阶段计时（GUI 与库同步开关）。
 - 构建命令（GUI 必须携带 workaround 参数，见 `AGENTS.md` 摘要）：
-  - EM：`dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
-  - EME：同上 + `/p:EdrRead=true`
+  - EME：`dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
+  - EM：同上，去掉 `/p:EdrRead=true`（默认）
 - 依赖顺序：库→FastWpfGrid→GUI。`ExcelMerge.csproj` 中 `EdrRead != true` 才定义 `NPOI_READ`。
 
 ## 4. 模块划分与职责
@@ -129,10 +129,10 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ## 8. 部署布局
 
 ```
-D:\Program Files\ExcelMerge\        → EM（ExcelMerge.GUI.exe + ExcelMerge.dll[NPOI_READ] + lang\）
 D:\Program Files\ExcelMergeEDR\     → EME（ExcelMergeEDR.GUI.exe + ExcelMerge.dll[EDR] + lang\）
-%APPDATA%\ExcelMerge.GUI\           → EM 配置
+D:\Program Files\ExcelMerge\        → EM（ExcelMerge.GUI.exe + ExcelMerge.dll[NPOI_READ] + lang\）
 %APPDATA%\ExcelMergeEDR.GUI\        → EME 配置
+%APPDATA%\ExcelMerge.GUI\           → EM 配置
 ```
 
 - NGEN 已对两版 exe 预编译。

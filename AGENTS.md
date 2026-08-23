@@ -72,15 +72,15 @@ GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 - 关键：.NET Framework 引用程序集不在本机 SDK 里，**必须**传 `TargetFrameworkRootPath="D:\ExcelMerge\packages\refs"`。
 - 下列命令均已在本机验证可编译（Release, AnyCPU）。
 
-### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
-
-```
-dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
-```
-
 ### EME（优先/基准版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
 
-同上，追加 `/p:EdrRead=true`。
+```
+dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+```
+
+### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
+
+同上，去掉 `/p:EdrRead=true`（默认）。
 
 ### 只构建核心库（快速验证读取层改动）
 
@@ -108,8 +108,8 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 | MSBuild 属性 | 效果（GUI 与库联动） |
 |------|------|
-| `EdrRead`（默认空，EM 保底） | GUI `AssemblyName=ExcelMerge.GUI`、`DisplayName=ExcelMerge`；库定义 `NPOI_READ`（NPOI 读取） |
 | `EdrRead=true`（EME 优先/基准） | GUI `AssemblyName=ExcelMergeEDR.GUI`、定义 `EDR_READ`、`DisplayName=ExcelMergeEDR`；库**不**定义 `NPOI_READ`（走 EDR） |
+| `EdrRead`（默认空，EM 保底） | GUI `AssemblyName=ExcelMerge.GUI`、`DisplayName=ExcelMerge`；库定义 `NPOI_READ`（NPOI 读取） |
 | `EnablePerfTiming=true` | GUI 与库同时定义 `PERF_TIMING`，注入分段计时 |
 
 - 配置目录天然隔离：`%APPDATA%\ExcelMerge.GUI\`（EM） vs `%APPDATA%\ExcelMergeEDR.GUI\`（EME）。

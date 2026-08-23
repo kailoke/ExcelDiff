@@ -35,15 +35,15 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录。
 
-### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
-
-```
-dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
-```
-
 ### EME（优先/基准版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
 
-同上，追加 `/p:EdrRead=true`。
+```
+dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+```
+
+### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
+
+同上，去掉 `/p:EdrRead=true`（默认）。
 
 ### 部署次序与常驻进程重启
 
@@ -172,8 +172,8 @@ vdiff = excelmerge
 %APPDATA%\<程序集名>\<程序集名>.yml
 ```
 
-- EM：`%APPDATA%\ExcelMerge.GUI\`
 - EME：`%APPDATA%\ExcelMergeEDR.GUI\`
+- EM：`%APPDATA%\ExcelMerge.GUI\`
 
 ## 回归验证
 
