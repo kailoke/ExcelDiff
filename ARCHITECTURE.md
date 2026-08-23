@@ -1,4 +1,4 @@
-# ExcelMerge 框架索引与模块设计
+# ExcelDiff 框架索引与模块设计
 
 > 本文档为资深主程序视角的工程蓝图：解决方案结构、编译矩阵、模块职责、核心数据流、
 > 生命周期、关键设计约束、部署布局与回归验证方法。修改代码前先读本文，保证改动符合架构。
@@ -8,29 +8,29 @@
 
 - 用途：Excel/CSV/TSV 的 GUI 差异对比工具，可作 Git/Mercurial difftool。
 - 技术栈：WPF (.NET Framework 4.6.2, WinExe) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock/Extended.Wpf.Toolkit。
-- 核心库：ExcelMerge（读取/解析）、NetDiff（差异算法）、FastWpfGrid（虚拟化网格）。
+- 核心库：ExcelDiff（读取/解析）、NetDiff（差异算法）、FastWpfGrid（虚拟化网格）。
 - 双构建：同一份源码可编译出**优先/基准版 EME**（ExcelDataReader 读取）与**保底版 EM**（NPOI 读取），进程/程序集/配置/显示名完全隔离。开发与基准测试以 EME 为准，EM 作保底验证对照。
 
 ## 2. 解决方案结构
 
 | 项目 | 类型 | 职责 |
 |------|------|------|
-| `ExcelMerge` | 类库 | 读取工作簿/工作表/单元格；构建 Diff 模型；CSV/TSV 解析 |
-| `ExcelMerge.GUI` | WPF 可执行 | UI、命令入口、设置、IPC、托盘、本地化、常驻生命周期 |
+| `ExcelDiff` | 类库 | 读取工作簿/工作表/单元格；构建 Diff 模型；CSV/TSV 解析 |
+| `ExcelDiff.GUI` | WPF 可执行 | UI、命令入口、设置、IPC、托盘、本地化、常驻生命周期 |
 | `NetDiff` | 类库 | 通用文本差异（Myers/EditGraph 风格） |
 | `FastWpfGrid` | 类库 | 高性能虚拟化网格控件 |
 | `WriteableBitmapEx.Wpf` | 类库 | FastWpfGrid 依赖的位图扩展 |
-| `ExcelMerge.ShellExtension` | COM 外壳扩展 | 资源管理器右键菜单入口 |
-| `ExcelMerge.Installer` | VDProj | MSI 打包（未参与日常构建） |
+| `ExcelDiff.ShellExtension` | COM 外壳扩展 | 资源管理器右键菜单入口 |
+| `ExcelDiff.Installer` | VDProj | MSI 打包（未参与日常构建） |
 
 依赖关系：
 
 ```
-ExcelMerge.GUI ──> ExcelMerge ──> NetDiff
+ExcelDiff.GUI ──> ExcelDiff ──> NetDiff
       │                │
       └──> FastWpfGrid ──> WriteableBitmapEx.Wpf
       └──> NetDiff
-ExcelMerge ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
+ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 ```
 
 ## 3. 编译矩阵（关键约束）
@@ -39,22 +39,22 @@ ExcelMerge ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 
 | 属性 | `EdrRead=true`（EME，优先/基准） | `EdrRead` 未指定（EM，保底） |
 |------|------------------------------|------------------------------|
-| GUI 程序集 | `ExcelMergeEDR.GUI` | `ExcelMerge.GUI` |
+| GUI 程序集 | `ExcelDiffEDR.GUI` | `ExcelDiff.GUI` |
 | GUI 定义 | `EDR_READ` | 无 `EDR_READ` |
 | 库定义 | 无（EDR 读取） | `NPOI_READ`（NPOI 读取） |
-| 显示名 | `ExcelMergeEDR` | `ExcelMerge` |
+| 显示名 | `ExcelDiffEDR` | `ExcelDiff` |
 | 常驻/IPC | channel 基于 exe 名，互不干扰 | 同左 |
-| 配置目录 | `%APPDATA%\ExcelMergeEDR.GUI\ExcelMergeEDR.GUI.yml` | `%APPDATA%\ExcelMerge.GUI\ExcelMerge.GUI.yml` |
+| 配置目录 | `%APPDATA%\ExcelDiffEDR.GUI\ExcelDiffEDR.GUI.yml` | `%APPDATA%\ExcelDiff.GUI\ExcelDiff.GUI.yml` |
 
 - `EnablePerfTiming=true` → 编译期定义 `PERF_TIMING`，注入阶段计时（GUI 与库同步开关）。
 - 构建命令（GUI 必须携带 workaround 参数，见 `AGENTS.md` 摘要）：
-  - EME：`dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
+  - EME：`dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
   - EM：同上，去掉 `/p:EdrRead=true`（默认）
-- 依赖顺序：库→FastWpfGrid→GUI。`ExcelMerge.csproj` 中 `EdrRead != true` 才定义 `NPOI_READ`。
+- 依赖顺序：库→FastWpfGrid→GUI。`ExcelDiff.csproj` 中 `EdrRead != true` 才定义 `NPOI_READ`。
 
 ## 4. 模块划分与职责
 
-### 4.1 ExcelMerge.GUI
+### 4.1 ExcelDiff.GUI
 
 | 模块 | 关键文件 | 职责与要点 |
 |------|---------|-----------|
@@ -72,7 +72,7 @@ ExcelMerge ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 | 计时 | `Timing.cs` | `PERF_TIMING` 下的分段计时输出 |
 | 外壳 | `Shell/` | `PowerShellHost`/`PowerShellInvocation`（内置控制台，供日志/扩展命令脚本） |
 
-### 4.2 ExcelMerge（读取 + 差异模型）
+### 4.2 ExcelDiff（读取 + 差异模型）
 
 | 模块 | 职责 |
 |------|------|
@@ -129,14 +129,14 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ## 8. 部署布局
 
 ```
-D:\Program Files\ExcelMergeEDR\     → EME（ExcelMergeEDR.GUI.exe + ExcelMerge.dll[EDR] + lang\）
-D:\Program Files\ExcelMerge\        → EM（ExcelMerge.GUI.exe + ExcelMerge.dll[NPOI_READ] + lang\）
-%APPDATA%\ExcelMergeEDR.GUI\        → EME 配置
-%APPDATA%\ExcelMerge.GUI\           → EM 配置
+D:\Program Files\ExcelDiffEDR\     → EME（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
+D:\Program Files\ExcelDiff\        → EM（ExcelDiff.GUI.exe + ExcelDiff.dll[NPOI_READ] + lang\）
+%APPDATA%\ExcelDiffEDR.GUI\        → EME 配置
+%APPDATA%\ExcelDiff.GUI\           → EM 配置
 ```
 
 - NGEN 已对两版 exe 预编译。
-- Git difftool：`difftool.ExcelMerge`（EM）、`difftool.ExcelMergeEDR`（EME）。
+- Git difftool：`difftool.ExcelDiff`（EM）、`difftool.ExcelDiffEDR`（EME）。
 - **lang 部署坑**：构建时 `CopyLangFiles` 会把仓库 `..\lang\*.json` 复制到 `bin\Release\lang`（自动、正确）；但部署脚本用 `Copy-Item -Recurse` 复制整个 `lang` 目录到已存在的目标时会**嵌套成 `lang\lang`**，顶层文件不更新。部署后必须单独校验/同步 `lang\*.json`（或先删目标 `lang` 目录再 `-Recurse` 复制）。
 
 ## 9. 回归验证方法
@@ -154,5 +154,5 @@ D:\Program Files\ExcelMerge\        → EM（ExcelMerge.GUI.exe + ExcelMerge.dll
 
 - EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 EM（NPOI）保底对照兜底，EM 不得移除。
 - `backup_installed_*` 目录为部署前快照，勿改动。
-- `ExcelMerge.Installer.vdproj` 未纳入当前构建流程。
-- `%APPDATA%\ExcelMerge\`、`%APPDATA%\ExcelMergeTest.GUI\` 为旧名残留，孤儿数据待清理。
+- `ExcelDiff.Installer.vdproj` 未纳入当前构建流程。
+- `%APPDATA%\ExcelDiff\`、`%APPDATA%\ExcelDiffTest.GUI\` 为旧名残留，孤儿数据待清理。

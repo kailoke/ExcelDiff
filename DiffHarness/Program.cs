@@ -46,14 +46,14 @@ namespace DiffHarness
                 if (string.IsNullOrEmpty(src) || string.IsNullOrEmpty(dst))
                     throw new Exception("usage: DiffHarness --src <xlsx> --dst <xlsx> [--out <file>] [--src-header N] [--dst-header N] [--skip-first-blank-rows] [--skip-first-blank-columns] [--trim-last-blank-rows] [--trim-last-blank-columns]");
 
-                var readConfig = new ExcelMerge.ExcelSheetReadConfig
+                var readConfig = new ExcelDiff.ExcelSheetReadConfig
                 {
                     TrimFirstBlankRows = trimFirstBlankRows,
                     TrimFirstBlankColumns = trimFirstBlankColumns,
                     TrimLastBlankRows = trimLastBlankRows,
                     TrimLastBlankColumns = trimLastBlankColumns,
                 };
-                var diffConfig = new ExcelMerge.ExcelSheetDiffConfig
+                var diffConfig = new ExcelDiff.ExcelSheetDiffConfig
                 {
                     SrcHeaderIndex = srcHeader,
                     DstHeaderIndex = dstHeader,
@@ -68,19 +68,19 @@ namespace DiffHarness
                 sb.AppendLine("SRC=" + src);
                 sb.AppendLine("DST=" + dst);
 
-                var swb = ExcelMerge.ExcelWorkbook.Create(src, readConfig);
-                var dwb = ExcelMerge.ExcelWorkbook.Create(dst, readConfig);
+                var swb = ExcelDiff.ExcelWorkbook.Create(src, readConfig);
+                var dwb = ExcelDiff.ExcelWorkbook.Create(dst, readConfig);
 
                 foreach (var pair in swb.Sheets)
                 {
-                    ExcelMerge.ExcelSheet dstSheet;
+                    ExcelDiff.ExcelSheet dstSheet;
                     if (!dwb.Sheets.TryGetValue(pair.Key, out dstSheet))
                     {
                         sb.AppendLine("SHEET " + pair.Key + " [src only]");
                         continue;
                     }
 
-                    var diff = ExcelMerge.ExcelSheet.Diff(pair.Value, dstSheet, diffConfig);
+                    var diff = ExcelDiff.ExcelSheet.Diff(pair.Value, dstSheet, diffConfig);
                     var summary = diff.CreateSummary();
                     sb.AppendLine("SHEET " + pair.Key +
                         " added=" + summary.AddedRowCount +
@@ -93,7 +93,7 @@ namespace DiffHarness
                     {
                         foreach (var cell in rowPair.Value.Cells.Values)
                         {
-                            if (cell.Status == ExcelMerge.ExcelCellStatus.None)
+                            if (cell.Status == ExcelDiff.ExcelCellStatus.None)
                                 continue;
 
                             sb.AppendLine("CELL r=" + cell.RowIndex + " c=" + cell.ColumnIndex + " " + cell.Status +

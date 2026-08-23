@@ -47,7 +47,7 @@ exe diff -s <src> -d <dst> ...
              └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:398
 ```
 
-## 2. GUI 关键类型（ExcelMerge.GUI）
+## 2. GUI 关键类型（ExcelDiff.GUI）
 
 | 类型 | 位置 | 关键成员 / 职责 |
 |------|------|-----------------|
@@ -69,7 +69,7 @@ exe diff -s <src> -d <dst> ...
 | `LocalizationManager` | Localization/LocalizationManager.cs:23 | `SetCulture`（载入 `lang\<culture>.json`，自研 JSON 解析器）、`GetString(key, rm, culture)`（缺键回落 Resources）、`GetAvailableLanguages` |
 | `EMColor` | Styles/EMColor.cs | 差异配色常量/方法 |
 
-## 3. 核心库 ExcelMerge（读取 + Diff 模型）
+## 3. 核心库 ExcelDiff（读取 + Diff 模型）
 
 | 类型 | 位置 | 关键成员 / 职责 |
 |------|------|-----------------|

@@ -1,10 +1,10 @@
-# ExcelMerge
+# ExcelDiff
 
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
 同一份源码编译出两套产品：
 
-- **EME**（优先/基准版，`ExcelMergeEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 EM 的 28%，提升约 72%），开发与基准测试以 EME 为准。
-- **EM**（保底版，`ExcelMerge.GUI.exe`）：NPOI 读取。语义最全，作为 EDR 盲区兜底与验证对照。
+- **EME**（优先/基准版，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 EM 的 28%，提升约 72%），开发与基准测试以 EME 为准。
+- **EM**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，作为 EDR 盲区兜底与验证对照。
 
 两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
 
@@ -35,13 +35,13 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录。
 
-### EME（优先/基准版，EDR 读取）— 产物 `ExcelMergeEDR.GUI.exe`
+### EME（优先/基准版，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelMerge.GUI/ExcelMerge.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelMerge\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### EM（保底版，NPOI 读取）— 产物 `ExcelMerge.GUI.exe`
+### EM（保底版，NPOI 读取）— 产物 `ExcelDiff.GUI.exe`
 
 同上，去掉 `/p:EdrRead=true`（默认）。
 
@@ -66,7 +66,7 @@ powershell -ExecutionPolicy Bypass -File verify.ps1
 ### 命令行
 
 ```
-ExcelMerge.GUI diff [Options]
+ExcelDiff.GUI diff [Options]
 ```
 
 | Option | Description | Type | Default |
@@ -88,13 +88,13 @@ ExcelMerge.GUI diff [Options]
 
 ```
 [diff]
-tool = ExcelMerge
+tool = ExcelDiff
 
-[difftool "ExcelMerge"]
-cmd = \"C:/Program Files (x86)/ExcelMerge/ExcelMerge.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+[difftool "ExcelDiff"]
+cmd = \"C:/Program Files (x86)/ExcelDiff/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
 
 [alias]
-windiff = difftool -g -y -t ExcelMerge
+windiff = difftool -g -y -t ExcelDiff
 ```
 
 ### Mercurial difftool
@@ -103,7 +103,7 @@ windiff = difftool -g -y -t ExcelMerge
 
 ```
 [merge-tools]
-excelmerge.executable = C:\Program Files (x86)\ExcelMerge\ExcelMerge.GUI.exe
+excelmerge.executable = C:\Program Files (x86)\ExcelDiff\ExcelDiff.GUI.exe
 excelmerge.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 
 [tortoisehg]
@@ -114,7 +114,7 @@ vdiff = excelmerge
 
 ### 资源管理器右键菜单
 
-安装 `ExcelMerge.ShellExtension`（COM 外壳扩展）后，从资源管理器右键菜单直接对比。
+安装 `ExcelDiff.ShellExtension`（COM 外壳扩展）后，从资源管理器右键菜单直接对比。
 
 ## 外部命令注册
 
@@ -172,8 +172,8 @@ vdiff = excelmerge
 %APPDATA%\<程序集名>\<程序集名>.yml
 ```
 
-- EME：`%APPDATA%\ExcelMergeEDR.GUI\`
-- EM：`%APPDATA%\ExcelMerge.GUI\`
+- EME：`%APPDATA%\ExcelDiffEDR.GUI\`
+- EM：`%APPDATA%\ExcelDiff.GUI\`
 
 ## 回归验证
 

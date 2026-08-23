@@ -45,9 +45,9 @@
     <Compile Include="Program.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ExcelMerge\ExcelMerge.csproj">
+    <ProjectReference Include="..\ExcelDiff\ExcelDiff.csproj">
       <Project>{bff4c33c-7395-4428-8587-aa22062e4a24}</Project>
-      <Name>ExcelMerge</Name>
+      <Name>ExcelDiff</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
