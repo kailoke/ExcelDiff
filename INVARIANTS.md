@@ -10,7 +10,7 @@
 - [ ] **A3 构建分步**：不得在一条命令里连续构建两个变体（MSBuild 增量互删 exe）；EME→部署→EM→部署 分步。（AGENTS §8.2）
 - [ ] **A4 隔离派生**：配置目录/IPC channel/显示名均按程序集名（exe 名）派生，EM/EME 天然隔离，不要硬编码共享。（ARCH §7.5、CODEX 链路B）
 
-## B. 读取层（核心库 ExcelMerge）
+## B. 读取层（核心库 ExcelDiff）
 
 - [ ] **B1 版本定位**：EME=EDR **优先/基准**（读取快约 72%）；EM=NPOI **保底对照**（语义最全）。开发与基准测试以 EME 为准；**EM 保底不得移除**（EDR 盲区兜底）。（ARCH §5/§10）
 - [ ] **B2 EDR 语义对齐**：EDR 路径必须跳整空行、裁剪尾空单元格，保持与 NPOI 行/列语义一致。（ExcelWorkbook.cs:132-141）
@@ -23,7 +23,7 @@
 - [ ] **C1 IPC 非阻塞**：管道线程只能用 `Dispatcher.BeginInvoke` 投递，**绝不同步等待模态框**，否则模态框存在时死锁。（ARCH §6.4、AGENTS §8.4）
 - [ ] **C2 事件分发器**：`*EventDispatcher.Instance` 是进程级单例；窗口真正关闭时必须 `DiffView.RemoveEventListeners()`，防泄漏/防派发到 `container==null` 的旧视图。（DiffCommand.cs:37）
 - [ ] **C3 关窗语义**：`RunInBackground=true` → 关窗仅隐藏到托盘；`IsClosingMainWindow`（语言切换）→ 允许真正关；`ExitApplication` 置 `IsExiting` 后 `Shutdown`。（MainWindow.xaml.cs:122）
-- [ ] **C4 转发进程不驻留**：对转发进程 `Start-Process -Wait` 会挂起（无常驻时转发器变常驻）。等待会话用 `Invoke-ExcelMergeDiff.ps1`（fire-and-forget + 轮询窗口）；入库脚本由 `verify.ps1` 坑扫描自动拦截 `Start-Process ... -Wait ... ExcelMerge`。（AGENTS §8.3）
+- [ ] **C4 转发进程不驻留**：对转发进程 `Start-Process -Wait` 会挂起（无常驻时转发器变常驻）。等待会话用 `Invoke-ExcelDiffDiff.ps1`（fire-and-forget + 轮询窗口）；入库脚本由 `verify.ps1` 坑扫描自动拦截 `Start-Process ... -Wait ... ExcelDiff`。（AGENTS §8.3）
 - [ ] **C5 模态强关**：远程命令生效前 `CurrentDiffView.DismissModalWindows()` 强关无差异等模态，再 `ShowMainWindow`。（App.xaml.cs:181-185）
 
 ## D. 本地化

@@ -3,7 +3,7 @@
 # Usage:  powershell -ExecutionPolicy Bypass -File GenerateLangJson.ps1
 $ErrorActionPreference = 'Stop'
 
-$resxDir = Join-Path $PSScriptRoot 'ExcelMerge.GUI\Properties'
+$resxDir = Join-Path $PSScriptRoot 'ExcelDiff.GUI\Properties'
 $outDir  = Join-Path $PSScriptRoot 'lang'
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 

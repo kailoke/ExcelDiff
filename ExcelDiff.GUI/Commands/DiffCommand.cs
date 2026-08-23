@@ -1,0 +1,84 @@
+﻿using System.Collections.Generic;
+using System.IO;
+using ExcelDiff.GUI.Views;
+using ExcelDiff.GUI.ViewModels;
+
+namespace ExcelDiff.GUI.Commands
+{
+    public class DiffCommand : ICommand
+    {
+        public static readonly List<string> DefaultEnabledExtensions = new List<string>
+        {
+            ".xls", ".xlsx", ".csv", "tsv",
+        };
+
+        public CommandLineOption Option { get; }
+
+        public DiffCommand(CommandLineOption option)
+        {
+            Option = option;
+        }
+
+        public void Execute()
+        {
+            var window = new MainWindow();
+            var diffView = new DiffView();
+            var windowViewModel = new MainWindowViewModel(diffView);
+            var diffViewModel = new DiffViewModel(Option.SrcPath, Option.DstPath, windowViewModel);
+            window.DataContext = windowViewModel;
+            diffView.DataContext = diffViewModel;
+
+            App.Instance.CurrentDiffView = diffView;
+            App.Current.MainWindow = window;
+            window.Show();
+
+            // The static event dispatchers keep per-view handlers registered; release them
+            // once the window is really closed so a later DiffView never dispatches to them.
+            window.Closed += (s, e) => diffView.RemoveEventListeners();
+
+            ExcelDiff.GUI.Timing.Mark("WindowShown");
+        }
+
+        public void ValidateOption()
+        {
+            if (Option == null)
+                throw new Exceptions.ExcelDiffException(true, "Option is null");
+
+            if (!string.IsNullOrEmpty(Option.SrcPath) && Path.GetFileName(Option.SrcPath) == Option.EmptyFileName)
+                Option.SrcPath = EnsureFile(Option.SrcPath);
+
+            if (!string.IsNullOrEmpty(Option.DstPath) && Path.GetFileName(Option.DstPath) == Option.EmptyFileName)
+                Option.DstPath = EnsureFile(Option.DstPath);
+
+            if (Option.ValidateExtension)
+            {
+                if (!string.IsNullOrEmpty(Option.SrcPath) && !DefaultEnabledExtensions.Contains(Path.GetExtension(Option.SrcPath)) ||
+                    !string.IsNullOrEmpty(Option.DstPath) && !DefaultEnabledExtensions.Contains(Path.GetExtension(Option.DstPath)))
+                {
+                    throw new Exceptions.ExcelDiffException(!Option.ImmediatelyExecuteExternalCommand, "Invalid extension.");
+                }
+            }
+        }
+
+        private string EnsureFile(string path)
+        {
+            if (!File.Exists(path))
+                return CreateEmptyFile(ExcelWorkbookType.XLSX);
+
+            var workbookType = ExcelUtility.GetWorkbookType(path);
+            if (workbookType == ExcelWorkbookType.None)
+                return CreateEmptyFile(ExcelWorkbookType.XLSX);
+
+            return path;
+        }
+
+        private string CreateEmptyFile(ExcelWorkbookType workbookType)
+        {
+            var emptyFilePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".xlsx");
+
+            ExcelUtility.CreateWorkbook(emptyFilePath, workbookType);
+
+            return emptyFilePath;
+        }
+    }
+}

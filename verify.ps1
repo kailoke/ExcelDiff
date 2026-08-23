@@ -36,7 +36,7 @@ if ($LASTEXITCODE -ne 0) { FailStep 'NetDiff unit tests failed' } else { OkStep 
 
 # --- 2/3/4. Build EM -> EME -> EM (separate invocations; never in one command) ---
 if (-not $SkipBuild) {
-    $guiProj = Join-Path $root 'ExcelMerge.GUI\ExcelMerge.GUI.csproj'
+    $guiProj = Join-Path $root 'ExcelDiff.GUI\ExcelDiff.GUI.csproj'
     $common = @(
         '/p:Configuration=Release',
         "/p:TargetFrameworkRootPath=$refs",
@@ -48,11 +48,11 @@ if (-not $SkipBuild) {
 
     Write-Host '--- Build EM (NPOI) ---'
     & dotnet msbuild $guiProj @common
-    if ($LASTEXITCODE -ne 0) { FailStep 'EM build failed' } else { OkStep 'EM built (ExcelMerge.GUI.exe)' }
+    if ($LASTEXITCODE -ne 0) { FailStep 'EM build failed' } else { OkStep 'EM built (ExcelDiff.GUI.exe)' }
 
     Write-Host '--- Build EME (EDR) ---'
     & dotnet msbuild $guiProj @common '/p:EdrRead=true'
-    if ($LASTEXITCODE -ne 0) { FailStep 'EME build failed' } else { OkStep 'EME built (ExcelMergeEDR.GUI.exe)' }
+    if ($LASTEXITCODE -ne 0) { FailStep 'EME build failed' } else { OkStep 'EME built (ExcelDiffEDR.GUI.exe)' }
 
     Write-Host '--- Restore EM default output ---'
     & dotnet msbuild $guiProj @common
@@ -62,7 +62,7 @@ if (-not $SkipBuild) {
 }
 
 # --- 5. lang\*.json <-> .resx sync ---
-$resxDir = Join-Path $root 'ExcelMerge.GUI\Properties'
+$resxDir = Join-Path $root 'ExcelDiff.GUI\Properties'
 foreach ($pair in @(@('en-US', 'Resources.resx'), @('zh-CN', 'Resources.zh-CN.resx'))) {
     $culture = $pair[0]
     $resxFile = Join-Path $resxDir $pair[1]
@@ -85,7 +85,7 @@ foreach ($pair in @(@('en-US', 'Resources.resx'), @('zh-CN', 'Resources.zh-CN.re
     else { FailStep "$culture lang\json out of sync: " + ($diffs -join '; ') }
 }
 
-# --- 6. AGENTS 8.3 pitfall scan: no Start-Process -Wait on ExcelMerge ---
+# --- 6. AGENTS 8.3 pitfall scan: no Start-Process -Wait on ExcelDiff ---
 # Waiting on the forwarder with -Wait hangs when no resident instance exists
 # (the forwarder becomes resident and never exits). Enforce the fire-and-forget
 # rule in every checked-in script.
@@ -99,13 +99,13 @@ foreach ($psf in $psFiles) {
     $lines = [System.IO.File]::ReadAllLines($psf.FullName)
     for ($i = 0; $i -lt $lines.Count; $i++) {
         if ($lines[$i].TrimStart().StartsWith('#')) { continue }
-        if ($lines[$i] -match 'Start-Process' -and $lines[$i] -match '-Wait' -and $lines[$i] -match 'ExcelMerge') {
+        if ($lines[$i] -match 'Start-Process' -and $lines[$i] -match '-Wait' -and $lines[$i] -match 'ExcelDiff') {
             $pitfall += ($psf.FullName + ':' + ($i + 1))
         }
     }
 }
-if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelMerge (AGENTS 8.3 pitfall)' }
-else { FailStep ('Start-Process -Wait on ExcelMerge found: ' + ($pitfall -join '; ')) }
+if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelDiff (AGENTS 8.3 pitfall)' }
+else { FailStep ('Start-Process -Wait on ExcelDiff found: ' + ($pitfall -join '; ')) }
 
 # --- 7. WIP snapshot ---
 Write-Host ''
