@@ -30,7 +30,7 @@ ExcelDiff.GUI ──> ExcelDiff ──> NetDiff
       │                │
       └──> FastWpfGrid ──> WriteableBitmapEx.Wpf
       └──> NetDiff
-ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
+ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 ```
 
 ## 3. 编译矩阵（关键约束）
@@ -65,7 +65,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 | 设置 | `Settings/` | `ApplicationSetting : Setting<T>`（YamlDotNet 序列化到 `%APPDATA%\<程序集名>\<程序集名>.yml`）；`Ensure()` 缺省补齐；`IgnoreEqual`/`DeepClone` 提供脏检查 |
 | 本地化 | `Localization/` `LocalizationManager.cs` | 外置 `lang\<culture>.json`（自定义 JSON 解析器，UTF-8）；`Resources.Designer.cs` 桥接到 `LocalizationManager.GetString`；`{x:Static Resources.*}` 在窗口加载时固化 → 语言变更需重建窗口（`App.RebuildMainWindow`） |
 | 视图 | `Views/` | `MainWindow`（含 PowerShell 控制台宿主）；`DiffView`（对比网格 + 差异导航 + 搜索 + 日志输出）；`NoDiffWindow`（无差异提示，`CloseResultButton.IsDefault` 支持回车关闭）；`ProgressWindow`；设置/外部命令系列窗口 |
-| ViewModel | `ViewModels/` | `MainWindowViewModel`、`DiffViewModel`、各设置窗口 VM，基于 `SerializableBindableBase` |
+| ViewModel | `ViewModels/` | `MainWindowViewModel`、`DiffViewModel`、各设置窗口 VM，基于 Prism `BindableBase` |
 | 模型 | `Models/` | `DiffGridModel`（行状态预计算、按需刷新 minimap 优化）；`DiffType` |
 | 事件 | `Views/DiffViewEvent/` | 事件分发器/监听器/处理器 |
 | 行为/转换器 | `Behaviors/` `ValueConverters/` | 拖放文件、条件转换器等 |
@@ -76,8 +76,8 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (条件编译)
 
 | 模块 | 职责 |
 |------|------|
-| `ExcelWorkbook` | 入口工厂：按扩展名分发；`#if NPOI_READ` 走 `CreateUsingNpoi`，否则 `CreateFromExcel`(EDR)；`GetSheetNames` 对 xlsx 走 zip 直读 `xl/workbook.xml`（毫秒级）；`VerifyRead` 双读对比（开发期校验） |
-| `ExcelSheet`/`Create` | 按 sheet 构建行集合；`#if PERF_TIMING \|\| NPOI_READ` 下暴露 NPOI 路径；EDR 路径跳过整空行、裁剪尾空单元格以对齐 NPOI 语义 |
+| `ExcelWorkbook` | 入口工厂：按扩展名分发；`#if NPOI_READ` 走 `CreateUsingNpoi`，否则 `CreateFromExcel`(EDR)；EDR 路径跳过整空行、裁剪尾空单元格以对齐 NPOI 语义；`GetSheetNames` 对 xlsx 走 zip 直读 `xl/workbook.xml`（毫秒级）；`VerifyRead` 双读对比（开发期校验） |
+| `ExcelSheet`/`Create` | 按 sheet 构建行集合；`#if PERF_TIMING \|\| NPOI_READ` 下暴露 NPOI 路径 |
 | `ExcelSheetDiff` | 列对齐 + 行匹配（NetDiff）+ 单元格级差异；`ExcelSheetDiffConfig` 控制提取/忽略规则 |
 | `ExcelRowDiff`/`ExcelCellDiff` | 行/单元格差异条目（Added/Removed/Modified/None） |
 | `ExcelReader`/`ExcelUtility` | 读取配置、工作簿类型判定、创建空工作簿 |
@@ -112,7 +112,7 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 2. `OnStartup`：`SingleInstance.TryAcquire()` 失败 → 转发参数给常驻进程 → 立即退出。
 3. 首个实例成为常驻：启动 IPC server + 托盘。`--startup`（登录自启）→ 仅驻留托盘。
 4. 远程命令：管道线程 → `Dispatcher.BeginInvoke` → `DismissModalWindows()`（强制关闭无差异等模态）→ `ShowMainWindow`（保留最大化状态）→ `RouteCommand`。
-5. 关闭窗口：`RunInBackground=true` → 隐藏到托盘；`IsRebuildingMainWindow` 时允许真正关闭（语言切换重建）；`ExitApplication` 置 `IsExiting` 后 `Shutdown`。
+5. 关闭窗口：`RunInBackground=true` → 隐藏到托盘；`IsClosingMainWindow` 时允许真正关闭（语言切换重建）；`ExitApplication` 置 `IsExiting` 后 `Shutdown`。
 
 ## 7. 关键设计决策与约束
 
@@ -141,7 +141,7 @@ D:\Program Files\ExcelDiffTool\        → ED（ExcelDiff.GUI.exe + ExcelDiff.dl
 
 ## 9. 回归验证方法
 
-0. **一键门禁**：任何改动完成后先跑 `powershell -ExecutionPolicy Bypass -File verify.ps1`（构建 ED+EDE、NetDiff 31 用例、lang↔resx 同步、WIP 快照），全部通过再进入下述手工回归。
+0. **一键门禁**：任何改动完成后先跑 `powershell -ExecutionPolicy Bypass -File verify.ps1`（构建 ED+EDE、NetDiff 31 用例、lang↔resx 同步、§8.3 坑扫描、WIP 快照），全部通过再进入下述手工回归。
 1. 编译两版（见 §3 命令），管理员部署到 §8 两目录。**坑**：不得在同一条命令里连续构建两个变体——MSBuild 增量会把另一变体的 exe 当过期输出清掉。必须"构建 EDE→部署 EDE→构建 ED→部署 ED"分步进行。**每次构建部署后立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），否则旧进程仍锁住 exe、跑旧代码，测试结果失真。
 2. 常驻进程重启后做 4 项冒烟：无差异窗口聚焦回车关闭；窗口状态跨会话/跨重启保持；语言切换后对比窗口重建生效；模态框存在时新命令强制生效。**注意**：无差异弹窗（`NoDiffWindow`）与语言切换重启确认 MessageBox 都是强制模态，会阻断脚本，识别与关闭方式见 `AGENTS.md` §7.8。
 3. 对比对必须**严格用同名文件的 Unstaged（工作区）VS HEAD**（git `HEAD` vs 工作区），严禁拿两个不同文件互相对比。用 `cmd /c "git -C <repo> show HEAD:<path> > <tmp>"` 提取 HEAD 版（二进制安全），工作区文件直接引用。测试数据源见 `AGENTS.md` §7.7。

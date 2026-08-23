@@ -6,7 +6,7 @@
 ## ADR-001 双版本 ED/EDE 用条件编译而非分支
 
 - **状态**：已定（生效中）
-- **背景**：需要"权威读取（NPOI）"与"性能验证读取（ExcelDataReader）"两套交付，又要保证行为同步。
+- **背景**：需要"优先/基准读取（EDR）"与"保底读取（NPOI）"两套交付，又要保证行为同步。
 - **决策**：一份源码，MSBuild 属性 `EdrRead` 驱动 `AssemblyName` + `DefineConstants`（GUI `EDR_READ`、库 `NPOI_READ`），代码内 `#if` 分支。配置/IPC/显示名按程序集名派生隔离。
 - **后果**：任何改动必须双版都编译（INVARIANT A2）；构建/部署分步（A3）。
 - **被否**：两个 git 分支——差异会漂移，回归成本翻倍；两套 csproj——文件级重复。
@@ -64,7 +64,7 @@
 - **状态**：已定
 - **背景**：无差异提示需支持"关对比窗口"与"仅关提示"两种关闭语义，MessageBox 表达不了；IPC 场景还需能被远程命令强关。
 - **决策**：自绘模态窗（`NoDiffWindow`）：ESC=仅关提示；红色退出按钮=连对比窗口一起关；`DismissModalWindows` 可强关。
-- **后果**：`NotifyEqual` 分支用 `ShowDialog` 且持有引用供强关（DiffView.xaml.cs:557）。
+- **后果**：`NotifyEqual` 分支用 `ShowDialog` 且持有引用供强关（DiffView.xaml.cs:588）。
 - **被否**：MessageBox——无按钮语义定制、无法强制关闭。
 
 ## ADR-009 ESC 用 Win32 WndProc 钩子处理
