@@ -129,8 +129,8 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ## 8. 部署布局
 
 ```
-D:\Program Files\ExcelDiffEDR\     → EME（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
-D:\Program Files\ExcelDiff\        → EM（ExcelDiff.GUI.exe + ExcelDiff.dll[NPOI_READ] + lang\）
+D:\Program Files\ExcelDiffEDRTool\     → EME（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
+D:\Program Files\ExcelDiffTool\        → EM（ExcelDiff.GUI.exe + ExcelDiff.dll[NPOI_READ] + lang\）
 %APPDATA%\ExcelDiffEDR.GUI\        → EME 配置
 %APPDATA%\ExcelDiff.GUI\           → EM 配置
 ```
