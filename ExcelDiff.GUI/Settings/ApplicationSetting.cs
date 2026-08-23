@@ -80,64 +80,77 @@ namespace ExcelDiff.GUI.Settings
             get { return AlternatingColorStrings.Select(c => (Color)ColorConverter.ConvertFromString(c)).ToArray(); }
         }
 
+        private static Color ParseColor(string value, ref Color? cache)
+        {
+            if (cache == null)
+                cache = (Color)ColorConverter.ConvertFromString(value);
+
+            return cache.Value;
+        }
+
         private string columnHeaderColorString;
+        private Color? cachedColumnHeaderColor;
         public string ColumnHeaderColorString
         {
             get { return columnHeaderColorString; }
-            set { SetProperty(ref columnHeaderColorString, value); }
+            set { cachedColumnHeaderColor = null; SetProperty(ref columnHeaderColorString, value); }
         }
         [YamlIgnore, IgnoreEqual]
         public Color ColumnHeaderColor
         {
-            get { return (Color)ColorConverter.ConvertFromString(ColumnHeaderColorString); }
+            get { return ParseColor(ColumnHeaderColorString, ref cachedColumnHeaderColor); }
         }
 
         private string rowHeaderColorString;
+        private Color? cachedRowHeaderColor;
         public string RowHeaderColorString
         {
             get { return rowHeaderColorString; }
-            set { SetProperty(ref rowHeaderColorString, value); }
+            set { cachedRowHeaderColor = null; SetProperty(ref rowHeaderColorString, value); }
         }
         [YamlIgnore, IgnoreEqual]
         public Color RowHeaderColor
         {
-            get { return (Color)ColorConverter.ConvertFromString(RowHeaderColorString); }
+            get { return ParseColor(RowHeaderColorString, ref cachedRowHeaderColor); }
         }
 
         private string addedColorString;
+        private Color? cachedAddedColor;
         public string AddedColorString
         {
             get { return addedColorString; }
-            set { SetProperty(ref addedColorString, value); }
+            set { cachedAddedColor = null; SetProperty(ref addedColorString, value); }
         }
         [YamlIgnore, IgnoreEqual]
         public Color AddedColor
         {
-            get { return (Color)ColorConverter.ConvertFromString(AddedColorString); }
+            get { return ParseColor(AddedColorString, ref cachedAddedColor); }
         }
 
         private string removedColorString;
+        private Color? cachedRemovedColor;
         public string RemovedColorString
         {
             get { return removedColorString; }
-            set { SetProperty(ref removedColorString, value); }
+            set { cachedRemovedColor = null; SetProperty(ref removedColorString, value); }
         }
         [YamlIgnore, IgnoreEqual]
         public Color RemovedColor
         {
-            get { return (Color)ColorConverter.ConvertFromString(RemovedColorString); }
+            get { return ParseColor(RemovedColorString, ref cachedRemovedColor); }
         }
 
         private string modifiedColorString;
+        private Color? cachedModifiedColor;
         public string ModifiedColorString
         {
             get { return modifiedColorString; }
-            set { SetProperty(ref modifiedColorString, value); }
+            set { cachedModifiedColor = null; SetProperty(ref modifiedColorString, value); }
         }
         [YamlIgnore, IgnoreEqual]
         public Color ModifiedColor
         {
-            get { return (Color)ColorConverter.ConvertFromString(modifiedColorString); }
+            get { return ParseColor(ModifiedColorString, ref cachedModifiedColor); }
         }
 
         private bool colorModifiedRow = true;

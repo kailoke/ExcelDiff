@@ -389,12 +389,15 @@ namespace FastWpfGrid
             if (_hiddenAndFrozenModelIndexes == null) return realIndex;
 
             realIndex -= FrozenCount;
-            foreach (int hidItem in _hiddenAndFrozenModelIndexes)
+            var hidden = _hiddenAndFrozenModelIndexes;
+            int lo = 0, hi = hidden.Count;
+            while (lo < hi)
             {
-                if (realIndex < hidItem) return realIndex;
-                realIndex++;
+                int mid = (lo + hi) / 2;
+                if (realIndex >= hidden[mid] - mid) lo = mid + 1;
+                else hi = mid;
             }
-            return realIndex;
+            return realIndex + lo;
         }
 
         public int ModelToReal(int modelIndex)
