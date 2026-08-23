@@ -155,15 +155,12 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 ## 9. 当前工作区状态（并行开发须知）
 
-当前分支 `master`。**此前未提交的 WIP（常驻 + 本地化 + EDR 特性集）已拆成两个基线提交**：
-`12ac86d`（代码基线：EDR 双读变体 / 单实例 IPC / 托盘 / 窗口持久化 / 外置 JSON 本地化 / NetDiff.TestRunner）、`9fa3d8d`（工程文档 + verify.ps1）。
-新开分支/功能请基于 `master` 最新提交，改动前仍先 `git status`/`git log --oneline -5` 确认基线。
+当前分支 `master`，**工作区干净**。项目已从 `ExcelMerge` 全面重命名为 **`ExcelDiff`**（工作区 `D:\ExcelDiff`，部署 `D:\Program Files\ExcelDiffTool` / `D:\Program Files\ExcelDiffEDRTool`）。
 
-WIP 特性集涉及的文件（现已入库）：
-- **单实例 + IPC + 托盘常驻**：`App.xaml.cs`、`SingleInstance.cs`、`TrayIconManager.cs`、`StartupHelper.cs`
-- **外置 JSON 本地化（中文）**：`Localization/`、`LocalizationManager.cs`、`lang/`、`Resources*.resx`、`GenerateLangJson.ps1`
-- **EDR 双读变体 EME**：`ExcelWorkbook.cs`、`ExcelSheet.cs`、`ExcelReader.cs`、`ExcelUtility.cs`、`ExcelSheetDiff.cs`、`ExcelDiff.csproj`、`packages.config`（+ExcelDataReader 3.9.0）
-- **窗口状态持久化 / 无差异窗口 / 计时**：`ApplicationSetting.cs`、`MainWindow.xaml(.cs)`、`NoDiffWindow.xaml(.cs)`、`Timing.cs`、`DiffGridModel.cs`、`DiffView.xaml.cs`、`FastGridControl_Render.cs`
+- **版本定位**：EME=EDR 优先/基准（读取快约 72%），EM=NPOI 保底对照（见 §7.5）。
+- **关键基线**：`12ac86d`（代码基线：EDR 双读 / 单实例 IPC / 托盘 / 窗口持久化 / 外置 JSON 本地化 / TestRunner）、`9fa3d8d`（工程文档 + verify.ps1）、`ae90b7c`（EME 优先/基准）、`e0390a7`（ExcelMerge→ExcelDiff 全局重命名）。
+- 新开分支/功能请基于 `master` 最新提交，改动前先 `git status`/`git log --oneline -5` 确认。
+- 任何改动完成后跑 `verify.ps1`；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。
 
 ## 10. 编码规范（沿用既有代码）
 
