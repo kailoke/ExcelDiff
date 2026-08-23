@@ -6,8 +6,8 @@ namespace DiffHarness
 {
     /// <summary>
     /// Headless diff harness: reads two workbook files and prints a deterministic
-    /// per-sheet diff summary + modified cells. Used to compare the EM (NPOI) and
-    /// EME (EDR) builds against the same file pair (same-named file, HEAD vs working).
+    /// per-sheet diff summary + modified cells. Used to compare the ED (NPOI) and
+    /// EDE (EDR) builds against the same file pair (same-named file, HEAD vs working).
     /// </summary>
     public static class Program
     {

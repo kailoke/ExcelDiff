@@ -8,7 +8,7 @@
 
 ExcelDiff：Windows 桌面 GUI 差异对比工具（xls/xlsx/csv/tsv），可作 Git/Mercurial difftool。
 WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock。
-同一份源码可编译出**两套产品**：**EME（优先/基准版，ExcelDataReader 读取，读取效率约 +72%）**与 **EM（保底版，NPOI 读取）**，进程/程序集/配置/显示名全隔离。**开发与基准测试以 EME 为准，EM 作保底验证对照**。
+同一份源码可编译出**两套产品**：**EDE（优先/基准版，ExcelDataReader 读取，读取效率约 +72%）**与 **ED（保底版，NPOI 读取）**，进程/程序集/配置/显示名全隔离。**开发与基准测试以 EDE 为准，ED 作保底验证对照**。
 
 ## 2. 必读文档
 
@@ -33,7 +33,7 @@ ExcelDiff\                      # 类库：工作簿/工作表/单元格读取�
   CsvReader.cs / TsvReader.cs    #   自研解析器，无第三方依赖
 ExcelDiff.GUI\                  # WPF 可执行：UI、命令层、设置、IPC、托盘、本地化、常驻生命周期
   App.xaml.cs                    #   入口/生命周期（SingleInstance、托盘、远程命令路由、DisplayName 随 EDR_READ 切换）
-  SingleInstance.cs              #   命名管道 server/client（channel id 由 exe 名派生，EM/EME 互不干扰）
+  SingleInstance.cs              #   命名管道 server/client（channel id 由 exe 名派生，ED/EDE 互不干扰）
   TrayIconManager.cs             #   托盘常驻（隐藏/恢复/退出）
   StartupHelper.cs               #   开机自启（Run 键）管理
   Timing.cs                      #   PERF_TIMING 分段计时
@@ -50,7 +50,7 @@ ExcelDiff.GUI\                  # WPF 可执行：UI、命令层、设置、IPC�
 NetDiff\NetDiff\                 # 类库：Myers/EditGraph 文本差异算法
 NetDiff\NetDiff.Test\            # MSTest 单元测试源码（Test.cs，31 个用例）
 NetDiff\NetDiff.TestRunner\      # 离线测试 runner（MSTest shim + 反射执行，零第三方依赖，见 §4）
-DiffHarness\                     # headless diff 对比工具（库层直调，EM/EME 输出对比，见 §7.9）
+DiffHarness\                     # headless diff 对比工具（库层直调，ED/EDE 输出对比，见 §7.9）
 FastWpfGrid\                     # 高性能虚拟化网格控件 + WriteableBitmapEx 位图扩展
 ExcelDiff.ShellExtension\       # COM 外壳扩展（资源管理器右键菜单）
 ExcelDiff.Installer\            # VDProj MSI 打包（不参与日常构建）
@@ -72,13 +72,13 @@ GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 - 关键：.NET Framework 引用程序集不在本机 SDK 里，**必须**传 `TargetFrameworkRootPath="D:\ExcelDiff\packages\refs"`。
 - 下列命令均已在本机验证可编译（Release, AnyCPU）。
 
-### EME（优先/基准版，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
+### EDE（优先/基准版，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### EM（保底版，NPOI 读取）— 产物 `ExcelDiff.GUI.exe`
+### ED（保底版，NPOI 读取）— 产物 `ExcelDiff.GUI.exe`
 
 同上，去掉 `/p:EdrRead=true`（默认）。
 
@@ -108,18 +108,18 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 | MSBuild 属性 | 效果（GUI 与库联动） |
 |------|------|
-| `EdrRead=true`（EME 优先/基准） | GUI `AssemblyName=ExcelDiffEDR.GUI`、定义 `EDR_READ`、`DisplayName=ExcelDiffEDR`；库**不**定义 `NPOI_READ`（走 EDR） |
-| `EdrRead`（默认空，EM 保底） | GUI `AssemblyName=ExcelDiff.GUI`、`DisplayName=ExcelDiff`；库定义 `NPOI_READ`（NPOI 读取） |
+| `EdrRead=true`（EDE 优先/基准） | GUI `AssemblyName=ExcelDiffEDR.GUI`、定义 `EDR_READ`、`DisplayName=ExcelDiffEDR`；库**不**定义 `NPOI_READ`（走 EDR） |
+| `EdrRead`（默认空，ED 保底） | GUI `AssemblyName=ExcelDiff.GUI`、`DisplayName=ExcelDiff`；库定义 `NPOI_READ`（NPOI 读取） |
 | `EnablePerfTiming=true` | GUI 与库同时定义 `PERF_TIMING`，注入分段计时 |
 
-- 配置目录天然隔离：`%APPDATA%\ExcelDiff.GUI\`（EM） vs `%APPDATA%\ExcelDiffEDR.GUI\`（EME）。
+- 配置目录天然隔离：`%APPDATA%\ExcelDiff.GUI\`（ED） vs `%APPDATA%\ExcelDiffEDR.GUI\`（EDE）。
 - 代码里 `#if NPOI_READ`（库）与 `#if EDR_READ`（GUI）分支读取/显示名。
 
 ## 6. 模块设计速查（“改什么功能 → 动哪些文件”）
 
 | 需求 | 入口文件 | 说明 |
 |------|---------|------|
-| 新增文件类型解析 | `ExcelDiff/ExcelWorkbook.cs`、`CsvReader.cs`/`TsvReader.cs` | 按扩展名分发，EM/EME 都要过 |
+| 新增文件类型解析 | `ExcelDiff/ExcelWorkbook.cs`、`CsvReader.cs`/`TsvReader.cs` | 按扩展名分发，ED/EDE 都要过 |
 | 差异算法调整 | `NetDiff/NetDiff/EditGraph.cs`、`DiffUtil.cs` | 行级/单元格级共用；改后跑 `NetDiff.Test` |
 | 差异提取规则/日志格式 | `ExcelDiff/ExcelSheetDiff.cs`、`ExcelSheetDiffConfig.cs`、`DiffExtractionSettingWindow*` | |
 | UI 字符串/本地化 | `Properties/Resources*.resx` → 跑 `GenerateLangJson.ps1` → `lang\*.json` | 见 §7 本地化流程 |
@@ -130,23 +130,23 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 ## 7. 开发方法论
 
-1. **双版同步**：任何 UI/读取/行为改动必须 EM + EME 两版都编译通过（`EdrRead` 空 / `true` 各 build 一次）。
+1. **双版同步**：任何 UI/读取/行为改动必须 ED + EDE 两版都编译通过（`EdrRead` 空 / `true` 各 build 一次）。
 2. **本地化流程**：字符串改动进 `Resources.resx`（en-US 中性）+ `Resources.zh-CN.resx`（仅 zh/en 两语言，默认 zh-CN）→ 运行 `GenerateLangJson.ps1` 重新生成 `lang\*.json`（UTF-8 BOM）。`{x:Static Resources.*}` 在窗口加载时固化 → 语言切换通过 `App.CloseMainWindowForLanguageChange()` 关窗，下次 diff 命令以新语言重建。
 3. **测试**：NetDiff 算法改动用 `NetDiff.TestRunner`（31 用例，命令见 §4）。GUI 层回归用手工/脚本冒烟（见 ARCHITECTURE.md §9）。任何改动完成后跑 `verify.ps1` 一键门禁。
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。⚠️ 特定开发需求曾用的 SHA 基线对比（diffcompare 7 对基线）**不作为通用准则**；后续若有必须的回归对比，单独建文件记录。
-5. **读取层定位**：**EME=EDR 优先/基准**（读取快约 72%）；**EM=NPOI 保底对照**（NPOI 语义最全）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 EM 保底存在的意义，**不得移除 EM**。基准测试以 EME 为准，EM 作保底验证。
-6. **构建与部署次序**：构建 EME → 部署 EME → 构建 EM → 部署 EM，分步进行（见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。
+5. **读取层定位**：**EDE=EDR 优先/基准**（读取快约 72%）；**ED=NPOI 保底对照**（NPOI 语义最全）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 ED 保底存在的意义，**不得移除 ED**。基准测试以 EDE 为准，ED 作保底验证。
+6. **构建与部署次序**：构建 EDE → 部署 EDE → 构建 ED → 部署 ED，分步进行（见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。
 7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。
 8. **测试模态弹窗注意事项**（自动化/脚本测试会被强制阻塞）：
    - **无差异弹窗 `NoDiffWindow`**：两文件无差异且 `NotifyEqual` 开启时，由 `DiffView.ShowDiff` `ShowDialog` 弹出（模态）。识别：无系统标题栏（`WindowStyle=None`）、顶部绿色条（`#FF43A047`）带自定义"✕"、正文为 `Message_NoDiffFormat`（如"左[...] - 右[...] = 没有区别"）。**关闭 = 点右上角"✕"**（`CloseButton_Click`：仅关弹窗、不关对比窗口；ESC 等效）；红色"退出"按钮是 `IsDefault`（回车触发）会连对比窗口一起关，脚本注意区分。
    - **重启确认 MessageBox**：切换多语言后由 `App.UpdateResourceCulture` 弹出（`Message_Reboot`：en "ExcelDiff will close to change the language." / zh "ExcelDiff将关闭以变更语言"）。**处理 = 点"确定/OK"**；确认后应用关对比窗口，下次 diff 命令以新语言重建。
    - 两者均为强制模态，会阻断后续命令；脚本需先探测（窗口/文案特征）再处理，否则测试挂起。
-9. **headless diff harness（L1 主测试工具）**：`DiffHarness\` 零第三方离线对比，直接调库层（`ExcelWorkbook.Create` → `ExcelSheet.Diff` → `CreateSummary`）输出确定性 diff 文本，以 EME（基准）为准、EM（保底）作验证对照。用法：`powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1 -RelPath Config/Data/Level.xlsx`（自动提取 HEAD → 构建/运行双变体 → 比对，忽略 READER 行）；可用 `-NoBuild` 跳过重编译。产出 `DiffHarness.exe`（NPOI）/ `DiffHarnessEDR.exe`（EDR），输出 UTF-8。**配置对齐**：harness 默认读取配置 = GUI 默认 `ApplicationSetting`（4 项 trim 均 false）；复现 GUI 场景必须传一致参数——`--skip-first-blank-rows/columns`、`--trim-last-blank-rows/columns`（对应 `Setting.SkipFirstBlankRows/...`）、`--src-header N`/`--dst-header N`（列头对齐）。注意 harness 只验证"两变体一致"，不验证"diff 绝对正确"（与 GUI 共用 `ExcelSheet.Diff` 引擎），真实结果用 `VerifyRead` 双读 + EM 对照。
+9. **headless diff harness（L1 主测试工具）**：`DiffHarness\` 零第三方离线对比，直接调库层（`ExcelWorkbook.Create` → `ExcelSheet.Diff` → `CreateSummary`）输出确定性 diff 文本，以 EDE（基准）为准、ED（保底）作验证对照。用法：`powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1 -RelPath Config/Data/Level.xlsx`（自动提取 HEAD → 构建/运行双变体 → 比对，忽略 READER 行）；可用 `-NoBuild` 跳过重编译。产出 `DiffHarness.exe`（NPOI）/ `DiffHarnessEDR.exe`（EDR），输出 UTF-8。**配置对齐**：harness 默认读取配置 = GUI 默认 `ApplicationSetting`（4 项 trim 均 false）；复现 GUI 场景必须传一致参数——`--skip-first-blank-rows/columns`、`--trim-last-blank-rows/columns`（对应 `Setting.SkipFirstBlankRows/...`）、`--src-header N`/`--dst-header N`（列头对齐）。注意 harness 只验证"两变体一致"，不验证"diff 绝对正确"（与 GUI 共用 `ExcelSheet.Diff` 引擎），真实结果用 `VerifyRead` 双读 + ED 对照。
 
 ## 8. 已知陷阱（务必遵守，全部踩过坑）
 
 1. **UTF-8 破坏**：PowerShell 5.1 的 `Get-Content`/`Set-Content -Encoding UTF8` 按 ANSI 读写，破坏含中文的 YAML/JSON → 解析崩溃。改写非 ASCII 文件必须用文件写入工具（UTF-8 无 BOM）或 `[System.IO.File]::WriteAllText` + 显式 UTF8。
-2. **MSBuild 增量互删**：不能在同一条命令里连续构建两个变体——增量构建会把另一变体的 exe 当过期输出清掉。必须分步（EM 与 EME 分开 build/部署）。
+2. **MSBuild 增量互删**：不能在同一条命令里连续构建两个变体——增量构建会把另一变体的 exe 当过期输出清掉。必须分步（ED 与 EDE 分开 build/部署）。
 3. **`-Wait` 挂起**：对转发进程 `Start-Process -Wait` 会挂起（无常驻进程时转发器变常驻永不退出）。
    - **检测**：`verify.ps1` 已内置坑扫描——任一入库 `*.ps1`（注释除外）出现 `Start-Process ... -Wait ... ExcelDiff` 即门禁失败（verify.ps1 自身排除）。
    - **预防**：需要等待 diff 会话完成时用根目录 `Invoke-ExcelDiffDiff.ps1`（fire-and-forget 启动 + 轮询主窗口出现/关闭，绝不 `-Wait` 等进程退出）；禁止手工对转发进程 `-Wait`。
@@ -157,8 +157,8 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 
 当前分支 `master`，**工作区干净**。项目已从 `ExcelMerge` 全面重命名为 **`ExcelDiff`**（工作区 `D:\ExcelDiff`，部署 `D:\Program Files\ExcelDiffTool` / `D:\Program Files\ExcelDiffEDRTool`）。
 
-- **版本定位**：EME=EDR 优先/基准（读取快约 72%），EM=NPOI 保底对照（见 §7.5）。
-- **关键基线**：`12ac86d`（代码基线：EDR 双读 / 单实例 IPC / 托盘 / 窗口持久化 / 外置 JSON 本地化 / TestRunner）、`9fa3d8d`（工程文档 + verify.ps1）、`ae90b7c`（EME 优先/基准）、`e0390a7`（ExcelMerge→ExcelDiff 全局重命名）。
+- **版本定位**：EDE=EDR 优先/基准（读取快约 72%），ED=NPOI 保底对照（见 §7.5）。
+- **关键基线**：`12ac86d`（代码基线：EDR 双读 / 单实例 IPC / 托盘 / 窗口持久化 / 外置 JSON 本地化 / TestRunner）、`9fa3d8d`（工程文档 + verify.ps1）、`ae90b7c`（EDE 优先/基准）、`e0390a7`（ExcelMerge→ExcelDiff 全局重命名）。
 - 新开分支/功能请基于 `master` 最新提交，改动前先 `git status`/`git log --oneline -5` 确认。
 - 任何改动完成后跑 `verify.ps1`；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。
 

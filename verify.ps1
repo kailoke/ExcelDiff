@@ -1,5 +1,5 @@
 # verify.ps1 - One-command development gate.
-# Builds both product variants (EM + EME), runs the NetDiff unit tests, checks
+# Builds both product variants (ED + EDE), runs the NetDiff unit tests, checks
 # lang\*.json <-> .resx sync, and prints the WIP snapshot.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File verify.ps1 [-SkipBuild]
@@ -34,7 +34,7 @@ if (-not (Test-Path $runnerExe)) { FailStep 'NetDiff.TestRunner.exe missing'; ex
 & $runnerExe | ForEach-Object { Write-Host '        ' $_ }
 if ($LASTEXITCODE -ne 0) { FailStep 'NetDiff unit tests failed' } else { OkStep 'NetDiff unit tests passed' }
 
-# --- 2/3/4. Build EM -> EME -> EM (separate invocations; never in one command) ---
+# --- 2/3/4. Build ED -> EDE -> ED (separate invocations; never in one command) ---
 if (-not $SkipBuild) {
     $guiProj = Join-Path $root 'ExcelDiff.GUI\ExcelDiff.GUI.csproj'
     $common = @(
@@ -46,17 +46,17 @@ if (-not $SkipBuild) {
         '/t:Build', '/v:m', '/nologo'
     )
 
-    Write-Host '--- Build EM (NPOI) ---'
+    Write-Host '--- Build ED (NPOI) ---'
     & dotnet msbuild $guiProj @common
-    if ($LASTEXITCODE -ne 0) { FailStep 'EM build failed' } else { OkStep 'EM built (ExcelDiff.GUI.exe)' }
+    if ($LASTEXITCODE -ne 0) { FailStep 'ED build failed' } else { OkStep 'ED built (ExcelDiff.GUI.exe)' }
 
-    Write-Host '--- Build EME (EDR) ---'
+    Write-Host '--- Build EDE (EDR) ---'
     & dotnet msbuild $guiProj @common '/p:EdrRead=true'
-    if ($LASTEXITCODE -ne 0) { FailStep 'EME build failed' } else { OkStep 'EME built (ExcelDiffEDR.GUI.exe)' }
+    if ($LASTEXITCODE -ne 0) { FailStep 'EDE build failed' } else { OkStep 'EDE built (ExcelDiffEDR.GUI.exe)' }
 
-    Write-Host '--- Restore EM default output ---'
+    Write-Host '--- Restore ED default output ---'
     & dotnet msbuild $guiProj @common
-    if ($LASTEXITCODE -ne 0) { FailStep 'EM rebuild failed' } else { OkStep 'EM output restored' }
+    if ($LASTEXITCODE -ne 0) { FailStep 'ED rebuild failed' } else { OkStep 'ED output restored' }
 } else {
     OkStep 'Builds skipped (-SkipBuild)'
 }

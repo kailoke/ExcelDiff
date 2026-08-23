@@ -3,19 +3,19 @@
 > 改动任何代码前逐条核对。**违反任一条 = 阻断提交/部署。**
 > 来源：ARCHITECTURE.md、AGENTS.md、CODEX.md、已踩坑记录（各条标注出处）。
 
-## A. 双版本（EM/EME）隔离
+## A. 双版本（ED/EDE）隔离
 
-- [ ] **A1 单一代码源**：EM/EME 由同一份源码 + `#if NPOI_READ / EDR_READ` 编译产出，禁止复制两套实现。（AGENTS §5）
+- [ ] **A1 单一代码源**：ED/EDE 由同一份源码 + `#if NPOI_READ / EDR_READ` 编译产出，禁止复制两套实现。（AGENTS §5）
 - [ ] **A2 双版必编译**：任何改动必须 `EdrRead` 空 + `true` 各 build 一次都通过，否则 `#if` 分支可能漏编译。（AGENTS §7.1）
-- [ ] **A3 构建分步**：不得在一条命令里连续构建两个变体（MSBuild 增量互删 exe）；EME→部署→EM→部署 分步。（AGENTS §8.2）
-- [ ] **A4 隔离派生**：配置目录/IPC channel/显示名均按程序集名（exe 名）派生，EM/EME 天然隔离，不要硬编码共享。（ARCH §7.5、CODEX 链路B）
+- [ ] **A3 构建分步**：不得在一条命令里连续构建两个变体（MSBuild 增量互删 exe）；EDE→部署→ED→部署 分步。（AGENTS §8.2）
+- [ ] **A4 隔离派生**：配置目录/IPC channel/显示名均按程序集名（exe 名）派生，ED/EDE 天然隔离，不要硬编码共享。（ARCH §7.5、CODEX 链路B）
 
 ## B. 读取层（核心库 ExcelDiff）
 
-- [ ] **B1 版本定位**：EME=EDR **优先/基准**（读取快约 72%）；EM=NPOI **保底对照**（语义最全）。开发与基准测试以 EME 为准；**EM 保底不得移除**（EDR 盲区兜底）。（ARCH §5/§10）
+- [ ] **B1 版本定位**：EDE=EDR **优先/基准**（读取快约 72%）；ED=NPOI **保底对照**（语义最全）。开发与基准测试以 EDE 为准；**ED 保底不得移除**（EDR 盲区兜底）。（ARCH §5/§10）
 - [ ] **B2 EDR 语义对齐**：EDR 路径必须跳整空行、裁剪尾空单元格，保持与 NPOI 行/列语义一致。（ExcelWorkbook.cs:132-141）
-- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景用 `ExcelWorkbook.VerifyRead` 双读校验 / EM（NPOI）保底对照。（ARCH §9.6）
-- [ ] **B4 回归基线**：EM/EME 输出比对对象必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件/跨版本互比。（AGENTS §7.4/§7.7）
+- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景用 `ExcelWorkbook.VerifyRead` 双读校验 / ED（NPOI）保底对照。（ARCH §9.6）
+- [ ] **B4 回归基线**：ED/EDE 输出比对对象必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件/跨版本互比。（AGENTS §7.4/§7.7）
 - [ ] **B5 扩展名分发**：新增文件类型解析在 `ExcelWorkbook.Create` 里统一分发，CSV/TSV 保持自研零依赖。
 
 ## C. 生命周期 / IPC（GUI 高危区）
