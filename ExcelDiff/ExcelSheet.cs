@@ -375,6 +375,8 @@ namespace ExcelDiff
             DiffResult<ExcelRow> result, ExcelSheetDiff sheetDiff, Dictionary<int, ExcelColumnStatus> columnStatusMap)
         {
             var row = sheetDiff.CreateRow();
+            row.SrcOriginalRowIndex = result.Obj1.Index;
+            row.DstOriginalRowIndex = result.Obj2.Index;
 
             var equalizedCells = EqualizeColumnCount(result.Obj1.Cells, result.Obj2.Cells, columnStatusMap);
             var columnIndex = 0;
@@ -426,6 +428,7 @@ namespace ExcelDiff
             DiffResult<ExcelRow> result, ExcelSheetDiff sheetDiff, Dictionary<int, ExcelColumnStatus> columnStatusMap)
         {
             var row = sheetDiff.CreateRow();
+            row.SrcOriginalRowIndex = result.Obj1.Index;
 
             var columnIndex = 0;
             foreach (var cell1 in result.Obj1.Cells)
@@ -441,6 +444,7 @@ namespace ExcelDiff
             DiffResult<ExcelRow> result, ExcelSheetDiff sheetDiff, Dictionary<int, ExcelColumnStatus> columnStatusMap)
         {
             var row = sheetDiff.CreateRow();
+            row.DstOriginalRowIndex = result.Obj2.Index;
 
             var columnIndex = 0;
             foreach (var cell2 in result.Obj2.Cells)

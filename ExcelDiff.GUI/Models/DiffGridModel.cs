@@ -19,6 +19,13 @@ namespace ExcelDiff.GUI.Models
         private Dictionary<int, int> reverseRowIndexMap = new Dictionary<int, int>();
         private Action onSettingUpdatedHandler;
 
+        // Above this many rows an equal-row cell payload is released when entering "only diff"
+        // mode to keep large near-identical sheets lean; refilled on demand when the user
+        // switches to "show all". Both grids share one SheetDiff, so the flag there coordinates this.
+        private const int OffloadRowThreshold = 10000;
+        private readonly Func<ExcelSheet> _reloadSrc;
+        private readonly Func<ExcelSheet> _reloadDst;
+
         public override int ColumnCount
         {
             get { return columnCount; }
@@ -59,10 +66,13 @@ namespace ExcelDiff.GUI.Models
         public DiffType DiffType { get; private set; }
         public ExcelSheetDiff SheetDiff { get; private set; }
 
-        public DiffGridModel(ExcelSheetDiff sheetDiff, DiffType type) : base()
+        public DiffGridModel(ExcelSheetDiff sheetDiff, DiffType type,
+            Func<ExcelSheet> reloadSrc = null, Func<ExcelSheet> reloadDst = null) : base()
         {
             DiffType = type;
             SheetDiff = sheetDiff;
+            _reloadSrc = reloadSrc;
+            _reloadDst = reloadDst;
 
             columnCount = SheetDiff.Rows.Max(r => r.Value.Cells.Count);
             rowCount = SheetDiff.Rows.Count();
@@ -559,6 +569,13 @@ namespace ExcelDiff.GUI.Models
 
         public void HideEqualRows()
         {
+            if (_reloadSrc != null && _reloadDst != null
+                && !SheetDiff.EqualRowsOffloaded
+                && SheetDiff.Rows.Count > OffloadRowThreshold)
+            {
+                OffloadEqualRows(ColumnHeaderIndex);
+            }
+
             rowIndexMap.Clear();
             reverseRowIndexMap.Clear();
             var equalRows = new HashSet<int>();
@@ -586,10 +603,87 @@ namespace ExcelDiff.GUI.Models
 
         public void ShowEqualRows()
         {
+            if (SheetDiff.EqualRowsOffloaded)
+                RestoreEqualRows();
+
             SetRowArrange(new HashSet<int>(), new HashSet<int>());
 
             rowIndexMap.Clear();
             reverseRowIndexMap.Clear();
+        }
+
+        // Release cell payloads of fully-equal rows (they are hidden in "only diff" mode and
+        // only the column-header row is kept so headers still render). Frees the backing
+        // strings held by the workbook, since SheetDiff previously shared those references.
+        private void OffloadEqualRows(int headerOriginalIndex)
+        {
+            var empty = new ExcelCell(string.Empty, 0, 0);
+
+            foreach (var row in SheetDiff.Rows.Values)
+            {
+                if (!row.Cells.All(c => c.Value.Status == ExcelCellStatus.None))
+                    continue;
+                if (row.SrcOriginalRowIndex == headerOriginalIndex)
+                    continue;
+
+                foreach (var cell in row.Cells.Values)
+                    cell.SetCells(empty, empty);
+            }
+
+            SheetDiff.EqualRowsOffloaded = true;
+        }
+
+        // Refill offloaded equal rows from a fresh read of the two files, keyed by the
+        // original workbook row indices captured during the diff.
+        private void RestoreEqualRows()
+        {
+            if (_reloadSrc == null || _reloadDst == null)
+            {
+                SheetDiff.EqualRowsOffloaded = false;
+                return;
+            }
+
+            ExcelSheet src = null;
+            ExcelSheet dst = null;
+            try
+            {
+                src = _reloadSrc();
+                dst = _reloadDst();
+            }
+            catch
+            {
+                SheetDiff.EqualRowsOffloaded = false;
+                return;
+            }
+
+            if (src == null || dst == null)
+            {
+                SheetDiff.EqualRowsOffloaded = false;
+                return;
+            }
+
+            var empty = new ExcelCell(string.Empty, 0, 0);
+            foreach (var row in SheetDiff.Rows.Values)
+            {
+                if (row.SrcOriginalRowIndex < 0 || row.DstOriginalRowIndex < 0)
+                    continue;
+                if (!row.Cells.All(c => c.Value.Status == ExcelCellStatus.None))
+                    continue;
+
+                ExcelRow srcRow, dstRow;
+                if (!src.Rows.TryGetValue(row.SrcOriginalRowIndex, out srcRow)
+                    || !dst.Rows.TryGetValue(row.DstOriginalRowIndex, out dstRow))
+                    continue;
+
+                foreach (var cell in row.Cells.Values)
+                {
+                    ExcelCell s = srcRow.Cells.FirstOrDefault(c => c.OriginalColumnIndex == cell.ColumnIndex);
+                    ExcelCell d = dstRow.Cells.FirstOrDefault(c => c.OriginalColumnIndex == cell.ColumnIndex);
+                    cell.SetCells(s ?? empty, d ?? empty);
+                }
+            }
+
+            SheetDiff.EqualRowsOffloaded = false;
         }
     }
 }
