@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using CommandLine;
 
@@ -8,8 +6,8 @@ namespace ExcelDiff.GUI.Commands
 {
     public class CommandLineOption
     {
-        [ValueList(typeof(List<string>))]
-        public IList<string> Commands { get; set; } = new List<string>();
+        [Value(0, MetaName = "command")]
+        public string Command { get; set; } = string.Empty;
 
         [Option('s', "src-path")]
         public string SrcPath { get; set; } = string.Empty;
@@ -40,7 +38,7 @@ namespace ExcelDiff.GUI.Commands
         {
             get
             {
-                return (CommandType)Enum.Parse(typeof(CommandType), Commands.FirstOrDefault() ?? CommandType.Diff.ToString(), true);
+                return (CommandType)Enum.Parse(typeof(CommandType), string.IsNullOrEmpty(Command) ? CommandType.Diff.ToString() : Command, true);
             }
         }
 
