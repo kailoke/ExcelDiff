@@ -61,7 +61,7 @@ exe diff -s <src> -d <dst> ...
 | `CommandLineOption` | Commands/CommandLineOption.cs:7 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e/-k`）；`MainCommand`（首参→`CommandType`） |
 | `MainWindow` | Views/MainWindow.xaml.cs:11 | PowerShell 宿主；窗口状态持久化（600ms 去抖 timer）；`OnClosing`（托盘/退出二分）；`WndProc` ESC 钩子；`RestoreWindowState/SaveWindowState` |
 | `DiffView` | Views/DiffView.xaml.cs:25 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`ReadWorkbooks`、`ExecuteDiff`（双重载）、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
-| `NoDiffWindow` | Views/NoDiffWindow.xaml.cs:13 | 无差异模态窗；ESC=仅关本窗；红色"退出"按钮连对比窗口一起关 |
+| `NoDiffWindow` | Views/NoDiffWindow.xaml.cs:15 | 无差异模态窗；ESC=仅关本窗；红色"退出"按钮连对比窗口一起关 |
 | `ProgressWindow` | Views/ProgressWindow.xaml.cs | `DoWorkWithModal(Action<ProgressReporter>)`，后台执行+进度 UI |
 | `DiffGridModel` | Models/DiffGridModel.cs | `FastGridModelBase` 派生；ctor 预计算 `modifiedRows/addedRows/removedRows` 三个 HashSet；`GetCellColor`（minimap 轻量路径）；`IsModifiedRow/IsAddedRow/IsRemovedRow` |
 | `DiffViewModel` | ViewModels/DiffViewModel.cs | sheet 名加载（`ExcelWorkbook.GetSheetNames`）、选择、命令 |
