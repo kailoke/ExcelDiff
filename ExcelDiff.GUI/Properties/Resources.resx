@@ -238,7 +238,7 @@
     <value>↑Reset Column Header</value>
   </data>
   <data name="GroupBox_DisplayFormat" xml:space="preserve">
-    <value>Display Format</value>
+    <value>Display Mode</value>
   </data>
   <data name="Label_RowlHeight" xml:space="preserve">
     <value>Row Height</value>
@@ -354,11 +354,14 @@
   <data name="Msg_ReadingFiles" xml:space="preserve">
     <value>Reading Files ...</value>
   </data>
-  <data name="Msg_WarnSize" xml:space="preserve">
-    <value>There are too many records. Display only around diff.</value>
-  </data>
   <data name="Msg_DiffOutOfMemory" xml:space="preserve">
     <value>The comparison ran out of memory. The file is too large for the 32-bit process. Try reducing the comparison scope, splitting the file, or closing other applications, then retry.</value>
+  </data>
+  <data name="Msg_DisplayFormat" xml:space="preserve">
+    <value>Display Mode</value>
+  </data>
+  <data name="Msg_ConfirmOnlyDiffForLarge" xml:space="preserve">
+    <value>The file is large (over 10000 rows). Set [Display Mode = Only Differences] to reduce memory usage?</value>
   </data>
   <data name="Msg_DiffError" xml:space="preserve">
     <value>The comparison failed: {0}</value>

@@ -430,6 +430,18 @@ namespace ExcelDiff.GUI.Views
             };
         }
 
+        // Re-reads a single sheet from disk, used to refill offloaded equal-row payloads
+        // when the user switches from "only diff" to "show all" on a large sheet.
+        private ExcelSheet ReloadSheet(string path, string sheetName)
+        {
+            var config = CreateReadConfig();
+            var workbook = ExcelWorkbook.Create(path, config);
+
+            ExcelSheet sheet;
+            workbook.Sheets.TryGetValue(sheetName, out sheet);
+            return sheet;
+        }
+
         private Tuple<ExcelWorkbook, ExcelWorkbook> ReadWorkbooks()
         {
             ExcelWorkbook swb = null;
@@ -569,15 +581,35 @@ namespace ExcelDiff.GUI.Views
             var srcSheet = srcWorkbook.Sheets[srcSheetName];
             var dstSheet = dstWorkbook.Sheets[dstSheetName];
 
-            if (srcSheet.Rows.Count > 10000 || dstSheet.Rows.Count > 10000)
-                MessageBox.Show(Properties.Resources.Msg_WarnSize);
+            // For large sheets, offer to switch to "only diff" mode (which releases equal-row
+            // payloads via the diff-driven retention in DiffGridModel) so memory stays low.
+            // Pops on every genuine re-compare of a large sheet, but not when the user has
+            // already opted into only-diff, and never on option/dictionary toggles (those do
+            // not re-run the diff).
+            const int LargeRowThreshold = 10000;
+            if ((srcSheet.Rows.Count > LargeRowThreshold || dstSheet.Rows.Count > LargeRowThreshold)
+                && !ShowOnlyDiffRadioButton.IsChecked.GetValueOrDefault())
+            {
+                var result = MessageBox.Show(
+                    Properties.Resources.Msg_ConfirmOnlyDiffForLarge,
+                    Properties.Resources.Msg_DisplayFormat,
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question,
+                    MessageBoxResult.Yes);
+                if (result == MessageBoxResult.Yes)
+                    ShowOnlyDiffRadioButton.IsChecked = true;
+            }
 
             var diff = ExecuteDiff(srcSheet, dstSheet);
 #if PERF_TIMING
             var postSw = System.Diagnostics.Stopwatch.StartNew();
 #endif
-            SrcDataGrid.Model = new DiffGridModel(diff, DiffType.Source);
-            DstDataGrid.Model = new DiffGridModel(diff, DiffType.Dest);
+            SrcDataGrid.Model = new DiffGridModel(diff, DiffType.Source,
+                () => ReloadSheet(SrcPathTextBox.Text, srcSheetName),
+                () => ReloadSheet(DstPathTextBox.Text, dstSheetName));
+            DstDataGrid.Model = new DiffGridModel(diff, DiffType.Dest,
+                () => ReloadSheet(SrcPathTextBox.Text, srcSheetName),
+                () => ReloadSheet(DstPathTextBox.Text, dstSheetName));
 
             args = new DiffViewEventArgs<FastGridControl>(SrcDataGrid, container);
             DataGridEventDispatcher.Instance.DispatchFileSettingUpdateEvent(args, srcFileSetting);

@@ -691,15 +691,6 @@ namespace ExcelDiff.GUI.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to There are too many records. Display only around diff..
-        /// </summary>
-        public static string Msg_WarnSize {
-            get {
-                return LocalizationManager.GetString("Msg_WarnSize", ResourceManager, resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to The comparison ran out of memory....
         /// </summary>
         public static string Msg_DiffOutOfMemory {
@@ -714,6 +705,24 @@ namespace ExcelDiff.GUI.Properties {
         public static string Msg_DiffError {
             get {
                 return LocalizationManager.GetString("Msg_DiffError", ResourceManager, resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to 显示模式.
+        /// </summary>
+        public static string Msg_DisplayFormat {
+            get {
+                return LocalizationManager.GetString("Msg_DisplayFormat", ResourceManager, resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The file is large (over 10000 rows). Show only differences to reduce memory usage?.
+        /// </summary>
+        public static string Msg_ConfirmOnlyDiffForLarge {
+            get {
+                return LocalizationManager.GetString("Msg_ConfirmOnlyDiffForLarge", ResourceManager, resourceCulture);
             }
         }
 

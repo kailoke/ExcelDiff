@@ -11,6 +11,11 @@ namespace ExcelDiff
         public int Index { get; private set; }
         public SortedDictionary<int, ExcelCellDiff> Cells { get; private set; }
 
+        // Original workbook row indices (source/destination) of this diff row, used to
+        // refill cell payloads after they have been offloaded to save memory.
+        public int SrcOriginalRowIndex { get; set; } = -1;
+        public int DstOriginalRowIndex { get; set; } = -1;
+
         public ExcelRowDiff(int index)
         {
             Index = index;

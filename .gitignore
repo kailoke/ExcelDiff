@@ -243,3 +243,7 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+
+# Local sample Excel files for manual diff comparison (keep folder, ignore its contents)
+TestExcel/**
+!TestExcel/.gitkeep

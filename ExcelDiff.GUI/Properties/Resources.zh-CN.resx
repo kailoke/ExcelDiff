@@ -238,7 +238,7 @@
     <value>↑重置列标题</value>
   </data>
   <data name="GroupBox_DisplayFormat" xml:space="preserve">
-    <value>显示格式</value>
+    <value>显示模式</value>
   </data>
   <data name="Label_RowlHeight" xml:space="preserve">
     <value>行高</value>
@@ -354,11 +354,14 @@
   <data name="Msg_ReadingFiles" xml:space="preserve">
     <value>读取文件 ...</value>
   </data>
-  <data name="Msg_WarnSize" xml:space="preserve">
-    <value>记录太多，只显示差异</value>
-  </data>
   <data name="Msg_DiffOutOfMemory" xml:space="preserve">
     <value>对比因内存不足而失败。文件对 32 位进程而言过大。请缩小对比范围、拆分文件或关闭其他程序后重试。</value>
+  </data>
+  <data name="Msg_DisplayFormat" xml:space="preserve">
+    <value>显示模式</value>
+  </data>
+  <data name="Msg_ConfirmOnlyDiffForLarge" xml:space="preserve">
+    <value>文件较大（超过 10000 行）。是否设置【显示模式=只显示差异】以降低内存占用？</value>
   </data>
   <data name="Msg_DiffError" xml:space="preserve">
     <value>对比失败：{0}</value>

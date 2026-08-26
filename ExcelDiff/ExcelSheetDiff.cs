@@ -9,6 +9,11 @@ namespace ExcelDiff
 
         public SortedDictionary<int, ExcelRowDiff> Rows { get; private set; }
 
+        // Set once equal-row cell payloads have been released to save memory; cleared
+        // again when they are refilled from a re-read. Guards against double offload/restore
+        // when both grids share this diff.
+        public bool EqualRowsOffloaded { get; set; }
+
         public ExcelSheetDiff()
         {
             Rows = new SortedDictionary<int, ExcelRowDiff>();

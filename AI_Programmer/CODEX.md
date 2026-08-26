@@ -21,11 +21,11 @@ exe diff -s <src> -d <dst> ...
        ├─ App.CurrentDiffView = diffView；window.Show()
        └─ window.Closed → diffView.RemoveEventListeners()           防静态分发器泄漏
   └─ DiffView 内（用户点“显示差异”或启动即跑）
-       ├─ ReadWorkbooks()                          DiffView.xaml.cs:433
+       ├─ ReadWorkbooks()                          DiffView.xaml.cs:445
        │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EDE:EDR / ED:NPOI
-       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:508
+       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:520
        │     ProgressWindow.DoWorkWithModal → ExcelSheet.Diff(src,dst,config)
-       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:525
+       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:537
              ├─ 选 sheet → ExecuteDiff → DiffGridModel(diff, Type)
              ├─ GetViewModel().UpdateDiffSummary(summary)
              ├─ NotifyEqual 且无差异 → NoDiffWindow.ShowDialog()     （原 MessageBox）
