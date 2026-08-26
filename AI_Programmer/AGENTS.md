@@ -76,7 +76,7 @@ packages\refs\                   # .NET Framework 参考程序集（构建必需
 backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
 AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
-.githooks\                       # git 钩子（core.hooksPath=.githooks）：commit/checkout/merge 后自动刷新 PROJECT_STATE.md + 条件校准 CODEX.md
+.githooks\                       # git 钩子（core.hooksPath=.githooks）：pre-commit 提交前刷新并并入本次提交 / post-checkout、post-merge 后刷新 + 条件校准 CODEX.md
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 README.md / README.en            # 用户文档（中/英）；media\ 截图；LICENSE（MIT，含 Kailoke 版权）
 AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECTURE/CODEX/INVARIANTS/ADR/PROJECT_STATE
@@ -185,7 +185,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 
 - **版本定位**：EDE=EDR 主版本（读取快约 72%）；ED=NPOI 保底代码保留、不日常构建（见 §7.5 / ADR-012）。
 - **部署目录**：`D:\Program Files\ExcelDiffEDRTool`（EDE 主版本）。
-- **自动刷新**：git 钩子（`.githooks\` + `core.hooksPath=.githooks`）在 commit/checkout/merge 后自动跑 `refresh_state.ps1`，并在 commit 触及 C# 源码时跑 `refresh_codex.ps1`。一次性启用：`git config core.hooksPath .githooks`。
+- **自动刷新**：git 钩子（`.githooks\` + `core.hooksPath=.githooks`）：`pre-commit` 提交前刷新 `PROJECT_STATE.md`（本次提交触及 C# 源码时并校准 `CODEX.md`）并 `git add` 回本次提交；`post-checkout` / `post-merge` 在操作后刷新。一次性启用：`git config core.hooksPath .githooks`。
 - 改动前先 `git status` / `git log --oneline -3` 确认；任何改动完成后跑 `AI_Script\verify.ps1`；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。
 
 ## 10. 编码规范（沿用既有代码）

@@ -1,0 +1,15 @@
+#!/bin/sh
+# pre-commit: refresh the AI context BEFORE committing so the refreshed files are
+# included in this commit. Re-stages the rewritten AI files.
+
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT" || exit 1
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "AI_Script/refresh_state.ps1"
+
+if git diff --cached --name-only |
+    grep -Eq '^(ExcelDiff/|ExcelDiff\.GUI/|NetDiff/NetDiff/|FastWpfGrid/).*\.cs$'; then
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "AI_Script/refresh_codex.ps1"
+fi
+
+git add -- AI_Programmer/PROJECT_STATE.md AI_Programmer/CODEX.md
