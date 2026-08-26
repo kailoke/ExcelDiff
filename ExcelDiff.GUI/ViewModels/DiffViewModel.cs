@@ -132,6 +132,14 @@ namespace ExcelDiff.GUI.ViewModels
             mwv.PropertyChanged += Mwv_PropertyChanged;
         }
 
+        public void SetSheetNames(IEnumerable<string> srcSheetNames, IEnumerable<string> dstSheetNames)
+        {
+            SrcSheetNames = srcSheetNames.ToList();
+            DstSheetNames = dstSheetNames.ToList();
+            SelectedSrcSheetIndex = 0;
+            SelectedDstSheetIndex = 0;
+        }
+
         public void UpdateDiffSummary(ExcelSheetDiffSummary summary)
         {
             ModifiedCellCount = summary.ModifiedCellCount;

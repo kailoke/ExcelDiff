@@ -534,6 +534,14 @@ namespace ExcelDiff.GUI.Views
             var srcWorkbook = workbooks.Item1;
             var dstWorkbook = workbooks.Item2;
 
+            // Repopulate the sheet dropdowns from the freshly read workbooks and
+            // reset both selections to the first sheet. The process is persistent,
+            // so the combobox may still hold the previous comparison's sheet names;
+            // resolving a sheet against that stale list throws "given key not present".
+            var vm = GetViewModel();
+            if (vm != null)
+                vm.SetSheetNames(srcWorkbook.Sheets.Keys, dstWorkbook.Sheets.Keys);
+
             var fileSettings = FindFileSettings(isStartup);
             var srcFileSetting = fileSettings.Item1;
             var dstFileSetting = fileSettings.Item2;
