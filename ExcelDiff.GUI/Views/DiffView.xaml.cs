@@ -10,7 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Practices.Unity;
+using Unity;
 using FastWpfGrid;
 using NetDiff;
 using SKCore.Collection;

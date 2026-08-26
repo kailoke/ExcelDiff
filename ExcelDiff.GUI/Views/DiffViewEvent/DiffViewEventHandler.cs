@@ -8,7 +8,7 @@ using System.Windows.Shapes;
 using System.Windows.Media;
 using System.Windows.Input;
 using FastWpfGrid;
-using Microsoft.Practices.Unity;
+using Unity;
 using SKCore.Collection;
 using SKCore.Wpf.Controls.Utilities;
 using ExcelDiff.GUI.Models;
