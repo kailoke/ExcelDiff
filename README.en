@@ -6,10 +6,10 @@
 # ExcelDiff
 
 A Windows desktop GUI diff tool for Excel / CSV / TSV. Can be used as a Git / Mercurial difftool.
-Two products are built from the same source:
+Two products are built from the same source (EDE is the main build; ED is retained as a fallback reference):
 
-- **EDE** (priority / benchmark build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of ED's time, ~72% faster); development and benchmark testing use EDE as the baseline.
-- **ED** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; serves as the fallback for EDR blind spots and as a validation reference.
+- **EDE** (main build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of ED's time, ~72% faster); daily build / deploy / gate all target EDE.
+- **ED** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; code is retained as the fallback for EDR blind spots and as a validation reference, but is not built / deployed in the daily flow.
 
 The two builds are fully isolated (process / assembly / config / display name). The UI defaults to Simplified Chinese and supports Chinese/English switching.
 
@@ -44,31 +44,30 @@ The two builds are fully isolated (process / assembly / config / display name). 
 
 Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must be specified.
 
-### EDE (priority / benchmark, EDR read) — output `ExcelDiffEDR.GUI.exe`
+### EDE (main build, EDR read) — output `ExcelDiffEDR.GUI.exe`
 
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### ED (fallback, NPOI read) — output `ExcelDiff.GUI.exe`
+### ED (fallback, NPOI read; code retained, not built daily) — output `ExcelDiff.GUI.exe`
 
-Same as above without `/p:EdrRead=true` (default).
+Same as above without `/p:EdrRead=true` (default). Build manually only when an ED fallback comparison is needed.
 
 ### Deploy order & resident restart
 
 1. Build EDE → deploy EDE.
-2. Build ED → deploy ED.
-3. **Restart the matching resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
+2. **Restart the EDE resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
 
-Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results. Note: do not build both variants in one command line (incremental builds delete each other's output); build them step by step.
+Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results. The ED (NPOI) fallback code is retained but not built / deployed in the daily flow.
 
 ### One-command verification gate
 
 ```
-powershell -ExecutionPolicy Bypass -File verify.ps1
+powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-All green = both variants compile + 31 NetDiff tests pass + lang↔resx in sync.
+All green = EDE main build compiles + 31 NetDiff tests pass + lang↔resx in sync.
 
 ## Usage
 
@@ -202,7 +201,7 @@ Settings are saved as YAML at:
 
 ## Regression Verification
 
-- `verify.ps1`: one-command gate (both variants compile + 31 NetDiff tests + lang↔resx sync).
+- `AI_Script\verify.ps1`: one-command gate (EDE main build compiles + 31 NetDiff tests + lang↔resx sync).
 - `DiffHarness\`: headless diff comparison (deterministic diff text of ED/EDE outputs).
 - `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
 

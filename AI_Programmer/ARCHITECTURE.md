@@ -2,14 +2,14 @@
 
 > 本文档为资深主程序视角的工程蓝图：解决方案结构、编译矩阵、模块职责、核心数据流、
 > 生命周期、关键设计约束、部署布局与回归验证方法。修改代码前先读本文，保证改动符合架构。
-> **先读 `AGENTS.md`（操作手册：已验证构建命令、方法论、陷阱、当前 WIP 状态），再读本文。**
+> **先读 `AGENTS.md`（操作手册：已验证构建命令、方法论、陷阱、项目状态），再读本文。**
 
 ## 1. 项目概览
 
 - 用途：Excel/CSV/TSV 的 GUI 差异对比工具，可作 Git/Mercurial difftool。
 - 技术栈：WPF (.NET Framework 4.6.2, WinExe) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock/Extended.Wpf.Toolkit。
 - 核心库：ExcelDiff（读取/解析）、NetDiff（差异算法）、FastWpfGrid（虚拟化网格）。
-- 双构建：同一份源码可编译出**优先/基准版 EDE**（ExcelDataReader 读取）与**保底版 ED**（NPOI 读取），进程/程序集/配置/显示名完全隔离。开发与基准测试以 EDE 为准，ED 作保底验证对照。
+- 双构建：同一份源码可编译出**主版本 EDE**（ExcelDataReader 读取）与**保底版 ED**（NPOI 读取，代码保留、不日常构建），进程/程序集/配置/显示名完全隔离。**EDE 为主版本，是唯一的构建/部署/门禁目标；ED 代码保留作保底对照（EDR 盲区兜底）。**
 
 ## 2. 解决方案结构
 
@@ -37,7 +37,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 
 由 MSBuild 属性开关决定，GUI 项目 `AssemblyName`/`DefineConstants` 联动：
 
-| 属性 | `EdrRead=true`（EDE，优先/基准） | `EdrRead` 未指定（ED，保底） |
+| 属性 | `EdrRead=true`（EDE，主版本） | `EdrRead` 未指定（ED，保底，保留不日常构建） |
 |------|------------------------------|------------------------------|
 | GUI 程序集 | `ExcelDiffEDR.GUI` | `ExcelDiff.GUI` |
 | GUI 定义 | `EDR_READ` | 无 `EDR_READ` |
@@ -49,7 +49,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 - `EnablePerfTiming=true` → 编译期定义 `PERF_TIMING`，注入阶段计时（GUI 与库同步开关）。
 - 构建命令（GUI 必须携带 workaround 参数，见 `AGENTS.md` 摘要）：
   - EDE：`dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
-  - ED：同上，去掉 `/p:EdrRead=true`（默认）
+  - ED（保底，代码保留、不日常构建）：同上，去掉 `/p:EdrRead=true`（默认）
 - 依赖顺序：库→FastWpfGrid→GUI。`ExcelDiff.csproj` 中 `EdrRead != true` 才定义 `NPOI_READ`。
 
 ## 4. 模块划分与职责
@@ -102,8 +102,8 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
    → FastWpfGrid 渲染 + NoDiffWindow/进度提示
 ```
 
-- 读取层是唯一差异来源（EDE=EDR 优先/基准；ED=NPOI 保底对照）。两版输出需用 diff 输出对比回归，以 EDE 为准。
-- 已知限制：EDR 读不到仅含样式无值的单元格 → 列错位 → 漏报真实变更。这正是 ED（NPOI）保底对照存在的意义，ED 不得移除。
+- 读取层是唯一差异来源（EDE=EDR 主版本；ED=NPOI 保底代码保留）。以 EDE 为准；ED/EDE 输出对比回归为可选诊断（见 §9.5）。
+- 已知限制：EDR 读不到仅含样式无值的单元格 → 列错位 → 漏报真实变更。这正是 ED（NPOI）保底对照存在的意义，ED 代码不得移除。
 
 ## 6. 生命周期与常驻机制
 
@@ -115,7 +115,7 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 
 ## 7. 关键设计决策与约束
 
-1. **双版本隔离**：EDE 优先/基准（EDR，读取快约 72%），ED 保底（NPOI）。任何 UI/行为改动必须两版同步编译、部署；基准测试以 EDE 为准，ED 作保底验证对照。
+1. **双版本隔离（EDE 为主）**：EDE 主版本（EDR，读取快约 72%），ED 保底（NPOI，代码保留、不日常构建）。任何 UI/行为改动只要求 EDE 编译、部署；基准测试以 EDE 为准，ED 代码仅作保底对照验证（见 ADR-012）。
 2. **本地化热替换**：语言文件外置可改；`{x:Static}` 在 XAML 加载时固化。语言变更时**不重建窗口**（重建会同步重跑整个 diff，导致 UI 冻结约 5 秒），而是弹"重启确认"→ 点确定后由 `App.CloseMainWindowForLanguageChange()` 立即关闭对比窗口（实测 274ms），并置空 `MainWindow`/`CurrentDiffView`；下一条 diff 命令创建的新窗口即用新语言（无需整机重启）。
 3. **DiffView 事件监听器生命周期（易崩溃点）**：`DiffViewEventDispatcher` 是进程级静态单例，`DiffView` 构造时把 `srcEventHandler`/`dstEventHandler` 加入其 `Listeners`。若 DiffView 关闭后不移除，后续新建 DiffView 时，XAML 加载中 `ShowAllRadioButton_Checked`（此时该视图的 `container` 字段尚未初始化）会分发到旧处理器 → `e.Container.ResolveAll<FastGridControl>()` 空引用崩溃。**必须**在窗口真正关闭（`window.Closed`）时调用 `DiffView.RemoveEventListeners()` 卸载监听。另：radio 处理器对 `container==null` 做了防护。
 4. **两类聚焦态对话框（非真正模态，需正确处置）**：① 无差异弹窗 `NoDiffWindow`——关闭按钮 `IsDefault`，回车可关，右上角 X 亦可；X 按钮使用带白色描边+悬停高亮样式的圆角按钮以增强可视度；② 重启确认弹窗——点"确定"。
@@ -123,36 +123,35 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 6. **窗口状态持久化**：`WindowLeft/Top/Width/Height/WindowState` 存于 `ApplicationSetting`；最大化时保存 `RestoreBounds`；移动/缩放去抖 600ms 保存；启动延迟到 Show 后再最大化。
 7. **常驻 IPC 不得阻塞**：管道线程只用 `BeginInvoke` 投递，绝不能同步等待模态框。
 8. **配置分离**：`ApplicationSetting.Location` 用 `Assembly.GetExecutingAssembly().GetName().Name` 派生命名空间，ED/EDE 天然隔离；`lang` 目录同理按 exe 目录隔离。
-9. **测试准则**：回归用仓库内真实文件（git 可回滚），禁止伪造缓存文件；特定需求回归用的 SHA 基线对比不作为通用准则，后续若有必须的回归对比单独建文件记录。
+9. **测试准则**：回归用仓库内真实文件（git 可回滚），禁止伪造缓存文件。
 
 ## 8. 部署布局
 
 ```
-D:\Program Files\ExcelDiffEDRTool\     → EDE（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
-D:\Program Files\ExcelDiffTool\        → ED（ExcelDiff.GUI.exe + ExcelDiff.dll[NPOI_READ] + lang\）
+D:\Program Files\ExcelDiffEDRTool\     → EDE 主版本（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
+D:\Program Files\ExcelDiffTool\        → ED 历史目录（代码保留、不再日常构建/部署）
 %APPDATA%\ExcelDiffEDR.GUI\        → EDE 配置
-%APPDATA%\ExcelDiff.GUI\           → ED 配置
+%APPDATA%\ExcelDiff.GUI\           → ED 配置（历史）
 ```
 
-- NGEN 已对两版 exe 预编译。
-- Git difftool：`difftool.ExcelDiff`（ED）、`difftool.ExcelDiffEDR`（EDE）。
+- NGEN 已对 EDE exe 预编译。
+- Git difftool：`difftool.ExcelDiffEDR`（EDE，主）；`difftool.ExcelDiff`（ED，历史，仍可用）。
 - **lang 部署坑**：构建时 `CopyLangFiles` 会把仓库 `..\lang\*.json` 复制到 `bin\Release\lang`（自动、正确）；但部署脚本用 `Copy-Item -Recurse` 复制整个 `lang` 目录到已存在的目标时会**嵌套成 `lang\lang`**，顶层文件不更新。部署后必须单独校验/同步 `lang\*.json`（或先删目标 `lang` 目录再 `-Recurse` 复制）。
 
 ## 9. 回归验证方法
 
-0. **一键门禁**：任何改动完成后先跑 `powershell -ExecutionPolicy Bypass -File verify.ps1`（构建 ED+EDE、NetDiff 31 用例、lang↔resx 同步、§8.3 坑扫描、WIP 快照），全部通过再进入下述手工回归。
-1. 编译两版（见 §3 命令），管理员部署到 §8 两目录。**坑**：不得在同一条命令里连续构建两个变体——MSBuild 增量会把另一变体的 exe 当过期输出清掉。必须"构建 EDE→部署 EDE→构建 ED→部署 ED"分步进行。**每次构建部署后立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），否则旧进程仍锁住 exe、跑旧代码，测试结果失真。该全套动作已固化为根目录 `Deploy-And-Restart.ps1`（仅复制步骤自提权、fire-and-forget + 轮询 `deploy_all.log`、复制前清 `lang` 避嵌套坑、按进程名杀常驻；**重启常驻由非提权父进程拉起以保证 GUI 以普通用户 IL 运行，避免与 Fork 等非提权 difftool 的 IPC/托盘因 UIPI 失败**），可直接 `powershell -ExecutionPolicy Bypass -File Deploy-And-Restart.ps1` 执行（详见 `AGENTS.md` §7.6）。
+0. **一键门禁**：任何改动完成后先跑 `powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1`（构建 EDE 主版本、NetDiff 31 用例、lang↔resx 同步、§8.3 坑扫描、WIP 快照），全部通过再进入下述手工回归。
+1. 编译 EDE 主版本（见 §3 命令），管理员部署到 §8 的 EDE 目录（ED 代码保留、不部署）。**每次构建部署后立即重启 EDE 常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），否则旧进程仍锁住 exe、跑旧代码，测试结果失真。该全套动作已固化为 `AI_Script\Deploy-And-Restart.ps1`（仅复制步骤自提权、fire-and-forget + 轮询 `deploy_all.log`、复制前清 `lang` 避嵌套坑、按进程名杀常驻；**重启常驻由非提权父进程拉起以保证 GUI 以普通用户 IL 运行，避免与 Fork 等非提权 difftool 的 IPC/托盘因 UIPI 失败**），可直接 `powershell -ExecutionPolicy Bypass -File AI_Script\Deploy-And-Restart.ps1` 执行（详见 `AGENTS.md` §7.6）。
 2. 常驻进程重启后做 4 项冒烟：无差异窗口聚焦回车关闭；窗口状态跨会话/跨重启保持；语言切换后对比窗口重建生效；模态框存在时新命令强制生效。**注意**：无差异弹窗（`NoDiffWindow`）与语言切换重启确认 MessageBox 都是强制模态，会阻断脚本，识别与关闭方式见 `AGENTS.md` §7.8。
 3. 对比对必须**严格用同名文件的 Unstaged（工作区）VS HEAD**（git `HEAD` vs 工作区），严禁拿两个不同文件互相对比。用 `cmd /c "git -C <repo> show HEAD:<path> > <tmp>"` 提取 HEAD 版（二进制安全），工作区文件直接引用。测试数据源见 `AGENTS.md` §7.7。
 4. **坑**：对转发进程使用 `-Wait` 会挂起——当常驻进程不在时，转发器会变成新的常驻进程永不退出。改用 fire-and-forget（`Start-Process` 不带 `-Wait`）再定时轮询窗口。
-5. diff 输出回归：对比 ED/EDE 两版的 modified 单元格输出，对比对象必须是同一文件的两个版本（见本条 3）。GUI 摘要只显示当前工作表，与全表输出对比时按 sheet 对齐。
+5. diff 输出回归（可选）：如需 ED/EDE 对照，对比两版 modified 单元格输出，对比对象必须是同一文件的两个版本（见本条 3）。GUI 摘要只显示当前工作表，与全表输出对比时按 sheet 对齐。
 6. 单点读取校验：`ExcelWorkbook.VerifyRead(path, config)` 双读对比（EDR vs NPOI 值级一致）。
 7. **坑**：PowerShell 5.1 的 `Get-Content`/`Set-Content -Encoding UTF8` 会按 ANSI 读入再写回，破坏 UTF-8 中文 → YAML 解析崩溃（`YamlDotNet.Core.SemanticErrorException`）。改写含非 ASCII 的 YAML 必须用文件写入工具（UTF-8 无 BOM）或 `[System.IO.File]::WriteAllText` + 显式 UTF8。
 
 ## 10. 已知限制 / 风险
 
-- EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 ED（NPOI）保底对照兜底，ED 不得移除。
+- EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 ED（NPOI）保底对照兜底，ED 代码不得移除。
 - `EditGraph`（NetDiff）为 Myers 启发式 BFS，最坏 O(D²) 节点分配（病态"两表几乎全不同"大表）。已用行级 `Limit=2000` 前沿守卫兜底（ADR-010）；不重写（31 测试编码当前路径平局规则）。
 - `backup_installed_*` 目录为部署前快照，勿改动。
 - `ExcelDiff.Installer.vdproj` 未纳入当前构建流程。
-- `%APPDATA%\ExcelDiff\`、`%APPDATA%\ExcelDiffTest.GUI\` 为旧名残留，孤儿数据待清理。

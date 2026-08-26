@@ -91,7 +91,7 @@ exe diff -s <src> -d <dst> ...
 | `DiffUtil` | NetDiff/NetDiff/DiffUtil.cs | `Diff(IEnumerable,IEnumerable,DiffOption<T>)`；`Order`（Greedy/Lazy × Insert/Delete First）；`OptimizeCaseDeletedFirst`；`CreateSrc/CreateDst`（还原） |
 | `EditGraph` | NetDiff/NetDiff/EditGraph.cs | 类 Myers 算法核心 |
 | `DiffResult<T>` / `DiffStatus` / `DiffOrderType` / `DiffOption<T>` | NetDiff/NetDiff/ | 结果/状态/排序/选项 |
-| `NetDiff.Test` | NetDiff/NetDiff.Test/Test.cs | 31 个 MSTest 用例；**本机用 `NetDiff.TestRunner` 跑**（见 AGENTS.md §4/verify.ps1） |
+| `NetDiff.Test` | NetDiff/NetDiff.Test/Test.cs | 31 个 MSTest 用例；**本机用 `NetDiff.TestRunner` 跑**（见 AGENTS.md §4/AI_Script\verify.ps1） |
 
 ## 5. FastWpfGrid（虚拟化网格）
 

@@ -1,5 +1,5 @@
 # run_diff_compare.ps1 - Headless ED (NPOI) vs EDE (EDR) comparison on one file.
-# Compares a same-named file: git HEAD version vs working-tree version, per AGENTS.md 7.7.
+# Compares a same-named file: git HEAD version vs working-tree version, per AI_Programmer\AGENTS.md 7.7.
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1
