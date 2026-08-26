@@ -2,7 +2,7 @@
 
 > 面向 AI 代理/开发者的**类级导航**：核心类型的公开方法、两条关键调用链、线程模型。
 > 文件级地图见 `AGENTS.md` §3，架构蓝图见 `ARCHITECTURE.md`，硬约束见 `INVARIANTS.md`。
-> 行号为写本文档时的状态，改动代码后注意漂移。
+> 行号随代码改动会漂移，跑 `AI_Script\refresh_codex.ps1` 自动校准。
 
 ## 1. 两条关键调用链（先看时序，再看单类）
 
@@ -10,8 +10,8 @@
 
 ```
 exe diff -s <src> -d <dst> ...
-  └─ App.Main()                                   App.xaml.cs:27    加载 Setting、EnsureCulture、UpdateResourceCulture、Run
-  └─ App.OnStartup()                              App.xaml.cs:56    TryAcquire() 失败→转发给常驻实例后退出
+  └─ App.Main()                                   App.xaml.cs:28    加载 Setting、EnsureCulture、UpdateResourceCulture、Run
+  └─ App.OnStartup()                              App.xaml.cs:57    TryAcquire() 失败→转发给常驻实例后退出
        ├─ SingleInstance.StartServer(OnRemoteCommand)               后台管道线程
        ├─ InitializeTray() → TrayIconManager                        托盘常驻
        ├─ StartupHelper.SetEnabled(Setting.StartOnBoot)             Run 键
@@ -21,11 +21,11 @@ exe diff -s <src> -d <dst> ...
        ├─ App.CurrentDiffView = diffView；window.Show()
        └─ window.Closed → diffView.RemoveEventListeners()           防静态分发器泄漏
   └─ DiffView 内（用户点“显示差异”或启动即跑）
-       ├─ ReadWorkbooks()                          DiffView.xaml.cs:440
+       ├─ ReadWorkbooks()                          DiffView.xaml.cs:433
        │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EDE:EDR / ED:NPOI
-       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:515
+       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:508
        │     ProgressWindow.DoWorkWithModal → ExcelSheet.Diff(src,dst,config)
-       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:532
+       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:525
              ├─ 选 sheet → ExecuteDiff → DiffGridModel(diff, Type)
              ├─ GetViewModel().UpdateDiffSummary(summary)
              ├─ NotifyEqual 且无差异 → NoDiffWindow.ShowDialog()     （原 MessageBox）
@@ -38,11 +38,11 @@ exe diff -s <src> -d <dst> ...
 新进程 exe diff ... → SingleInstance.TryAcquire()==false
   └─ SingleInstance.SendToRunningInstance(args)   SingleInstance.cs:75   命名管道 client（channel=exe 名）
   └─ 常驻进程管道线程 ServerLoop()                SingleInstance.cs:113   server 收包 → handler(args)
-  └─ App.OnRemoteCommand(args)                    App.xaml.cs:160
+  └─ App.OnRemoteCommand(args)                    App.xaml.cs:161
        ├─ Dispatcher.BeginInvoke(...)                                      管道线程绝不阻塞/同步等待
        ├─ CurrentDiffView.DismissModalWindows()                            强关 NoDiffWindow 等模态
        ├─ ShowMainWindow()                                                保留最大化状态恢复窗口
-       └─ RouteCommand(option)                    App.xaml.cs:202
+       └─ RouteCommand(option)                    App.xaml.cs:207
              ├─ CurrentDiffView==null → new DiffCommand(option).Execute()
              └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:392
 ```
@@ -51,16 +51,16 @@ exe diff -s <src> -d <dst> ...
 
 | 类型 | 位置 | 关键成员 / 职责 |
 |------|------|-----------------|
-| `App` | App.xaml.cs:13 | 生命周期中枢。`Setting`、`CommandLineOption`、`CurrentDiffView`、`DisplayName`（`#if EDR_READ`）、`HideToTray/ShowMainWindow/ExitApplication`、`UpdateResourceCulture`（语言切换=关窗）、`UpdateRecentFiles`、`GetRecentFiles*` |
+| `App` | App.xaml.cs:14 | 生命周期中枢。`Setting`、`CommandLineOption`、`CurrentDiffView`、`DisplayName`（`#if EDR_READ`）、`HideToTray/ShowMainWindow/ExitApplication`、`UpdateResourceCulture`（语言切换=关窗）、`UpdateRecentFiles`、`GetRecentFiles*` |
 | `SingleInstance` | SingleInstance.cs:14 | `TryAcquire`（Mutex，Local\exe名-用户SID）、`SendToRunningInstance`（管道 out，3s 超时）、`StartServer`（后台线程）+`ServerLoop` |
 | `TrayIconManager` | TrayIconManager.cs:10 | `Show/Hide/Dispose`；图标=exe 关联图标；双击→onOpen；右键菜单（打开/退出，`Resources.Word_Open/Exit`） |
-| `StartupHelper` | StartupHelper.cs:9 | `SetEnabled(bool)` → `HKCU\...\Run` 写 `"exe" --startup` |
+| `StartupHelper` | StartupHelper.cs:10 | `SetEnabled(bool)` → `HKCU\...\Run` 写 `"exe" --startup` |
 | `Timing` | Timing.cs:12 | `[Conditional("PERF_TIMING")] Mark/Log`，写 `%TEMP%\em_open_timing.log`；正式版编译期裁掉 |
 | `DiffCommand` | Commands/DiffCommand.cs:8 | 组装 MainWindow+DiffView+VM；`ValidateOption`（`-e empty-file-name`→`EnsureFile`，扩展名校验）；`DefaultEnabledExtensions` |
 | `CommandFactory` | Commands/CommandFactory.cs:3 | `Create(option)` → DiffCommand |
-| `CommandLineOption` | Commands/CommandLineOption.cs:9 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e/-k`）；`MainCommand`（首参→`CommandType`） |
-| `MainWindow` | Views/MainWindow.xaml.cs:18 | PowerShell 宿主；窗口状态持久化（600ms 去抖 timer）；`OnClosing`（托盘/退出二分）；`WndProc` ESC 钩子；`RestoreWindowState/SaveWindowState` |
-| `DiffView` | Views/DiffView.xaml.cs:29 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`ReadWorkbooks`、`ExecuteDiff`（双重载）、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
+| `CommandLineOption` | Commands/CommandLineOption.cs:7 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e/-k`）；`MainCommand`（首参→`CommandType`） |
+| `MainWindow` | Views/MainWindow.xaml.cs:11 | PowerShell 宿主；窗口状态持久化（600ms 去抖 timer）；`OnClosing`（托盘/退出二分）；`WndProc` ESC 钩子；`RestoreWindowState/SaveWindowState` |
+| `DiffView` | Views/DiffView.xaml.cs:25 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`ReadWorkbooks`、`ExecuteDiff`（双重载）、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
 | `NoDiffWindow` | Views/NoDiffWindow.xaml.cs:13 | 无差异模态窗；ESC=仅关本窗；红色"退出"按钮连对比窗口一起关 |
 | `ProgressWindow` | Views/ProgressWindow.xaml.cs | `DoWorkWithModal(Action<ProgressReporter>)`，后台执行+进度 UI |
 | `DiffGridModel` | Models/DiffGridModel.cs | `FastGridModelBase` 派生；ctor 预计算 `modifiedRows/addedRows/removedRows` 三个 HashSet；`GetCellColor`（minimap 轻量路径）；`IsModifiedRow/IsAddedRow/IsRemovedRow` |
