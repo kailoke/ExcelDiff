@@ -698,7 +698,25 @@ namespace ExcelDiff.GUI.Properties {
                 return LocalizationManager.GetString("Msg_WarnSize", ResourceManager, resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to The comparison ran out of memory....
+        /// </summary>
+        public static string Msg_DiffOutOfMemory {
+            get {
+                return LocalizationManager.GetString("Msg_DiffOutOfMemory", ResourceManager, resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The comparison failed: {0}.
+        /// </summary>
+        public static string Msg_DiffError {
+            get {
+                return LocalizationManager.GetString("Msg_DiffError", ResourceManager, resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to All.
         /// </summary>

@@ -162,7 +162,8 @@ namespace NetDiff
         private void UpdateHeads()
         {
             // Beam truncation: when the frontier exceeds the limit only the first path is
-            // kept. This bounds memory but the result is no longer guaranteed minimal.
+            // kept. This bounds the per-layer work (and thus time) for very large inputs;
+            // the result stays valid (a correct edit script) though no longer minimal.
             if (option.Limit > 0 && heads.Count > option.Limit)
             {
                 var tmp = heads.First();
