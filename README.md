@@ -82,10 +82,10 @@ powershell -ExecutionPolicy Bypass -File verify.ps1
 ExcelDiff.GUI diff [Options]
 ```
 
-| Option | Description | Type | Default |
-|--------|-------------|------|---------|
-| `-s` `--src-path` | Source file path. | string | |
-| `-d` `--dst-path` | Dest file path. | string | |
+| 选项 | 描述 | 类型 | 默认值 |
+|------|------|------|--------|
+| `-s` `--src-path` | 源文件路径。 | string | |
+| `-d` `--dst-path` | 目标文件路径。 | string | |
 | `-c` `--external-cmd` | 用于不支持的文件类型或发生异常时激活外部工具。 | string | |
 | `-i` `--immediately-execute-external-cmd` | 直接执行外部命令，不弹错误对话框。 | bool | false |
 | `-w` `--wait-external-cmd` | 等待外部进程结束。 | bool | false |
@@ -139,10 +139,10 @@ vdiff = exceldiff
 
 ### 可用变量
 
-| Value | Description |
+| 值 | 描述 |
 |-------|-------------|
-| `${SRC}` | Source file path |
-| `${DST}` | Dest file path |
+| `${SRC}` | 源文件路径 |
+| `${DST}` | 目标文件路径 |
 
 也可在工具内执行。
 
@@ -159,23 +159,23 @@ vdiff = exceldiff
 
 ## 快捷键
 
-| Shortcut Key | Description |
-|--------------|-------------|
-| Ctrl + → | Next modified cell |
-| Ctrl + ← | Previous modified cell |
-| Ctrl + ↓ | Next modified row |
-| Ctrl + ↑ | Previous modified row |
-| Ctrl + K | Next added row |
-| Ctrl + I | Previous added row |
-| Ctrl + L | Next removed row |
-| Ctrl + O | Previous removed row |
-| Ctrl + F | Search cell |
-| F9 | Next match cell |
-| F8 | Previous match cell |
-| Ctrl + C | Copy selected cells as TSV |
-| Ctrl + Shift + C | Copy selected cells as CSV |
-| Ctrl + D | Show(Hide) console |
-| Ctrl + B | Output selected cells diff as log |
+| 快捷键 | 描述 |
+|---------|------|
+| Ctrl + → | 下一个修改的单元格 |
+| Ctrl + ← | 上一个修改的单元格 |
+| Ctrl + ↓ | 下一个修改的行 |
+| Ctrl + ↑ | 上一个修改的行 |
+| Ctrl + K | 下一个新增行 |
+| Ctrl + I | 上一个新增行 |
+| Ctrl + L | 下一个删除行 |
+| Ctrl + O | 上一个删除行 |
+| Ctrl + F | 搜索单元格 |
+| F9 | 下一个匹配单元格 |
+| F8 | 上一个匹配单元格 |
+| Ctrl + C | 复制选中单元格为 TSV |
+| Ctrl + Shift + C | 复制选中单元格为 CSV |
+| Ctrl + D | 显示(隐藏)控制台 |
+| Ctrl + B | 将选中单元格差异输出为日志 |
 
 ## 差异日志输出
 

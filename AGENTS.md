@@ -60,6 +60,7 @@ backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
 verify.ps1                       # 一键验证门禁（构建双版 + 单测 + lang 同步 + §8.3 坑扫描 + WIP 快照）
 Invoke-ExcelDiff.ps1        # 安全启动 GUI diff（fire-and-forget + 轮询窗口，替代 -Wait，见 §8.3）
+Deploy-And-Restart.ps1       # 一键部署+重启：构建 EDE→部署→构建 ED→部署→重启常驻（自提权，见 §7.6 与 §8.6/§8.7）
 CODEX.md / INVARIANTS.md / ADR.md# 代码索引 / 硬约束清单 / 决策记录（见 §2）
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 README.md / README.en            # 用户文档（中/英）；media\ 截图；LICENSE（MIT，含 Kailoke 版权）
@@ -138,6 +139,7 @@ powershell -ExecutionPolicy Bypass -File verify.ps1 -SkipBuild   # 只查单测 
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。⚠️ 特定开发需求曾用的 SHA 基线对比（diffcompare 7 对基线）**不作为通用准则**；后续若有必须的回归对比，单独建文件记录。
 5. **读取层定位**：**EDE=EDR 优先/基准**（读取快约 72%）；**ED=NPOI 保底对照**（NPOI 语义最全）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 ED 保底存在的意义，**不得移除 ED**。基准测试以 EDE 为准，ED 作保底验证。
 6. **构建与部署次序**：构建 EDE → 部署 EDE → 构建 ED → 部署 ED，分步进行（见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。**部署动作（提权写 Program Files）**：用 `Start-Process powershell -Verb RunAs`（**不带 `-Wait`**）启动提权脚本 → 轮询其日志文件出现 `DONE` → 再重启常驻（见陷阱 §8.6）。**⚠️ `Start-Process -ArgumentList` 数组拼接不会自动给含空格路径加引号**——含空格的目标路径（如 `D:\Program Files\...`）必须在数组元素里**手动内嵌引号**（`"-Dst","`"D:\Program Files\ExcelDiffTool`""`），否则会被截断（曾误把 `D:\Program Files\ExcelDiffTool` 部署成 `D:\Program`，见陷阱 §8.7）。
+   - **固化脚本 `Deploy-And-Restart.ps1`**（仓库根目录，可人工双击 / `powershell -File` 执行，也可由临时命令调用）：自动完成“构建 EDE→部署→构建 ED→部署→重启常驻”。**必须非提权运行**（GUI 须以普通用户 IL 运行，否则与 Fork 等非提权 difftool 客户端的命名管道 IPC / 托盘交互会因 UIPI 失败——曾因此出现“进程在、托盘消失、双击无响应”）。脚本**仅对复制步骤自提权**：未以管理员运行时用 `Start-Process -Verb RunAs`（不带 `-Wait`）拉起一个提权子进程仅做“杀进程释放锁 + 复制”，父进程（非提权）轮询 `deploy_edr.log`/`deploy_ed.log` 出现 `DONE`/`FAIL`；提权数组元素对含空格路径内嵌引号（§8.7）；杀进程按进程名 `ExcelDiff.GUI`/`ExcelDiffEDR.GUI`（经提权父进程启动的进程 `Path` 可能为空，须按 `Name` 而非 `Path` 匹配）；复制前删目标 `lang` 目录规避 `lang\lang` 嵌套坑（ARCHITECTURE §8）；复制后校验目标 exe 已落盘；**重启常驻由非提权父进程 `Start-Process`（不带 `-Wait`）拉起**以保普通用户 IL。开关：`-NoBuild`（仅部署当前 bin）、`-NoRestart`（部署后不拉起常驻）。人工/临时命令执行范例：`powershell -ExecutionPolicy Bypass -File Deploy-And-Restart.ps1`。
 7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。常用测试文件：`Level.xlsx`（**有差异**）、`PostMatchDefeat.xlsx`（**无差异**）。
 8. **测试模态弹窗注意事项**（自动化/脚本测试会被强制阻塞）：
    - **无差异弹窗 `NoDiffWindow`**：两文件无差异且 `NotifyEqual` 开启时，由 `DiffView.ExecuteDiff` `ShowDialog` 弹出（模态）。识别：无系统标题栏（`WindowStyle=None`）、顶部绿色条（`#FF43A047`）带自定义"✕"、正文为 `Message_NoDiffFormat`（如"左[...] - 右[...] = 没有区别"）。**关闭 = 点右上角"✕"**（`CloseButton_Click`：仅关弹窗、不关对比窗口；ESC 等效）；红色"退出"按钮是 `IsDefault`（回车触发）会连对比窗口一起关，脚本注意区分。

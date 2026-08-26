@@ -141,7 +141,7 @@ D:\Program Files\ExcelDiffTool\        → ED（ExcelDiff.GUI.exe + ExcelDiff.dl
 ## 9. 回归验证方法
 
 0. **一键门禁**：任何改动完成后先跑 `powershell -ExecutionPolicy Bypass -File verify.ps1`（构建 ED+EDE、NetDiff 31 用例、lang↔resx 同步、§8.3 坑扫描、WIP 快照），全部通过再进入下述手工回归。
-1. 编译两版（见 §3 命令），管理员部署到 §8 两目录。**坑**：不得在同一条命令里连续构建两个变体——MSBuild 增量会把另一变体的 exe 当过期输出清掉。必须"构建 EDE→部署 EDE→构建 ED→部署 ED"分步进行。**每次构建部署后立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），否则旧进程仍锁住 exe、跑旧代码，测试结果失真。
+1. 编译两版（见 §3 命令），管理员部署到 §8 两目录。**坑**：不得在同一条命令里连续构建两个变体——MSBuild 增量会把另一变体的 exe 当过期输出清掉。必须"构建 EDE→部署 EDE→构建 ED→部署 ED"分步进行。**每次构建部署后立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），否则旧进程仍锁住 exe、跑旧代码，测试结果失真。该全套动作已固化为根目录 `Deploy-And-Restart.ps1`（仅复制步骤自提权、fire-and-forget + 轮询 `deploy_all.log`、复制前清 `lang` 避嵌套坑、按进程名杀常驻；**重启常驻由非提权父进程拉起以保证 GUI 以普通用户 IL 运行，避免与 Fork 等非提权 difftool 的 IPC/托盘因 UIPI 失败**），可直接 `powershell -ExecutionPolicy Bypass -File Deploy-And-Restart.ps1` 执行（详见 `AGENTS.md` §7.6）。
 2. 常驻进程重启后做 4 项冒烟：无差异窗口聚焦回车关闭；窗口状态跨会话/跨重启保持；语言切换后对比窗口重建生效；模态框存在时新命令强制生效。**注意**：无差异弹窗（`NoDiffWindow`）与语言切换重启确认 MessageBox 都是强制模态，会阻断脚本，识别与关闭方式见 `AGENTS.md` §7.8。
 3. 对比对必须**严格用同名文件的 Unstaged（工作区）VS HEAD**（git `HEAD` vs 工作区），严禁拿两个不同文件互相对比。用 `cmd /c "git -C <repo> show HEAD:<path> > <tmp>"` 提取 HEAD 版（二进制安全），工作区文件直接引用。测试数据源见 `AGENTS.md` §7.7。
 4. **坑**：对转发进程使用 `-Wait` 会挂起——当常驻进程不在时，转发器会变成新的常驻进程永不退出。改用 fire-and-forget（`Start-Process` 不带 `-Wait`）再定时轮询窗口。
