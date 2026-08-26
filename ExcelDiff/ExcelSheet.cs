@@ -133,6 +133,20 @@ namespace ExcelDiff
             var dstColumns = dst.CreateColumns();
             var columnStatusMap = CreateColumnStatusMap(srcColumns, dstColumns, config);
 
+            // Bound pathological over-wide sheets. Some workbooks (e.g. written by WPS)
+            // report a dimension of A1:XFDnnnn and materialize a 16384-column header even
+            // though the real data occupies only the first few dozen columns. Diffing every
+            // row against all 16384 columns multiplies the cell count by 16384 and exhausts
+            // memory. We keep a column only if it actually carries a value in at least two
+            // rows across both sheets; a column present in a single row is an artifact, not
+            // data, and can be ignored without losing any real diff information.
+            var effectiveColumnCount = GetEffectiveColumnCount(src, dst);
+            if (columnStatusMap.Count > effectiveColumnCount)
+            {
+                foreach (var key in columnStatusMap.Keys.Where(k => k >= effectiveColumnCount).ToList())
+                    columnStatusMap.Remove(key);
+            }
+
             var option = new DiffOption<ExcelRow>();
             option.EqualityComparer =
                 new RowComparer(new HashSet<int>(columnStatusMap.Where(i => i.Value != ExcelColumnStatus.None).Select(i => i.Key)));
@@ -148,7 +162,7 @@ namespace ExcelDiff
                 var shifted = new List<ExcelCell>();
                 var index = 0;
                 var queue = new Queue<ExcelCell>(row.Cells);
-                while (queue.Any())
+                while (index < columnStatusMap.Count && queue.Any())
                 {
                     if (columnStatusMap[index] == ExcelColumnStatus.Inserted)
                         shifted.Add(new ExcelCell(string.Empty, 0, 0));
@@ -166,7 +180,7 @@ namespace ExcelDiff
                 var shifted = new List<ExcelCell>();
                 var index = 0;
                 var queue = new Queue<ExcelCell>(row.Cells);
-                while (queue.Any())
+                while (index < columnStatusMap.Count && queue.Any())
                 {
                     if (columnStatusMap[index] == ExcelColumnStatus.Deleted)
                         shifted.Add(new ExcelCell(string.Empty, 0, 0));
@@ -179,34 +193,10 @@ namespace ExcelDiff
                 row.UpdateCells(shifted);
             }
 
-            var r = DiffUtil.Diff(src.Rows.Values, dst.Rows.Values, option);
-            r = DiffUtil.Order(r, DiffOrderType.LazyDeleteFirst);
+            var rowResults = DiffUtil.Diff(src.Rows.Values, dst.Rows.Values, option).ToArray();
+
+            var r = DiffUtil.Order(rowResults, DiffOrderType.LazyDeleteFirst);
             var resultArray = DiffUtil.OptimizeCaseDeletedFirst(r).ToArray();
-            if (resultArray.Length > 10000)
-            {
-                // Keep the first rows plus a window around each changed row so very large
-                // workbooks stay usable without rendering the full result set.
-                var keep = new HashSet<int>();
-                var headLimit = System.Math.Min(100, resultArray.Length);
-                for (var i = 0; i < headLimit; i++)
-                    keep.Add(i);
-
-                var count = 0;
-                foreach (var result in resultArray)
-                {
-                    if (result.Status != DiffStatus.Equal)
-                    {
-                        var start = System.Math.Max(0, count - 100);
-                        var end = System.Math.Min(resultArray.Length - 1, count + 199);
-                        for (var i = start; i <= end; i++)
-                            keep.Add(i);
-                    }
-
-                    count++;
-                }
-
-                resultArray = resultArray.Where((res, i) => keep.Contains(i)).ToArray();
-            }
 
             var sheetDiff = new ExcelSheetDiff();
             DiffCells(resultArray, sheetDiff, columnStatusMap);
@@ -214,10 +204,62 @@ namespace ExcelDiff
             return sheetDiff;
         }
 
+        private static int GetEffectiveColumnCount(ExcelSheet src, ExcelSheet dst)
+        {
+            var maxCol = 0;
+            foreach (var row in src.Rows.Values)
+                maxCol = Math.Max(maxCol, row.Cells.Count);
+            foreach (var row in dst.Rows.Values)
+                maxCol = Math.Max(maxCol, row.Cells.Count);
+
+            if (maxCol == 0)
+                return 0;
+
+            var present = new int[maxCol];
+            foreach (var row in src.Rows.Values)
+            {
+                for (var i = 0; i < row.Cells.Count; i++)
+                {
+                    if (!string.IsNullOrEmpty(row.Cells[i].Value))
+                        present[i]++;
+                }
+            }
+
+            foreach (var row in dst.Rows.Values)
+            {
+                for (var i = 0; i < row.Cells.Count; i++)
+                {
+                    if (!string.IsNullOrEmpty(row.Cells[i].Value))
+                        present[i]++;
+                }
+            }
+
+            // A column is considered real only if it carries a value in a non-trivial
+            // fraction of rows. A lone over-wide header (present in a single row per sheet,
+            // so 2 occurrences total) fails this test and is dropped, while every column
+            // actually used by the data is kept. 0.1% of all rows is a safe floor that
+            // never drops a column used by any meaningful number of rows.
+            var totalRows = src.Rows.Count + dst.Rows.Count;
+            var threshold = Math.Max(2, (int)(totalRows * 0.001));
+
+            var effective = 0;
+            for (var i = 0; i < maxCol; i++)
+            {
+                if (present[i] >= threshold)
+                    effective = i + 1;
+            }
+
+            return effective;
+        }
+
         private static Dictionary<int, ExcelColumnStatus> CreateColumnStatusMap(
             IEnumerable<ExcelColumn> srcColumns, IEnumerable<ExcelColumn> dstColumns, ExcelSheetDiffConfig config)
         {
             var option = new DiffOption<ExcelColumn>();
+
+            // Frontier guard: bounds the edit-graph cost for pathological wide sheets so a
+            // divergent over-wide dimension cannot allocate O(D^2) nodes.
+            option.Limit = 2000;
 
             if (config.SrcHeaderIndex >= 0)
             {
@@ -257,7 +299,22 @@ namespace ExcelDiff
             if (!Rows.Any())
                 return Enumerable.Empty<ExcelColumn>();
 
-            var columnCount = Rows.Max(r => r.Value.Cells.Count);
+            var columnCount = 0;
+            foreach (var row in Rows)
+            {
+                var columnIndex = 0;
+                foreach (var cell in row.Value.Cells)
+                {
+                    if (!string.IsNullOrEmpty(cell.Value))
+                        columnCount = Math.Max(columnCount, columnIndex + 1);
+
+                    columnIndex++;
+                }
+            }
+
+            if (columnCount == 0)
+                columnCount = Rows.Max(r => r.Value.Cells.Count);
+
             var columns = new ExcelColumn[columnCount];
             foreach (var row in Rows)
             {

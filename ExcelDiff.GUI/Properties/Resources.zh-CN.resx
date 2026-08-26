@@ -357,6 +357,12 @@
   <data name="Msg_WarnSize" xml:space="preserve">
     <value>记录太多，只显示差异</value>
   </data>
+  <data name="Msg_DiffOutOfMemory" xml:space="preserve">
+    <value>对比因内存不足而失败。文件对 32 位进程而言过大。请缩小对比范围、拆分文件或关闭其他程序后重试。</value>
+  </data>
+  <data name="Msg_DiffError" xml:space="preserve">
+    <value>对比失败：{0}</value>
+  </data>
   <data name="Word_RowHeaderName" xml:space="preserve">
     <value>行标题名称</value>
   </data>

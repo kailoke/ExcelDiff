@@ -357,6 +357,12 @@
   <data name="Msg_WarnSize" xml:space="preserve">
     <value>There are too many records. Display only around diff.</value>
   </data>
+  <data name="Msg_DiffOutOfMemory" xml:space="preserve">
+    <value>The comparison ran out of memory. The file is too large for the 32-bit process. Try reducing the comparison scope, splitting the file, or closing other applications, then retry.</value>
+  </data>
+  <data name="Msg_DiffError" xml:space="preserve">
+    <value>The comparison failed: {0}</value>
+  </data>
   <data name="Word_RowHeaderName" xml:space="preserve">
     <value>Row Header Name</value>
   </data>

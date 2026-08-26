@@ -67,6 +67,8 @@
     "Message_NoDiff":  "There is no difference.",
     "Message_NoDiffFormat":  "Left[{0}] - Right[{1}] = There is no difference.",
     "Message_Reboot":  "ExcelDiff will close to change the language.",
+    "Msg_DiffError":  "The comparison failed: {0}",
+    "Msg_DiffOutOfMemory":  "The comparison ran out of memory. The file is too large for the 32-bit process. Try reducing the comparison scope, splitting the file, or closing other applications, then retry.",
     "Msg_ExtractingDiff":  "Extracting Diff ...",
     "Msg_OutofSheetRange":  "Sheet index of the applied file settings is out of range.\nWill use first sheet.\nIf you don\u0027t want to apply file settings, enable \"Ignore File Setting\".",
     "Msg_ReadingFiles":  "Reading Files ...",

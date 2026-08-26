@@ -67,6 +67,8 @@
     "Message_NoDiff":  "没有区别。",
     "Message_NoDiffFormat":  "左侧[{0}] - 右侧[{1}] = 没有区别",
     "Message_Reboot":  "ExcelDiff将关闭以变更语言",
+    "Msg_DiffError":  "对比失败：{0}",
+    "Msg_DiffOutOfMemory":  "对比因内存不足而失败。文件对 32 位进程而言过大。请缩小对比范围、拆分文件或关闭其他程序后重试。",
     "Msg_ExtractingDiff":  "提取差异...",
     "Msg_OutofSheetRange":  "应用文件设置后表格索引超出范围。\n将使用第一张表。\n如果您不想应用文件设置，请弃用“忽略文件设置”。",
     "Msg_ReadingFiles":  "读取文件 ...",
