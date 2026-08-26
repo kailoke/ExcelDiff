@@ -7,6 +7,7 @@ using ExcelDiff.GUI.Commands;
 using ExcelDiff.GUI.Localization;
 using ExcelDiff.GUI.Settings;
 using ExcelDiff.GUI.Views;
+using CommandLine;
 
 namespace ExcelDiff.GUI
 {
@@ -189,14 +190,18 @@ namespace ExcelDiff.GUI
 
         private bool TryParseOption(string[] args, out CommandLineOption option)
         {
-            option = new CommandLineOption();
-            if (CommandLine.Parser.Default.ParseArguments(args, option))
-            {
-                option.ConvertToFullPath();
-                return true;
-            }
-
-            return false;
+            option = null;
+            CommandLineOption local = null;
+            bool parsed = false;
+            CommandLine.Parser.Default.ParseArguments<CommandLineOption>(args)
+                .WithParsed(o =>
+                {
+                    local = o;
+                    local.ConvertToFullPath();
+                    parsed = true;
+                });
+            option = local;
+            return parsed;
         }
 
         private void RouteCommand(CommandLineOption option)
@@ -220,12 +225,18 @@ namespace ExcelDiff.GUI
 
         private ICommand CreateCommand(string[] args)
         {
-            if (CommandLine.Parser.Default.ParseArguments(args, CommandLineOption))
-            {
-                StoreOption();
-                CommandLineOption.ConvertToFullPath();
-                return CommandFactory.Create(CommandLineOption);
-            }
+            ICommand command = null;
+            CommandLine.Parser.Default.ParseArguments<CommandLineOption>(args)
+                .WithParsed(o =>
+                {
+                    CommandLineOption = o;
+                    StoreOption();
+                    CommandLineOption.ConvertToFullPath();
+                    command = CommandFactory.Create(CommandLineOption);
+                });
+
+            if (command != null)
+                return command;
 
             throw new Exceptions.ExcelDiffException(true, $"Invalid argument.\nargument:\n{string.Join(" ", args)}");
         }
