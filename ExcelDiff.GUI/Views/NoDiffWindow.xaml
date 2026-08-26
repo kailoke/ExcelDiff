@@ -3,12 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:props="clr-namespace:ExcelDiff.GUI.Properties"
         WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         SizeToContent="Height"
-        Width="400"
-        Background="White"
+        Width="420"
         FontFamily="Microsoft YaHei UI, Segoe UI"
         Loaded="NoDiffWindow_Loaded"
         PreviewKeyDown="NoDiffWindow_PreviewKeyDown">
@@ -43,58 +44,140 @@
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="DialogButtonStyle" TargetType="Button">
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Width" Value="120"/>
+      <Setter Property="Height" Value="40"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="8">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.9"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.74"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="44"/>
-      <RowDefinition Height="*"/>
-    </Grid.RowDefinitions>
 
-    <Border Grid.Row="0"
-            Background="#FF43A047"
-            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-      <Grid>
-        <TextBlock x:Name="TitleText"
-                   Foreground="White"
-                   FontSize="15"
-                   FontWeight="Bold"
-                   VerticalAlignment="Center"
-                   Margin="16,0,0,0"/>
-        <Button x:Name="CloseButton"
-                Style="{StaticResource CloseXButtonStyle}"
-                Content="&#x2715;"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Center"
-                Margin="0,0,8,0"
-                Click="CloseButton_Click"/>
-      </Grid>
-    </Border>
+  <Window.Triggers>
+    <EventTrigger RoutedEvent="Window.Loaded">
+      <BeginStoryboard>
+        <Storyboard>
+          <DoubleAnimation Storyboard.TargetName="FlashOverlay"
+                           Storyboard.TargetProperty="Opacity"
+                           From="0" To="0.55" Duration="0:0:0.28"
+                           AutoReverse="True" RepeatBehavior="3x"/>
+          <ColorAnimation Storyboard.TargetName="TitleBarBorder"
+                          Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                          From="#2E7D32" To="#66BB6A" Duration="0:0:0.28"
+                          AutoReverse="True" RepeatBehavior="3x"/>
+        </Storyboard>
+      </BeginStoryboard>
+    </EventTrigger>
+  </Window.Triggers>
 
-    <StackPanel Grid.Row="1" Margin="28,24,28,24">
-      <TextBlock x:Name="MessageText"
-                 TextWrapping="Wrap"
-                 TextAlignment="Center"
-                 FontSize="14"
-                 Foreground="#FF333333"/>
+  <Border Margin="14"
+          Background="#FFFFFF"
+          BorderBrush="#D0D7DE"
+          BorderThickness="1"
+          CornerRadius="10">
+    <Border.Effect>
+      <DropShadowEffect Color="#40000000" BlurRadius="18" ShadowDepth="6" Direction="270" Opacity="0.30"/>
+    </Border.Effect>
 
-      <StackPanel x:Name="ButtonsRow"
-                  Orientation="Horizontal"
-                  HorizontalAlignment="Center"
-                  Margin="0,24,0,0">
-        <Button x:Name="CloseResultButton"
-                Content="{x:Static props:Resources.Word_Exit}"
-                Background="#FFFF8A80"
-                Foreground="White"
-                BorderThickness="0"
-                FontSize="14"
-                FontWeight="Bold"
-                Width="200"
-                Height="38"
-                Margin="0,24,0,0"
-                IsDefault="True"
-                Click="CloseResultButton_Click"
-                Cursor="Hand"/>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="46"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <Border x:Name="TitleBarBorder"
+              Grid.Row="0"
+              Background="#2E7D32"
+              CornerRadius="9,9,0,0"
+              MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+        <Grid>
+          <TextBlock x:Name="TitleText"
+                     Foreground="White"
+                     FontSize="15"
+                     FontWeight="Bold"
+                     VerticalAlignment="Center"
+                     Margin="16,0,0,0"/>
+          <Rectangle x:Name="FlashOverlay"
+                     Fill="White"
+                     Opacity="0"
+                     IsHitTestVisible="False"/>
+          <Button x:Name="CloseButton"
+                  Style="{StaticResource CloseXButtonStyle}"
+                  Content="&#x2715;"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Center"
+                  Margin="0,0,8,0"
+                  Click="CloseButton_Click"/>
+        </Grid>
+      </Border>
+
+      <StackPanel Grid.Row="1" Margin="28,24,28,22">
+        <TextBlock x:Name="MessageText"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   FontSize="14"
+                   Foreground="#37474F"/>
+
+        <StackPanel x:Name="ButtonsRow"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,22,0,0">
+          <Button x:Name="CloseResultButton"
+                  Style="{StaticResource DialogButtonStyle}"
+                  Background="#FFEBEE"
+                  Foreground="#C62828"
+                  BorderBrush="#FFCDD7E5"
+                  BorderThickness="1"
+                  Width="200"
+                  Margin="0"
+                  IsDefault="True"
+                  Click="CloseResultButton_Click">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="{x:Static props:Resources.Word_Exit}"/>
+              <TextBlock Text="  Enter" FontSize="11" FontWeight="Normal" Opacity="0.8" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <Button x:Name="OkButton"
+                  Style="{StaticResource DialogButtonStyle}"
+                  Background="#2E7D32"
+                  Foreground="White"
+                  BorderThickness="0"
+                  Width="120"
+                  Margin="12,0,0,0"
+                  Click="CloseButton_Click">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="确定"/>
+              <TextBlock Text="  Esc" FontSize="11" FontWeight="Normal" Opacity="0.8" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+        </StackPanel>
       </StackPanel>
-    </StackPanel>
-  </Grid>
+    </Grid>
+  </Border>
 </Window>
