@@ -1,0 +1,7 @@
+#!/bin/sh
+# post-merge: refresh the AI context git-state snapshot and recalibrate CODEX.md
+# line numbers after a merge/pull (code may have changed).
+
+ROOT=$(git rev-parse --show-toplevel)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ROOT/AI_Script/refresh_state.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ROOT/AI_Script/refresh_codex.ps1"

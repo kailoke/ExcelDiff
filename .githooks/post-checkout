@@ -1,0 +1,5 @@
+#!/bin/sh
+# post-checkout: refresh the AI context git-state snapshot after a checkout/switch.
+
+ROOT=$(git rev-parse --show-toplevel)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ROOT/AI_Script/refresh_state.ps1"
