@@ -4,6 +4,17 @@
 > `ARCHITECTURE.md` 是工程蓝图（结构、数据流、生命周期、设计约束）。两者互补，改动代码前都要过一遍。
 > 本文件刻意保持精简，深水区一律指向 ARCHITECTURE.md 相应章节。
 
+## 0. 会话开工清单（快速上手）
+
+> 开工前按序执行；详细说明见对应章节。
+
+1. 在 `D:\ExcelDiff` 工作。先读本文件（会指引 ARCHITECTURE.md / CODEX.md / INVARIANTS.md / ADR.md）。
+2. **版本状态**：读 `PROJECT_STATE.md` 获取当前分支 / HEAD / 最近提交 / 未提交改动（单一事实源，由 `AI_Script\refresh_state.ps1` 生成，勿手改）；仍 `git status` / `git log --oneline -3` 自确认。
+3. **验收**：改完跑 `powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1` 必须全绿（EDE 主版本编译 + NetDiff 31 用例 + lang↔resx 同步 + 坑扫描）；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。ED（NPOI）为保留保底代码、不参与日常门禁（如需 ED/EDE 对照，可手工跑 `DiffHarness\run_diff_compare.ps1`）。
+4. **提交**：AI 不直接 commit；改动完成后给出 Commit subject/description 供审查，由用户决定是否提交（§7.10）。
+5. **约束**：遵循 §10 编码规范；不主动加注释（核心/易错/算法处除外）；UI 文本走 Resources.*；不动 backup_installed_*。
+6. **部署**：提权写 Program Files 用 `Start-Process -Verb RunAs`（**不带 -Wait**）+ 轮询日志 DONE（ADR-011）；每次部署后立即重启常驻（--startup）。
+
 ## 1. 项目一句话
 
 ExcelDiff：Windows 桌面 GUI 差异对比工具（xls/xlsx/csv/tsv），可作 Git/Mercurial difftool。
@@ -23,7 +34,6 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `INVARIANTS.md` | 工程硬约束清单（改动前逐条核对，违反=阻断提交） |
 | `ADR.md` | 架构决策记录（关键决策的 why，避免重开争论） |
 | `PROJECT_STATE.md` | **项目与 git 版本状态单一事实源**（分支/HEAD/最近提交/未提交改动；由 `AI_Script\refresh_state.ps1` 生成，勿手改） |
-| `StartPrompt.md` | 其他会话的开工提示模板（含提交准则） |
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDE 主版本 + NetDiff 单测 + lang↔resx 同步 + WIP 快照 |
 | `README.md` | 用户向使用说明（CLI 参数、快捷键、外部命令） |
@@ -67,7 +77,7 @@ Build\Release\                   # WriteableBitmapEx 产物（gitignore）
 AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 README.md / README.en            # 用户文档（中/英）；media\ 截图；LICENSE（MIT，含 Kailoke 版权）
-AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECTURE/CODEX/INVARIANTS/ADR/PROJECT_STATE/StartPrompt
+AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECTURE/CODEX/INVARIANTS/ADR/PROJECT_STATE
 ```
 
 依赖关系：`GUI → ExcelDiff → NetDiff`；`GUI → FastWpfGrid → WriteableBitmapEx.Wpf`。
@@ -187,6 +197,6 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 AI 会话以资深主程序视角工作，对整体工程质量负责：
 1. **框架与维护**：改动前读本文 + ARCHITECTURE + CODEX + INVARIANTS + ADR；保持架构一致性，不引入与既有模式冲突的方案。
 2. **代码性能**：改动后评估性能影响（diff 管道、渲染、事件、持久化）；触及 `#if` 双版本/读取层/网格渲染等热路径先核对 INVARIANTS F 区与性能项清单。
-3. **测试纪律**：任何功能改动跑完整测试（`AI_Script\verify.ps1` + DiffHarness 双文件回归），见 StartPrompt 验收节；动 IPC/生命周期/读取层先核对 INVARIANTS。
-4. **指导其他会话**：本文件 + ARCHITECTURE/CODEX/INVARIANTS/ADR 即权威上下文；其他会话用 `StartPrompt.md` 开工；发现文档与代码不一致时修正文档。
+3. **测试纪律**：任何功能改动跑完整测试（`AI_Script\verify.ps1` + DiffHarness 双文件回归），见 §0 开工清单 / §4 门禁；动 IPC/生命周期/读取层先核对 INVARIANTS。
+4. **指导其他会话**：本文件 + ARCHITECTURE/CODEX/INVARIANTS/ADR 即权威上下文；其他会话直接读本文件（§0 开工清单）；发现文档与代码不一致时修正文档。
 5. **质量门**：不擅自提交 git（§7.10）；改动给出 commit subject/description 供审查；高危区（diff 算法、读取层、生命周期）改动需在提交说明中注明测试证据。
