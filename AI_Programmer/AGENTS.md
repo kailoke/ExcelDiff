@@ -35,6 +35,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `ADR.md` | 架构决策记录（关键决策的 why，避免重开争论） |
 | `PROJECT_STATE.md` | **项目与 git 版本状态单一事实源**（分支/HEAD/最近提交/未提交改动；由 `AI_Script\refresh_state.ps1` 生成，勿手改） |
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
+| `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDE 主版本 + NetDiff 单测 + lang↔resx 同步 + WIP 快照 |
 | `README.md` | 用户向使用说明（CLI 参数、快捷键、外部命令） |
 
@@ -74,7 +75,7 @@ lang\                            # 外置语言文件 en-US.json / zh-CN.json（
 packages\refs\                   # .NET Framework 参考程序集（构建必需，见 §5）
 backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
-AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新
+AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 README.md / README.en            # 用户文档（中/英）；media\ 截图；LICENSE（MIT，含 Kailoke 版权）
 AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECTURE/CODEX/INVARIANTS/ADR/PROJECT_STATE
@@ -93,6 +94,8 @@ AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECT
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
+
+> **会话约定（固化）**：用户在本会话中说"构建"时，**即执行整条"构建 → 部署 → 重启"流程**，而非仅本地编译。直接用固化脚本 `AI_Script\Deploy-And-Restart.ps1`（内部已串联构建 EDE + 部署 + 非提权拉起常驻，且仅对复制步骤自提权、父进程轮询日志；见 §7.6）。原因：常驻进程从 `D:\Program Files\ExcelDiffEDRTool` 启动并锁住 exe，仅本地 `dotnet msbuild` 不会让运行中的进程拿到新二进制——必须部署覆盖后再重启才生效。验证/排查前的纯本地编译可用上面的 `dotnet msbuild` 命令，但用户口述"构建"一律走脚本全流程。
 
 ### ED（保底版，NPOI 读取，代码保留 / 不参与日常构建）— 产物 `ExcelDiff.GUI.exe`
 

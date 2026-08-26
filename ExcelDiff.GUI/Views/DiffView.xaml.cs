@@ -386,7 +386,7 @@ namespace ExcelDiff.GUI.Views
 
         private void DiffButton_Click(object sender, RoutedEventArgs e)
         {
-            ExecuteDiff();
+            ExecuteDiff(preserveSelection: true);
         }
 
         public void ApplyDiff(CommandLineOption option)
@@ -522,7 +522,7 @@ namespace ExcelDiff.GUI.Views
             return diff;
         }
 
-        private void ExecuteDiff(bool isStartup = false)
+        private void ExecuteDiff(bool isStartup = false, bool preserveSelection = false)
         {
             if (!File.Exists(SrcPathTextBox.Text) || !File.Exists(DstPathTextBox.Text))
                 return;
@@ -534,13 +534,27 @@ namespace ExcelDiff.GUI.Views
             var srcWorkbook = workbooks.Item1;
             var dstWorkbook = workbooks.Item2;
 
-            // Repopulate the sheet dropdowns from the freshly read workbooks and
-            // reset both selections to the first sheet. The process is persistent,
-            // so the combobox may still hold the previous comparison's sheet names;
-            // resolving a sheet against that stale list throws "given key not present".
+            // Repopulate the sheet dropdowns from the freshly read workbooks. The process
+            // is persistent, so the combobox may still hold the previous comparison's sheet
+            // names; resolving a sheet against that stale list throws "given key not present".
+            // When re-executing from the main window (e.g. the Extract Diff button) the user's
+            // manual sheet selection must be honored, so we restore it after the repopulation
+            // instead of forcing the first sheet.
             var vm = GetViewModel();
             if (vm != null)
+            {
+                var prevSrcIndex = SrcSheetCombobox.SelectedIndex;
+                var prevDstIndex = DstSheetCombobox.SelectedIndex;
                 vm.SetSheetNames(srcWorkbook.Sheets.Keys, dstWorkbook.Sheets.Keys);
+
+                if (preserveSelection)
+                {
+                    SrcSheetCombobox.SelectedIndex =
+                        (prevSrcIndex >= 0 && prevSrcIndex < vm.SrcSheetNames.Count) ? prevSrcIndex : 0;
+                    DstSheetCombobox.SelectedIndex =
+                        (prevDstIndex >= 0 && prevDstIndex < vm.DstSheetNames.Count) ? prevDstIndex : 0;
+                }
+            }
 
             var fileSettings = FindFileSettings(isStartup);
             var srcFileSetting = fileSettings.Item1;
