@@ -1,6 +1,6 @@
 # Invoke-ExcelDiff.ps1 - Safe wrapper for starting a GUI diff.
 #
-# AGENTS.md 8.3 / INVARIANTS C4: NEVER `Start-Process ... -Wait` on the ExcelDiff
+# AI_Programmer\AGENTS.md 8.3 / INVARIANTS C4: NEVER `Start-Process ... -Wait` on the ExcelDiff
 # forwarder. When no resident instance is running, the forwarder becomes resident
 # itself and never exits, so -Wait hangs forever.
 #
@@ -9,7 +9,7 @@
 # scripts whenever you need to launch and (optionally) wait for a diff session.
 #
 # Usage:
-#   powershell -ExecutionPolicy Bypass -File Invoke-ExcelDiff.ps1 `
+#   powershell -ExecutionPolicy Bypass -File AI_Script\Invoke-ExcelDiff.ps1 `
 #       -Executable D:\Program Files\ExcelDiffTool\ExcelDiff.GUI.exe `
 #       -SrcPath <src> -DstPath <dst> [-WaitClose] [-TimeoutSeconds 90]
 #

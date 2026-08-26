@@ -6,10 +6,10 @@
 # ExcelDiff
 
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
-同一份源码编译出两套产品：
+同一份源码编译出两套产品（EDE 为主版本，ED 保留保底对照）：
 
-- **EDE**（优先/基准版，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 ED 的 28%，提升约 72%），开发与基准测试以 EDE 为准。
-- **ED**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，作为 EDR 盲区兜底与验证对照。
+- **EDE**（主版本，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 ED 的 28%，提升约 72%），日常构建 / 部署 / 门禁均以 EDE 为准。
+- **ED**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，代码保留作为 EDR 盲区兜底与验证对照，不参与日常构建 / 部署。
 
 两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
 
@@ -44,31 +44,30 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录。
 
-### EDE（优先/基准版，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
+### EDE（主版本，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### ED（保底版，NPOI 读取）— 产物 `ExcelDiff.GUI.exe`
+### ED（保底版，NPOI 读取，代码保留 / 不日常构建）— 产物 `ExcelDiff.GUI.exe`
 
-同上，去掉 `/p:EdrRead=true`（默认）。
+同上，去掉 `/p:EdrRead=true`（默认）。仅在需要 ED 保底对照时手工构建。
 
 ### 部署次序与常驻进程重启
 
 1. 构建 EDE → 部署 EDE。
-2. 构建 ED → 部署 ED。
-3. **每次部署后立即重启对应常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
+2. **每次部署后立即重启 EDE 常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
 
-原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。注意：不能在同一条命令里连续构建两个变体（增量构建会互删输出），必须分步。
+原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。ED（NPOI）保底代码保留但不参与日常构建 / 部署。
 
 ### 一键验证门禁
 
 ```
-powershell -ExecutionPolicy Bypass -File verify.ps1
+powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-全绿 = 双版编译通过 + NetDiff 31 用例通过 + lang↔resx 同步。
+全绿 = EDE 主版本编译通过 + NetDiff 31 用例通过 + lang↔resx 同步。
 
 ## 使用方式
 
@@ -202,7 +201,7 @@ vdiff = exceldiff
 
 ## 回归验证
 
-- `verify.ps1`：一键门禁（双版编译 + NetDiff 31 用例 + lang↔resx 同步）。
+- `AI_Script\verify.ps1`：一键门禁（EDE 主版本编译 + NetDiff 31 用例 + lang↔resx 同步）。
 - `DiffHarness\`：headless diff 对比（ED/EDE 输出确定性 diff 文本）。
 - `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 
