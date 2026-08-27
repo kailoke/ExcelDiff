@@ -89,6 +89,7 @@ namespace ExcelDiff.GUI.Settings
         }
 
         private string columnHeaderColorString;
+        [NonSerialized]
         private Color? cachedColumnHeaderColor;
         public string ColumnHeaderColorString
         {
@@ -102,6 +103,7 @@ namespace ExcelDiff.GUI.Settings
         }
 
         private string rowHeaderColorString;
+        [NonSerialized]
         private Color? cachedRowHeaderColor;
         public string RowHeaderColorString
         {
@@ -115,6 +117,7 @@ namespace ExcelDiff.GUI.Settings
         }
 
         private string addedColorString;
+        [NonSerialized]
         private Color? cachedAddedColor;
         public string AddedColorString
         {
@@ -128,6 +131,7 @@ namespace ExcelDiff.GUI.Settings
         }
 
         private string removedColorString;
+        [NonSerialized]
         private Color? cachedRemovedColor;
         public string RemovedColorString
         {
@@ -141,6 +145,7 @@ namespace ExcelDiff.GUI.Settings
         }
 
         private string modifiedColorString;
+        [NonSerialized]
         private Color? cachedModifiedColor;
         public string ModifiedColorString
         {
