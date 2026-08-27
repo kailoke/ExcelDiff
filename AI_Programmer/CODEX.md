@@ -21,11 +21,11 @@ exe diff -s <src> -d <dst> ...
        ├─ App.CurrentDiffView = diffView；window.Show()
        └─ window.Closed → diffView.RemoveEventListeners()           防静态分发器泄漏
   └─ DiffView 内（用户点“显示差异”或启动即跑）
-       ├─ ReadWorkbooks()                          DiffView.xaml.cs:458
+       ├─ ReadWorkbooks()                          DiffView.xaml.cs:445
        │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EDE:EDR / ED:NPOI
-       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:533
+       ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:520
        │     ProgressWindow.DoWorkWithModal → ExcelSheet.Diff(src,dst,config)
-       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:550
+       └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:537
              ├─ 选 sheet → ExecuteDiff → DiffGridModel(diff, Type)
              ├─ GetViewModel().UpdateDiffSummary(summary)
              ├─ NotifyEqual 且无差异 → NoDiffWindow.ShowDialog()     （原 MessageBox）
@@ -44,7 +44,7 @@ exe diff -s <src> -d <dst> ...
        ├─ ShowMainWindow()                                                保留最大化状态恢复窗口
        └─ RouteCommand(option)                    App.xaml.cs:207
              ├─ CurrentDiffView==null → new DiffCommand(option).Execute()
-             └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:405
+             └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:392
 ```
 
 ## 2. GUI 关键类型（ExcelDiff.GUI）
