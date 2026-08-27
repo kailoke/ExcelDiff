@@ -9,7 +9,7 @@
 > 开工前按序执行；详细说明见对应章节。
 
 1. 在 `D:\ExcelDiff` 工作。先读本文件（会指引 ARCHITECTURE.md / CODEX.md / INVARIANTS.md / ADR.md）。
-2. **版本状态**：读 `PROJECT_STATE.md` 获取当前分支 / HEAD / 最近提交 / 未提交改动（单一事实源，由 `AI_Script\refresh_state.ps1` 生成，勿手改）；仍 `git status` / `git log --oneline -3` 自确认。
+2. **版本状态**：读 `PROJECT_STATE.md` 获取当前分支 / HEAD / 最近提交（单一事实源，由 `AI_Script\refresh_state.ps1` 生成，勿手改）；仍 `git status` / `git log --oneline -3` 自确认。
 3. **验收**：改完跑 `powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1` 必须全绿（EDE 主版本编译 + NetDiff 31 用例 + lang↔resx 同步 + 坑扫描）；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。ED（NPOI）为保留保底代码、不参与日常门禁（如需 ED/EDE 对照，可手工跑 `DiffHarness\run_diff_compare.ps1`）。
 4. **提交**：AI 不直接 commit；改动完成后给出 Commit subject/description 供审查，由用户决定是否提交（§7.10）。
 5. **约束**：遵循 §10 编码规范；不主动加注释（核心/易错/算法处除外）；UI 文本走 Resources.*；不动 backup_installed_*。
@@ -33,7 +33,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `CODEX.md` | 代码级索引：核心类公开方法、两条关键调用链、线程模型（类级导航） |
 | `INVARIANTS.md` | 工程硬约束清单（改动前逐条核对，违反=阻断提交） |
 | `ADR.md` | 架构决策记录（关键决策的 why，避免重开争论） |
-| `PROJECT_STATE.md` | **项目与 git 版本状态单一事实源**（分支/HEAD/最近提交/未提交改动；由 `AI_Script\refresh_state.ps1` 生成，勿手改） |
+| `PROJECT_STATE.md` | **项目与 git 版本状态单一事实源**（分支/HEAD/最近提交；由 `AI_Script\refresh_state.ps1` 生成，勿手改） |
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDE 主版本 + NetDiff 单测 + lang↔resx 同步 + WIP 快照 |
@@ -182,7 +182,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 
 ## 9. 项目状态
 
-> **动态 git 状态（分支 / HEAD / 最近提交 / 未提交改动）以 `PROJECT_STATE.md` 为单一事实源**（`AI_Script\refresh_state.ps1` 刷新）。
+> **动态 git 状态（分支 / HEAD / 最近提交）以 `PROJECT_STATE.md` 为单一事实源**（`AI_Script\refresh_state.ps1` 刷新）。
 
 - **版本定位**：EDE=EDR 主版本（读取快约 72%）；ED=NPOI 保底代码保留、不日常构建（见 §7.5 / ADR-012）。
 - **部署目录**：`D:\Program Files\ExcelDiffEDRTool`（EDE 主版本）。

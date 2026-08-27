@@ -1,6 +1,6 @@
 # refresh_state.ps1 - Regenerate AI_Programmer\PROJECT_STATE.md from live git state.
 #
-# Single source of truth for "which branch / commit am I on, what is uncommitted".
+# Single source of truth for "which branch / commit am I on".
 # Hand-editing of PROJECT_STATE.md is pointless: this script overwrites it.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File AI_Script\refresh_state.ps1
@@ -30,10 +30,6 @@ $recent   = Invoke-Git @('log', '--oneline', '-10', '--decorate')
 $upstream = Invoke-Git @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}')
 if ($LASTEXITCODE -ne 0) { $upstream = '(no upstream)' }
 
-$statusRaw = & git -C $root status --short 2>&1 | Out-String
-if ([string]::IsNullOrWhiteSpace($statusRaw)) { $status = '(working tree clean)' }
-else { $status = $statusRaw.Trim() }
-
 $ts = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')
 
 $lines = [System.Collections.Generic.List[string]]::new()
@@ -56,11 +52,6 @@ $lines.Add('')
 $lines.Add('## Recent commits')
 $lines.Add('```')
 $lines.Add($recent)
-$lines.Add('```')
-$lines.Add('')
-$lines.Add('## Uncommitted changes (working tree vs HEAD)')
-$lines.Add('```')
-$lines.Add($status)
 $lines.Add('```')
 $lines.Add('')
 
