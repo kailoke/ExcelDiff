@@ -13,7 +13,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot   # repo root (script lives in AI_Script\)
-$refs = Join-Path $root 'packages\refs'
+$refs = Join-Path $root 'packages\refs\.NETFramework\v4.7.2'
 $fail = $false
 
 function FailStep($msg) { $script:fail = $true; Write-Host ('[FAIL] ' + $msg) -ForegroundColor Red }
@@ -28,25 +28,36 @@ $runnerExe  = Join-Path $root 'NetDiff\NetDiff.TestRunner\bin\Release\NetDiff.Te
 if ($SkipBuild) {
     if (Test-Path $runnerExe) { OkStep 'TestRunner already built, skipping build' }
 } else {
-    & dotnet msbuild $runnerProj /p:Configuration=Release "/p:TargetFrameworkRootPath=$refs" /t:Build /v:m /nologo
+    & dotnet msbuild $runnerProj /p:Configuration=Release "/p:FrameworkPathOverride=$refs" /t:Build /v:m /nologo
     if ($LASTEXITCODE -ne 0) { FailStep 'NetDiff.TestRunner build failed'; exit 1 }
 }
 if (-not (Test-Path $runnerExe)) { FailStep 'NetDiff.TestRunner.exe missing'; exit 1 }
 & $runnerExe | ForEach-Object { Write-Host '        ' $_ }
 if ($LASTEXITCODE -ne 0) { FailStep 'NetDiff unit tests failed' } else { OkStep 'NetDiff unit tests passed' }
 
-# --- 2. Build EDE (main version, EDR read) ---
+# --- 2. Restore + Build EDE (main version, EDR read) ---
 if (-not $SkipBuild) {
     $guiProj = Join-Path $root 'ExcelDiff.GUI\ExcelDiff.GUI.csproj'
+    $libProj = Join-Path $root 'ExcelDiff\ExcelDiff.csproj'
+    $shellProj = Join-Path $root 'ExcelDiff.ShellExtension\ExcelDiff.ShellExtension.csproj'
+    $nugetConfig = Join-Path $root '.nuget\NuGet.Config'
     $common = @(
         '/p:Configuration=Release',
         '/p:EdrRead=true',
-        "/p:TargetFrameworkRootPath=$refs",
+        "/p:FrameworkPathOverride=$refs",
         '/p:IncludePackageReferencesDuringMarkupCompilation=false',
         '/p:GenerateResourceMSBuildArchitecture=CurrentArchitecture',
         '/p:GenerateResourceMSBuildRuntime=CurrentRuntime',
         '/t:Build', '/v:m', '/nologo'
     )
+
+    Write-Host '--- Restore packages (GUI + ExcelDiff + ShellExtension) ---'
+    & dotnet restore $guiProj --configfile $nugetConfig /v:m
+    if ($LASTEXITCODE -ne 0) { FailStep 'Package restore failed (GUI)'; exit 1 }
+    & dotnet restore $libProj --configfile $nugetConfig /v:m
+    if ($LASTEXITCODE -ne 0) { FailStep 'Package restore failed (ExcelDiff)'; exit 1 }
+    & dotnet restore $shellProj --configfile $nugetConfig /v:m
+    if ($LASTEXITCODE -ne 0) { FailStep 'Package restore failed (ShellExtension)'; exit 1 }
 
     Write-Host '--- Build EDE (EDR, main) ---'
     & dotnet msbuild $guiProj @common

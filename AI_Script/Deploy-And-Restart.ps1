@@ -127,9 +127,15 @@ function Start-Resident($exe, $wd) {
 
 try {
     if (-not $NoBuild) {
+        Write-Host "== Restore EDE packages =="
+        dotnet restore ExcelDiff.GUI/ExcelDiff.GUI.csproj --configfile "D:\ExcelDiff\.nuget\NuGet.Config" /v:m
+        if ($LASTEXITCODE -ne 0) { throw "EDE restore failed (exit $LASTEXITCODE)" }
+        dotnet restore ExcelDiff/ExcelDiff.csproj --configfile "D:\ExcelDiff\.nuget\NuGet.Config" /v:m
+        if ($LASTEXITCODE -ne 0) { throw "ExcelDiff restore failed (exit $LASTEXITCODE)" }
+
         Write-Host "== Build EDE (main) =="
         dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true `
-            /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" `
+            /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" `
             /p:IncludePackageReferencesDuringMarkupCompilation=false `
             /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture `
             /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo

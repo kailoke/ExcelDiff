@@ -72,7 +72,7 @@ FastWpfGrid\                     # 高性能虚拟化网格控件 + WriteableBit
 ExcelDiff.ShellExtension\       # COM 外壳扩展（资源管理器右键菜单）
 ExcelDiff.Installer\            # VDProj MSI 打包（不参与日常构建）
 lang\                            # 外置语言文件 en-US.json / zh-CN.json（UTF-8，随 exe 目录部署）
-packages\refs\                   # .NET Framework 参考程序集（构建必需，见 §5）
+packages\refs\                   # .NET Framework 参考程序集（构建必需，见 §4）
 backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
 AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
@@ -87,13 +87,15 @@ AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECT
 ## 4. 构建工具链
 
 - 本机仅有 `dotnet SDK 8.0`（`C:\Program Files\dotnet\dotnet.exe`），**没有独立 msbuild**，用 `dotnet msbuild`。
-- 关键：.NET Framework 引用程序集不在本机 SDK 里，**必须**传 `TargetFrameworkRootPath="D:\ExcelDiff\packages\refs"`。
-- 下列命令均已在本机验证可编译（Release, AnyCPU）。
+- 关键：.NET Framework 参考程序集不在本机 SDK 里，**必须**传 `/p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2"`（旧属性名 `TargetFrameworkRootPath` 已弃用）。三个 csproj 现为 SDK-style（`<Project Sdk="Microsoft.NET.Sdk">`），依赖走 `PackageReference`（原 `packages.config` 已删除，`dotnet restore` 还原）。GUI 构建还依赖 `ExcelDiff.GUI.csproj` 内的 `EnsureNetStandardForMarkupCompile` 目标（net472 标记编译器需 `netstandard` 桥接程序集）与 `AppendTargetFrameworkToOutputPath=false`（输出保持扁平 `bin\Release\`，兼容部署脚本）。
+
+- `ExcelDiff.ShellExtension` 的 PFX 强名签名在 `dotnet msbuild`（.NET Core MSBuild）下不受支持（硬编码报错“不支援 PFX 签名”），与旧 csproj 同限制；需用 Framework `msbuild.exe` / Visual Studio 签名（本机无独立 `msbuild.exe`，`Build-Installer.ps1` 的 ShellExtension 步骤同理）。`
+- 下列命令均已在本机验证可编译（Release, AnyCPU）。SDK-style 依赖走 `PackageReference`，**手动 `dotnet msbuild` 前需先 `dotnet restore <proj> --configfile D:\ExcelDiff\.nuget\NuGet.Config`**（日常走 `verify.ps1` / `Deploy-And-Restart.ps1` 已内置 restore）。
 
 ### EDE（主版本，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
 > **会话约定（固化）**：用户在本会话中说"构建"时，**即执行整条"构建 → 部署 → 重启"流程**，而非仅本地编译。直接用固化脚本 `AI_Script\Deploy-And-Restart.ps1`（内部已串联构建 EDE + 部署 + 非提权拉起常驻，且仅对复制步骤自提权、父进程轮询日志；见 §7.6）。原因：常驻进程从 `D:\Program Files\ExcelDiffEDRTool` 启动并锁住 exe，仅本地 `dotnet msbuild` 不会让运行中的进程拿到新二进制——必须部署覆盖后再重启才生效。验证/排查前的纯本地编译可用上面的 `dotnet msbuild` 命令，但用户口述"构建"一律走脚本全流程。
@@ -105,7 +107,7 @@ dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:Ed
 ### 只构建核心库（快速验证读取层改动）
 
 ```
-dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /t:Build /v:m /nologo
 ```
 
 ### NetDiff 单测（离线 runner，零第三方依赖）
@@ -113,7 +115,7 @@ dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:TargetFram
 本机无 VS/vstest，MSTest 程序集不在 `packages\refs`；`NetDiff.TestRunner` 用自带 MSTest shim + 反射执行 `NetDiff.Test\Test.cs` 的 31 个用例。
 
 ```
-dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configuration=Release /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /t:Build /v:m /nologo
+dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configuration=Release /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /t:Build /v:m /nologo
 & "NetDiff\NetDiff.TestRunner\bin\Release\NetDiff.TestRunner.exe"
 ```
 
@@ -194,7 +196,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 - .NET Framework 4.6.2，C# 老式写法（无 nullable reference、无 target-typed new、无文件级 namespace；`using` 顶部、`{}` 内部成对）。
 - 命名空间 = 目录名（`ExcelDiff.GUI.ViewModels`、`ExcelDiff.GUI.Settings` 等）。
 - ViewModel 继承 Prism `BindableBase`；设置类走 `Setting<T>`（继承 `SerializableBindableBase`）+ `IgnoreEqualAttribute`。
-- 条件编译用 `#if NPOI_READ / EDR_READ / PERF_TIMING`，不引入新第三方依赖（除非有充分理由并同步 packages.config）。
+- 条件编译用 `#if NPOI_READ / EDR_READ / PERF_TIMING`，不引入新第三方依赖（除非有充分理由并在 `ExcelDiff.GUI.csproj`/`ExcelDiff.csproj`/`ExcelDiff.ShellExtension.csproj` 的 `PackageReference` 中同步；原 `packages.config` 已弃用）。
 - 字符串一律走 `Resources.*`（经 `LocalizationManager` 桥接），禁止硬编码 UI 文本。
 - **不主动添加代码注释**；改动遵循现有代码风格与既有模式（核心算法/易错/设计动机处应保留或补充注释，见 ADR-010 对 EditGraph 的注释处理）。
 
