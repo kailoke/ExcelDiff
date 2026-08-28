@@ -41,7 +41,7 @@
 - [ ] **E3 编码规范**：.NET Framework 4.6.2 老式 C#（无 nullable、无 target-typed new、无文件级 namespace）；命名空间=目录名；VM 继承 Prism `BindableBase`，设置类走 `Setting<T>`。（AGENTS §10）
 - [ ] **E4 不主动加注释**：沿用既有代码风格，改动不添加新注释（除非必须解释架构决策）。
 - [ ] **E5 NetDiff 算法**：改动 `EditGraph.cs`/`DiffUtil.cs` 后必须跑通 `NetDiff.TestRunner`（31 用例）。（AGENTS §7.3）
-- [ ] **E6 本地构建命令**：必须传 `TargetFrameworkRootPath="D:\ExcelDiff\packages\refs"`（.NET Framework 引用程序集不在 SDK 里）。（AGENTS §4）
+- [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2"`（.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
 
 ## F. 性能 / 渲染（FastWpfGrid）
 

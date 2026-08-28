@@ -50,7 +50,7 @@ namespace ExcelDiff.ShellExtension
             var arg = !string.IsNullOrEmpty(srcPath) ? $"-s \"{srcPath}\" " : string.Empty;
             arg += !string.IsNullOrEmpty(dstPath) ? $"-d \"{dstPath}\" " : string.Empty;
 
-            string exePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ExcelDiff.GUI.exe");
+            string exePath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "ExcelDiffEDR.GUI.exe");
 
             System.Diagnostics.Process.Start(exePath, arg);
         }
