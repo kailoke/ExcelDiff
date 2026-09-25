@@ -15,8 +15,9 @@
     elevates ONLY the deploy step (which writes to Program Files and kills the old process
     to release file locks) and relaunches the GUI from the NON-elevated parent process.
     Run this script NON-elevated; it self-elevates just the copy worker. If you run it as
-    Administrator, the relaunch will attempt to drop to medium IL via explorer.exe, but
-    running non-elevated is the supported path.
+    Administrator the copy still works, but the script refuses to launch the resident process
+    (it cannot drop back to normal integrity) and tells you to start it from a non-elevated
+    shell - the final restart step then fails with exit code 1.
 
     Elevation uses Start-Process -Verb RunAs WITHOUT -Wait (ADR-011); the parent polls the
     worker log for DONE. Space-containing paths are quoted in the -ArgumentList array (§8.7).
@@ -26,19 +27,34 @@
 
 .PARAMETER NoRestart
     Deploy only; do not relaunch the resident process.
+
+.PARAMETER Src
+    Build output to deploy. Default: ExcelDiff.GUI\bin\Release under the repo root (ProjectPaths.ps1).
+
+.PARAMETER Dst
+    Install directory. Default: $EdrDeployPath from ProjectPaths.ps1 (Program Files base + install
+    directory name, overridable with EXCELDIFF_PROGRAM_FILES / EXCELDIFF_DEPLOY_DIR).
+
+.PARAMETER LogDir
+    Where deploy_edr.log / deploy_all.log are written. Default: repo root.
 #>
 param(
     [switch]$NoBuild,
     [switch]$NoRestart,
-    [string]$Src    = "D:\ExcelDiff\ExcelDiff.GUI\bin\Release",
-    [string]$Dst    = "D:\Program Files\ExcelDiffEDRTool",
-    [string]$LogDir = "D:\ExcelDiff",
+    [string]$Src    = "",
+    [string]$Dst    = "",
+    [string]$LogDir = "",
     # internal: elevated deploy worker (kill + copy)
     [string]$Stage  = "",
     [string]$Log    = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot '..\ProjectPaths.ps1')
+if (-not $Src)    { $Src = $GuiReleasePath }
+if (-not $Dst)    { $Dst = $EdrDeployPath }
+if (-not $LogDir) { $LogDir = $WorkflowLogDir }
 
 function Test-IsAdmin {
     $wp = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -115,27 +131,37 @@ function Invoke-ElevatedDeploy($src, $dst, $log) {
 }
 
 # Relaunch the GUI at the NORMAL user integrity level (never elevated - see header).
+# Returns $true when the resident process is confirmed running.
 function Start-Resident($exe, $wd) {
     if (Test-IsAdmin) {
-        # Drop to medium IL so the GUI matches the interactive (non-elevated) user / difftool.
-        Start-Process "explorer.exe" -ArgumentList "`"$exe`" --startup"
+        # Deliberately NOT launching here. Launching from an elevated parent yields a high-IL GUI,
+        # which a non-elevated difftool (Fork) cannot reach over the named pipe (UIPI); the old
+        # `explorer.exe "<exe>" --startup` downgrade trick was measured to start nothing (2026-09-25).
+        Write-Host "  [!] This shell is ELEVATED - cannot start the resident at normal integrity from here." -ForegroundColor Yellow
+        Write-Host "  [!] Run this in a normal (non-admin) PowerShell instead:" -ForegroundColor Yellow
+        Write-Host "          `"$exe`" --startup" -ForegroundColor Yellow
+        return $false
     }
-    else {
-        Start-Process $exe -ArgumentList "--startup" -WorkingDirectory $wd
-    }
+
+    Start-Process $exe -ArgumentList "--startup" -WorkingDirectory $wd
+    Start-Sleep -Seconds 3
+    $proc = Get-Process -Name "ExcelDiffEDR.GUI" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $proc) { return $false }
+    Write-Host ("  resident running: pid=" + $proc.Id)
+    return $true
 }
 
 try {
     if (-not $NoBuild) {
         Write-Host "== Restore EDE packages =="
-        dotnet restore ExcelDiff.GUI/ExcelDiff.GUI.csproj --configfile "D:\ExcelDiff\.nuget\NuGet.Config" /v:m
+        dotnet restore ExcelDiff.GUI/ExcelDiff.GUI.csproj --configfile "$NuGetConfigPath" /v:m
         if ($LASTEXITCODE -ne 0) { throw "EDE restore failed (exit $LASTEXITCODE)" }
-        dotnet restore ExcelDiff/ExcelDiff.csproj --configfile "D:\ExcelDiff\.nuget\NuGet.Config" /v:m
+        dotnet restore ExcelDiff/ExcelDiff.csproj --configfile "$NuGetConfigPath" /v:m
         if ($LASTEXITCODE -ne 0) { throw "ExcelDiff restore failed (exit $LASTEXITCODE)" }
 
         Write-Host "== Build EDE (main) =="
         dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true `
-            /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" `
+            "/p:FrameworkPathOverride=$RefAssemblyPath" `
             /p:IncludePackageReferencesDuringMarkupCompilation=false `
             /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture `
             /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
@@ -150,10 +176,10 @@ try {
     if (-not $NoRestart) {
         Write-Host "== Relaunch resident process (non-elevated) =="
         Start-Sleep -Seconds 1
-        Start-Resident "$Dst\ExcelDiffEDR.GUI.exe" $Dst
-        Start-Sleep -Seconds 3
-        Get-Process -Name "ExcelDiffEDR.GUI" -ErrorAction SilentlyContinue |
-            Select-Object Name, Id, Path | Format-Table -AutoSize | Out-String | Write-Host
+        if (-not (Start-Resident "$Dst\ExcelDiffEDR.GUI.exe" $Dst)) {
+            throw ("Copy finished but no resident is running. If this shell is elevated, start it " +
+                   "from a non-elevated one: `"$Dst\ExcelDiffEDR.GUI.exe`" --startup")
+        }
     }
     else {
         Write-Host "== -NoRestart: left stopped =="

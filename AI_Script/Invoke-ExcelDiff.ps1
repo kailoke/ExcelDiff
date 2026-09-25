@@ -10,8 +10,11 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File AI_Script\Invoke-ExcelDiff.ps1 `
-#       -Executable D:\Program Files\ExcelDiffTool\ExcelDiff.GUI.exe `
+#       -Executable <install dir>\ExcelDiffEDR.GUI.exe `
 #       -SrcPath <src> -DstPath <dst> [-WaitClose] [-TimeoutSeconds 90]
+#
+# <install dir> = $EdrDeployPath (AI_Script\Deploy-And-Restart.ps1 target); resolve it with
+#   powershell -ExecutionPolicy Bypass -File ProjectPaths.ps1 -Print
 #
 # -WaitClose: additionally poll until the diff window closes (session end).
 # Without it the script returns as soon as the diff window is shown.

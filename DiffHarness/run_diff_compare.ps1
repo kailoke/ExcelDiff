@@ -3,13 +3,16 @@
 #
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1
-#     -RelPath Config/Data/Level.xlsx [-Repo D:\P\BackPack\baggame] [-NoBuild] [-SrcHeader N] [-DstHeader N]
+#     -RelPath Artifact.xlsx [-Repo <xlsx data dir or its git root>] [-NoBuild] [-SrcHeader N] [-DstHeader N]
+#
+# -Repo comes from ProjectPaths.ps1 ($TestDataRepoPath, override with EXCELDIFF_TESTDATA_REPO or -Repo).
+# It may be the git root or a data subfolder inside it; -RelPath is relative to that folder.
 #
 # Exit code 0 = ED and EDE outputs match (excluding the READER line).
 
 param(
-    [string]$RelPath = 'Config/Data/Level.xlsx',
-    [string]$Repo = 'D:\P\BackPack\baggame',
+    [string]$RelPath = 'Artifact.xlsx',
+    [string]$Repo = '',
     [switch]$NoBuild,
     [int]$SrcHeader = -1,
     [int]$DstHeader = -1,
@@ -20,6 +23,26 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $root 'ProjectPaths.ps1')
+
+if (-not $Repo) { $Repo = $TestDataRepoPath }
+if (-not $Repo) { throw 'No test-data repo: pass -Repo <path> or set EXCELDIFF_TESTDATA_REPO (see ProjectPaths.ps1).' }
+if (-not (Test-Path $Repo)) { throw "Test-data path not found: $Repo" }
+
+# -Repo may be a subfolder of the git repo. Walk up looking for .git and accumulate the folder
+# names: parsing `git rev-parse` output would break on non-ASCII paths under PS 5.1 (GBK console).
+$dir = (Resolve-Path $Repo).Path.TrimEnd('\')
+$relPrefix = ''
+while (-not (Test-Path (Join-Path $dir '.git'))) {
+    $leaf = Split-Path -Leaf $dir
+    $parent = Split-Path -Parent $dir
+    if (-not $parent -or $parent -eq $dir) { throw "Not inside a git repository: $Repo" }
+    $relPrefix = if ($relPrefix) { $leaf + '/' + $relPrefix } else { $leaf }
+    $dir = $parent
+}
+$RelInRepo = if ($relPrefix) { $relPrefix + '/' + $RelPath } else { $RelPath }
+Write-Host ("git root=$dir  file=$RelInRepo")
+
 $refs = Join-Path $root 'packages\refs'
 $harnessProj = Join-Path $PSScriptRoot 'DiffHarness.csproj'
 $edExe = Join-Path $PSScriptRoot 'bin\Release\DiffHarness.exe'
@@ -46,8 +69,8 @@ if (-not $NoBuild) {
     if ($LASTEXITCODE -ne 0) { throw 'ED harness build failed' }
 }
 
-Write-Host "Extracting HEAD of $RelPath ..."
-cmd /c "git -C `"$Repo`" show HEAD:$RelPath > `"$head`""
+Write-Host "Extracting HEAD of $RelInRepo ..."
+cmd /c "git -C `"$Repo`" show HEAD:$RelInRepo > `"$head`""
 if (-not (Test-Path $head)) { throw 'HEAD extraction failed' }
 $work = Join-Path $Repo ($RelPath -replace '/', '\')
 

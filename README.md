@@ -42,12 +42,12 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 ## 构建与部署
 
-本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录。
+本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录；下文 `<repo>` 表示仓库根目录的绝对路径（`git rev-parse --show-toplevel`）。
 
 ### EDE（主版本，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
 ### ED（保底版，NPOI 读取，代码保留 / 不日常构建）— 产物 `ExcelDiff.GUI.exe`
@@ -96,14 +96,14 @@ ExcelDiff.GUI diff [Options]
 
 ### Git difftool
 
-`.gitconfig`
+`.gitconfig`（`<安装目录>` = 实际安装位置：MSI 默认 `<ProgramFiles64Folder>\ExcelDiffEDRTool`，可用 `msiexec INSTALLFOLDER=` 覆盖；EDE 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，ED 为 `ExcelDiff.GUI.exe`）
 
 ```
 [diff]
 tool = ExcelDiff
 
 [difftool "ExcelDiff"]
-cmd = \"D:/Program Files/ExcelDiffTool/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+cmd = \"<安装目录>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
 
 [alias]
 windiff = difftool -g -y -t ExcelDiff
@@ -115,7 +115,7 @@ windiff = difftool -g -y -t ExcelDiff
 
 ```
 [merge-tools]
-exceldiff.executable = D:\Program Files\ExcelDiffTool\ExcelDiff.GUI.exe
+exceldiff.executable = <安装目录>\ExcelDiff.GUI.exe
 exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 
 [tortoisehg]

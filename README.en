@@ -42,12 +42,12 @@ The two builds are fully isolated (process / assembly / config / display name). 
 
 ## Build & Deploy
 
-Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must be specified.
+Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must be specified. `<repo>` below means the absolute path of the repository root (`git rev-parse --show-toplevel`).
 
 ### EDE (main build, EDR read) — output `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:TargetFrameworkRootPath="D:\ExcelDiff\packages\refs" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
 ### ED (fallback, NPOI read; code retained, not built daily) — output `ExcelDiff.GUI.exe`
@@ -96,14 +96,14 @@ ExcelDiff.GUI diff [Options]
 
 ### Git difftool
 
-`.gitconfig`
+`.gitconfig` (`<install dir>` = where the app is actually installed: the MSI defaults to `<ProgramFiles64Folder>\ExcelDiffEDRTool` and can be overridden with `msiexec INSTALLFOLDER=`; the EDE main build ships `ExcelDiffEDR.GUI.exe`, the ED build ships `ExcelDiff.GUI.exe`)
 
 ```
 [diff]
 tool = ExcelDiff
 
 [difftool "ExcelDiff"]
-cmd = \"D:/Program Files/ExcelDiffTool/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+cmd = \"<install dir>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
 
 [alias]
 windiff = difftool -g -y -t ExcelDiff
@@ -115,7 +115,7 @@ windiff = difftool -g -y -t ExcelDiff
 
 ```
 [merge-tools]
-exceldiff.executable = D:\Program Files\ExcelDiffTool\ExcelDiff.GUI.exe
+exceldiff.executable = <install dir>\ExcelDiff.GUI.exe
 exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 
 [tortoisehg]
