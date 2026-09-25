@@ -137,9 +137,9 @@ namespace ExcelDiff
             // report a dimension of A1:XFDnnnn and materialize a 16384-column header even
             // though the real data occupies only the first few dozen columns. Diffing every
             // row against all 16384 columns multiplies the cell count by 16384 and exhausts
-            // memory. We keep a column only if it actually carries a value in at least two
-            // rows across both sheets; a column present in a single row is an artifact, not
-            // data, and can be ignored without losing any real diff information.
+            // memory. Those artifact cells carry no value at all, so requiring at least one
+            // non-empty value in either sheet drops them while keeping every real column -
+            // including a header-only column, whose single value is the column name itself.
             var effectiveColumnCount = GetEffectiveColumnCount(src, dst);
             if (columnStatusMap.Count > effectiveColumnCount)
             {
@@ -234,18 +234,15 @@ namespace ExcelDiff
                 }
             }
 
-            // A column is considered real only if it carries a value in a non-trivial
-            // fraction of rows. A lone over-wide header (present in a single row per sheet,
-            // so 2 occurrences total) fails this test and is dropped, while every column
-            // actually used by the data is kept. 0.1% of all rows is a safe floor that
-            // never drops a column used by any meaningful number of rows.
-            var totalRows = src.Rows.Count + dst.Rows.Count;
-            var threshold = Math.Max(2, (int)(totalRows * 0.001));
-
+            // A column is real if either sheet carries any value in it. Over-wide artifacts
+            // are materialized as empty cells (present[i] == 0) and are excluded, while a
+            // header-only column survives on the strength of its header value alone - the
+            // previous 0.1% floor dropped such a column and reported "no difference" when a
+            // header-only column was deleted (e.g. the French column of a localization sheet).
             var effective = 0;
             for (var i = 0; i < maxCol; i++)
             {
-                if (present[i] >= threshold)
+                if (present[i] > 0)
                     effective = i + 1;
             }
 
