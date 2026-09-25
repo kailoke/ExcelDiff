@@ -98,3 +98,11 @@
 - **决策**：EDE 定为**主版本**，是唯一构建/部署/门禁目标（`verify.ps1` 只构建 EDE；`Deploy-And-Restart.ps1` 只部署/重启 EDE）。ED 代码（`#if NPOI_READ` 分支、`ExcelDiff.GUI` 程序集名、相关配置路径）**完整保留**，相关版本说明文档（ARCH §3 编译矩阵、ADR-001/002、INVARIANTS A/B）一并保留，仅在需 EDR 盲区兜底/对照验证时手工 build。
 - **后果**：日常门禁只验证 EDE（INVARIANT A2 "主版本必编译"）；ED 保底对照退化为可选诊断（DiffHarness 保留）；若未来 EDR 出现对比 bug 需要对照，可随时手工构建 ED 恢复保底验证（INVARIANT A3 保证 ED 代码不删）。
 - **被否**：删除 ED 代码——失去 EDR 盲区兜底与对照基准，不可接受；维持双版同步编译/部署——日常成本翻倍且近期无收益。
+
+## ADR-013 EDE MSI 使用隔离、确定且可回滚的 WiX v4 打包链
+
+- **状态**：已定
+- **背景**：从共享 `bin\Release` 收集文件会混入历史构建残留；全局 WiX 和随机 ProductCode 使同版本重建不可复现；ShellExtension 外部 EXE 自定义动作没有 rollback 时会在安装失败后留下损坏的 COM 状态。
+- **决策**：WiX 4.0.6 用仓库 tool manifest 固定；EDE GUI/ShellExtension 构建到 installer 专用 staging；MSI 三段版本取自主 EXE FileVersion，ProductCode 按 `UpgradeCode + 版本` 稳定派生，文件组件 GUID 按规范化相对路径稳定派生；major upgrade 排在 `InstallInitialize` 后，COM 注册/反注册均配套 rollback；ICE validation 为发布硬门禁。
+- **后果**：同版本重建保持产品身份，新版本自动触发 major upgrade；失败安装/卸载可恢复 ShellExtension 注册；`-SkipBuild` 只能复用 staging，`-SkipValidation` 产物只能用于本地诊断；正式分发仍需外部可信证书完成 Authenticode 签名。
+- **被否**：扫描共享输出——无法证明包内容干净；每次随机 ProductCode——同版本可能形成重复产品注册；无 rollback 的 EXE CA——失败后注册表与文件状态不一致；依赖全局最新版 WiX——构建行为会随机器漂移。

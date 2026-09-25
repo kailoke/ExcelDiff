@@ -21,7 +21,7 @@
 | `FastWpfGrid` | 类库 | 高性能虚拟化网格控件 |
 | `WriteableBitmapEx.Wpf` | 类库 | FastWpfGrid 依赖的位图扩展 |
 | `ExcelDiff.ShellExtension` | COM 外壳扩展 | 资源管理器右键菜单入口 |
-| `ExcelDiff.Installer` | VDProj | MSI 打包（未参与日常构建） |
+| `ExcelDiff.Installer` | WiX v4 | MSI 打包（`Build-Installer.ps1` + `ExcelDiffEDR.Installer.wxs`，见 AGENTS §4） |
 
 依赖关系：
 
@@ -48,7 +48,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 
 - `EnablePerfTiming=true` → 编译期定义 `PERF_TIMING`，注入阶段计时（GUI 与库同步开关）。
 - 构建命令（GUI 必须携带 workaround 参数，见 `AGENTS.md` 摘要）：
-  - EDE：`dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
+  - EDE：`dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime`
   - ED（保底，代码保留、不日常构建）：同上，去掉 `/p:EdrRead=true`（默认）
 - 依赖顺序：库→FastWpfGrid→GUI。`ExcelDiff.csproj` 中 `EdrRead != true` 才定义 `NPOI_READ`。
 
@@ -128,12 +128,17 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ## 8. 部署布局
 
 ```
-D:\Program Files\ExcelDiffEDRTool\     → EDE 主版本（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
-D:\Program Files\ExcelDiffTool\        → ED 历史目录（代码保留、不再日常构建/部署）
-%APPDATA%\ExcelDiffEDR.GUI\        → EDE 配置
-%APPDATA%\ExcelDiff.GUI\           → ED 配置（历史）
+<ProgramFilesBase>\ExcelDiffEDRTool\   → EDE 主版本（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
+<ProgramFilesBase>\ExcelDiffTool\      → ED 历史目录（代码保留、不再日常构建/部署）
+%APPDATA%\ExcelDiffEDR.GUI\            → EDE 配置
+%APPDATA%\ExcelDiff.GUI\               → ED 配置（历史）
 ```
 
+- `<ProgramFilesBase>` / 目录名都出自根目录 `ProjectPaths.ps1`：`$ProgramFilesBasePath` + `$EdrInstallDirName` = `$EdrDeployPath`（`Deploy-And-Restart.ps1` 的 `-Dst` 默认值）。自查：`powershell -File ProjectPaths.ps1 -Print`。文档不写盘符。
+- **MSI 的基目录由 Windows Installer 的 `[ProgramFiles64Folder]` 决定**（= 本机 Program Files），只有目录名与 `ProjectPaths.ps1` 同源。若本机 Program Files ≠ `$ProgramFilesBasePath`，覆盖式部署与 MSI 会落到两个目录 → 设 `EXCELDIFF_PROGRAM_FILES` 对齐，或部署时显式传 `-Dst`。
+
+- EDE 发布包由 `ExcelDiff.Installer\Build-Installer.ps1` 构建：仓库 tool manifest 固定 WiX 4.0.6，GUI/ShellExtension 先进入 `ExcelDiff.Installer\obj\stage`，MSI 只收集该隔离目录。MSI 三段版本取自主 EXE FileVersion，ProductCode 按 UpgradeCode+版本稳定派生；ShellExtension 注册/反注册带 rollback，`wix msi validate` 为发布硬门禁（ADR-013）。
+- MSI 默认安装到 `[ProgramFiles64Folder]$(var.InstallDirName)`（目录名由打包脚本从 `ProjectPaths.ps1` 注入）；命令行 `INSTALLFOLDER` 会写入 HKLM 并在 major upgrade 时恢复。正式对外分发前需在发布流水线完成 Authenticode 签名。
 - NGEN 已对 EDE exe 预编译。
 - Git difftool：`difftool.ExcelDiffEDR`（EDE，主）；`difftool.ExcelDiff`（ED，历史，仍可用）。
 - **lang 部署坑**：构建时 `CopyLangFiles` 会把仓库 `..\lang\*.json` 复制到 `bin\Release\lang`（自动、正确）；但部署脚本用 `Copy-Item -Recurse` 复制整个 `lang` 目录到已存在的目标时会**嵌套成 `lang\lang`**，顶层文件不更新。部署后必须单独校验/同步 `lang\*.json`（或先删目标 `lang` 目录再 `-Recurse` 复制）。
@@ -154,4 +159,4 @@ D:\Program Files\ExcelDiffTool\        → ED 历史目录（代码保留、不�
 - EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 ED（NPOI）保底对照兜底，ED 代码不得移除。
 - `EditGraph`（NetDiff）为 Myers 启发式 BFS，最坏 O(D²) 节点分配（病态"两表几乎全不同"大表）。已用行级 `Limit=2000` 前沿守卫兜底（ADR-010）；不重写（31 测试编码当前路径平局规则）。
 - `backup_installed_*` 目录为部署前快照，勿改动。
-- `ExcelDiff.Installer.vdproj` 未纳入当前构建流程。
+- `ExcelDiff.Installer.vdproj` 为旧 VDProj（ED 时代、需 VS + Installer Projects 扩展），已废弃、不再使用；现改由 WiX v4（`Build-Installer.ps1` → `ExcelDiffEDR.Installer.wxs`）生成 MSI。

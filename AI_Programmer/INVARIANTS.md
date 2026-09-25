@@ -41,7 +41,12 @@
 - [ ] **E3 编码规范**：.NET Framework 4.6.2 老式 C#（无 nullable、无 target-typed new、无文件级 namespace）；命名空间=目录名；VM 继承 Prism `BindableBase`，设置类走 `Setting<T>`。（AGENTS §10）
 - [ ] **E4 不主动加注释**：沿用既有代码风格，改动不添加新注释（除非必须解释架构决策）。
 - [ ] **E5 NetDiff 算法**：改动 `EditGraph.cs`/`DiffUtil.cs` 后必须跑通 `NetDiff.TestRunner`（31 用例）。（AGENTS §7.3）
-- [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2"`（.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
+- [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（`<repo>`=仓库根，实际值取 `ProjectPaths.ps1` 的 `$RefAssemblyPath`；.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
+- [ ] **E7 MSI 输入隔离**：EDE MSI 只能收集 `ExcelDiff.Installer\obj\stage` 的专用构建，禁止扫描共享 `bin\Release`；WiX 版本由 `.config\dotnet-tools.json` 固定。（AGENTS §4 / ADR-013）
+- [ ] **E8 MSI 身份稳定**：MSI 三段版本必须与主 EXE FileVersion 前三段一致；ProductCode 按 `UpgradeCode + 三段版本` 稳定派生，同版本重建不得产生新 ProductCode。（ADR-013）
+- [ ] **E9 MSI 事务完整**：ShellExtension deferred 注册/反注册必须有成对 rollback 动作；major upgrade 必须安排在 `InstallInitialize` 后的可回滚事务内。（ADR-013）
+- [ ] **E10 MSI 发布门禁**：正式发布不得使用 `Build-Installer.ps1 -SkipValidation`；必须通过 `wix msi validate`，并在分发前完成 Authenticode 签名。（AGENTS §4 / ADR-013）
+- [ ] **E11 路径不写死**：脚本/文档不得出现机器相关绝对路径（盘符）。Program Files 基目录、安装目录名/部署目录、外部测试数据仓一律经根目录 `ProjectPaths.ps1`（可用其标注的环境变量或脚本参数覆盖）。（AGENTS §0.2 / §9）
 
 ## F. 性能 / 渲染（FastWpfGrid）
 

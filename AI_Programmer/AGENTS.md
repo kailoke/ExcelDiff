@@ -8,12 +8,15 @@
 
 > 开工前按序执行；详细说明见对应章节。
 
-1. 在 `D:\ExcelDiff` 工作。先读本文件（会指引 ARCHITECTURE.md / CODEX.md / INVARIANTS.md / ADR.md）。
-2. **版本状态**：读 `PROJECT_STATE.md` 获取当前分支 / HEAD / 最近提交（单一事实源，由 `AI_Script\refresh_state.ps1` 生成，勿手改）；仍 `git status` / `git log --oneline -3` 自确认。
-3. **验收**：改完跑 `powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1` 必须全绿（EDE 主版本编译 + NetDiff 31 用例 + lang↔resx 同步 + 坑扫描）；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。ED（NPOI）为保留保底代码、不参与日常门禁（如需 ED/EDE 对照，可手工跑 `DiffHarness\run_diff_compare.ps1`）。
-4. **提交**：AI 不直接 commit；改动完成后给出 Commit subject/description 供审查，由用户决定是否提交（§7.10）。
-5. **约束**：遵循 §10 编码规范；不主动加注释（核心/易错/算法处除外）；UI 文本走 Resources.*；不动 backup_installed_*。
-6. **部署**：提权写 Program Files 用 `Start-Process -Verb RunAs`（**不带 -Wait**）+ 轮询日志 DONE（ADR-011）；每次部署后立即重启常驻（--startup）。
+1. 在**仓库根目录**工作（不假设盘符；先 `git rev-parse --show-toplevel` 确认）。先读本文件（会指引 ARCHITECTURE.md / CODEX.md / INVARIANTS.md / ADR.md）。
+2. **路径配置**：所有机器相关/仓库派生路径集中在根目录 `ProjectPaths.ps1`（唯一来源）。自查解析结果：`powershell -ExecutionPolicy Bypass -File ProjectPaths.ps1 -Print`。换机器或换盘符只改这一个文件（或用其中的环境变量覆盖）。
+3. **版本状态**：读 `PROJECT_STATE.md` 获取当前分支 / HEAD / 最近提交（单一事实源，由 `AI_Script\refresh_state.ps1` 生成，勿手改）；仍 `git status` / `git log --oneline -3` 自确认。
+4. **验收**：改完跑 `powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1` 必须全绿（EDE 主版本编译 + NetDiff 31 用例 + lang↔resx 同步 + 坑扫描）；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。ED（NPOI）为保留保底代码、不参与日常门禁（如需 ED/EDE 对照，可手工跑 `DiffHarness\run_diff_compare.ps1`）。
+5. **提交**：AI 不直接 commit；改动完成后给出 Commit subject/description 供审查，由用户决定是否提交（§7.10）。
+6. **约束**：遵循 §10 编码规范；不主动加注释（核心/易错/算法处除外）；UI 文本走 Resources.*；不动 backup_installed_*。
+7. **部署**：提权写 Program Files 用 `Start-Process -Verb RunAs`（**不带 -Wait**）+ 轮询日志 DONE（ADR-011）；每次部署后立即重启常驻（--startup）。
+
+> 本文所有命令都以仓库根为工作目录、一律使用仓库相对路径。需要绝对路径处（如 `FrameworkPathOverride`）用 `<repo>` 占位，实际值取 `ProjectPaths.ps1` 的解析结果。
 
 ## 1. 项目一句话
 
@@ -24,7 +27,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 ## 2. 必读文档
 
 > 以下文档统一放在 `AI_Programmer\` 目录（本文件也在其中）；根目录 `AGENTS.md` 仅作跳转指针。
-> 命令中的仓库相对路径（如 `AI_Script\verify.ps1`、`ExcelDiff.GUI\...`）仍以仓库根 `D:\ExcelDiff` 为工作目录。
+> 命令中的仓库相对路径（如 `AI_Script\verify.ps1`、`ExcelDiff.GUI\...`）以**仓库根**为工作目录；机器相关绝对路径一律出自 `ProjectPaths.ps1`，不写在脚本或文档里。
 
 | 文档 | 作用 |
 |------|------|
@@ -34,6 +37,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `INVARIANTS.md` | 工程硬约束清单（改动前逐条核对，违反=阻断提交） |
 | `ADR.md` | 架构决策记录（关键决策的 why，避免重开争论） |
 | `PROJECT_STATE.md` | **项目与 git 版本状态单一事实源**（分支/HEAD/最近提交；由 `AI_Script\refresh_state.ps1` 生成，勿手改） |
+| `ProjectPaths.ps1` | **路径单一事实源**（Program Files 基目录、安装目录名/部署目录、外部测试数据仓、refs/NuGet.Config/WiX manifest/csc）；脚本 dot-source 它，`-Print` 自查 |
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDE 主版本 + NetDiff 单测 + lang↔resx 同步 + WIP 快照 |
@@ -70,7 +74,7 @@ NetDiff\NetDiff.TestRunner\      # 离线测试 runner（MSTest shim + 反射执
 DiffHarness\                     # headless diff 对比工具（库层直调，ED/EDE 输出对比，见 §7.9）
 FastWpfGrid\                     # 高性能虚拟化网格控件 + WriteableBitmapEx 位图扩展
 ExcelDiff.ShellExtension\       # COM 外壳扩展（资源管理器右键菜单）
-ExcelDiff.Installer\            # VDProj MSI 打包（不参与日常构建）
+ExcelDiff.Installer\            # MSI 打包（WiX v4，见 §4；旧 vdproj 已废弃不参与构建）
 lang\                            # 外置语言文件 en-US.json / zh-CN.json（UTF-8，随 exe 目录部署）
 packages\refs\                   # .NET Framework 参考程序集（构建必需，见 §4）
 backup_installed_*/              # 部署前快照，勿动
@@ -78,6 +82,7 @@ Build\Release\                   # WriteableBitmapEx 产物（gitignore）
 AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
 .githooks\                       # git 钩子（core.hooksPath=.githooks）：pre-commit 提交前刷新并并入本次提交 / post-checkout、post-merge 后刷新 + 条件校准 CODEX.md
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
+ProjectPaths.ps1                 # 路径单一事实源（机器相关值 + 仓库派生路径），工作流脚本 dot-source 它
 README.md / README.en            # 用户文档（中/英）；media\ 截图；LICENSE（MIT，含 Kailoke 版权）
 AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECTURE/CODEX/INVARIANTS/ADR/PROJECT_STATE
 ```
@@ -86,19 +91,20 @@ AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECT
 
 ## 4. 构建工具链
 
-- 本机仅有 `dotnet SDK 8.0`（`C:\Program Files\dotnet\dotnet.exe`），**没有独立 msbuild**，用 `dotnet msbuild`。
-- 关键：.NET Framework 参考程序集不在本机 SDK 里，**必须**传 `/p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2"`（旧属性名 `TargetFrameworkRootPath` 已弃用）。三个 csproj 现为 SDK-style（`<Project Sdk="Microsoft.NET.Sdk">`），依赖走 `PackageReference`（原 `packages.config` 已删除，`dotnet restore` 还原）。GUI 构建还依赖 `ExcelDiff.GUI.csproj` 内的 `EnsureNetStandardForMarkupCompile` 目标（net472 标记编译器需 `netstandard` 桥接程序集）与 `AppendTargetFrameworkToOutputPath=false`（输出保持扁平 `bin\Release\`，兼容部署脚本）。
+- 本机仅有 `dotnet SDK 8.0`（`dotnet` 已在 PATH，用 `Get-Command dotnet` 确认），**没有独立 msbuild**，用 `dotnet msbuild`。
+- `<repo>` = 仓库根目录绝对路径（`git rev-parse --show-toplevel`），在文档命令里作占位；脚本内一律取 `ProjectPaths.ps1` 的 `$RepoRootPath` / `$RefAssemblyPath`，不写盘符。
+- 关键：.NET Framework 参考程序集不在本机 SDK 里，**必须**传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（旧属性名 `TargetFrameworkRootPath` 已弃用）。三个 csproj 现为 SDK-style（`<Project Sdk="Microsoft.NET.Sdk">`），依赖走 `PackageReference`（原 `packages.config` 已删除，`dotnet restore` 还原）。GUI 构建还依赖 `ExcelDiff.GUI.csproj` 内的 `EnsureNetStandardForMarkupCompile` 目标（net472 标记编译器需 `netstandard` 桥接程序集）与 `AppendTargetFrameworkToOutputPath=false`（输出保持扁平 `bin\Release\`，兼容部署脚本）。
 
-- `ExcelDiff.ShellExtension` 的 PFX 强名签名在 `dotnet msbuild`（.NET Core MSBuild）下不受支持（硬编码报错“不支援 PFX 签名”），与旧 csproj 同限制；需用 Framework `msbuild.exe` / Visual Studio 签名（本机无独立 `msbuild.exe`，`Build-Installer.ps1` 的 ShellExtension 步骤同理）。`
-- 下列命令均已在本机验证可编译（Release, AnyCPU）。SDK-style 依赖走 `PackageReference`，**手动 `dotnet msbuild` 前需先 `dotnet restore <proj> --configfile D:\ExcelDiff\.nuget\NuGet.Config`**（日常走 `verify.ps1` / `Deploy-And-Restart.ps1` 已内置 restore）。
+- `ExcelDiff.ShellExtension` 当前 `SignAssembly=false`，可由 `dotnet msbuild` 构建；旧 PFX 不参与现行构建。强名称与发布用 Authenticode 是两件事，MSI 脚本会对未签名成品给出警告，正式分发前仍需使用可信代码签名证书签署 MSI/EXE/ShellExtension。
+- 下列命令均已在本机验证可编译（Release, AnyCPU）。SDK-style 依赖走 `PackageReference`，**手动 `dotnet msbuild` 前需先 `dotnet restore <proj> --configfile <repo>\.nuget\NuGet.Config`**（日常走 `verify.ps1` / `Deploy-And-Restart.ps1` 已内置 restore）。
 
 ### EDE（主版本，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-> **会话约定（固化）**：用户在本会话中说"构建"时，**即执行整条"构建 → 部署 → 重启"流程**，而非仅本地编译。直接用固化脚本 `AI_Script\Deploy-And-Restart.ps1`（内部已串联构建 EDE + 部署 + 非提权拉起常驻，且仅对复制步骤自提权、父进程轮询日志；见 §7.6）。原因：常驻进程从 `D:\Program Files\ExcelDiffEDRTool` 启动并锁住 exe，仅本地 `dotnet msbuild` 不会让运行中的进程拿到新二进制——必须部署覆盖后再重启才生效。验证/排查前的纯本地编译可用上面的 `dotnet msbuild` 命令，但用户口述"构建"一律走脚本全流程。
+> **会话约定（固化）**：用户在本会话中说"构建"时，**即执行整条"构建 → 部署 → 重启"流程**，而非仅本地编译。直接用固化脚本 `AI_Script\Deploy-And-Restart.ps1`（内部已串联构建 EDE + 部署 + 非提权拉起常驻，且仅对复制步骤自提权、父进程轮询日志；见 §7.6）。原因：常驻进程从部署目录（`ProjectPaths.ps1` 的 `$EdrDeployPath`）启动并锁住 exe，仅本地 `dotnet msbuild` 不会让运行中的进程拿到新二进制——必须部署覆盖后再重启才生效。验证/排查前的纯本地编译可用上面的 `dotnet msbuild` 命令，但用户口述"构建"一律走脚本全流程。
 
 ### ED（保底版，NPOI 读取，代码保留 / 不参与日常构建）— 产物 `ExcelDiff.GUI.exe`
 
@@ -107,7 +113,7 @@ dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:Ed
 ### 只构建核心库（快速验证读取层改动）
 
 ```
-dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /t:Build /v:m /nologo
 ```
 
 ### NetDiff 单测（离线 runner，零第三方依赖）
@@ -115,9 +121,30 @@ dotnet msbuild ExcelDiff/ExcelDiff.csproj /p:Configuration=Release /p:FrameworkP
 本机无 VS/vstest，MSTest 程序集不在 `packages\refs`；`NetDiff.TestRunner` 用自带 MSTest shim + 反射执行 `NetDiff.Test\Test.cs` 的 31 个用例。
 
 ```
-dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configuration=Release /p:FrameworkPathOverride="D:\ExcelDiff\packages\refs\.NETFramework\v4.7.2" /t:Build /v:m /nologo
+dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configuration=Release /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /t:Build /v:m /nologo
 & "NetDiff\NetDiff.TestRunner\bin\Release\NetDiff.TestRunner.exe"
 ```
+
+### MSI 安装包（WiX v4）
+
+本机无 VS/InstallShield/WiX v3，旧 `ExcelDiff.Installer.vdproj`（需 VS + Installer Projects 扩展）已废弃。改用仓库 `.config\dotnet-tools.json` 固定的 **WiX Toolset 4.0.6**，脚本自动 `dotnet tool restore`，纯 CLI 产出标准 MSI。
+
+```
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1            # 构建 EDE + ShellExtension → ExcelDiff.Installer\Release\ExcelDiffEDRSetup.msi
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipBuild  # 跳过 msbuild，复用 obj\stage 的上次隔离构建
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -Version 1.4.0
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipValidation # 仅受限本地环境；该产物不得发布
+```
+
+- 脚本内部：清理并构建 EDE GUI + ShellExtension 到专用 `ExcelDiff.Installer\obj\stage\{app,shell}` → **用 `csc.exe` 和 staged `SharpShell.dll` 编译 `SrmRegistrar\SrmRegistrar.cs`**（替代与 SharpShell 2.7.2 不匹配的旧 srm.exe 2.2.0.0）→ 只枚举 staging app 文件并按相对路径排序 → 生成 `AppFiles.generated.wxs`（组件 GUID 按规范化相对路径稳定派生，ID 带哈希防碰撞，该文件 gitignore）→ 仓库固定的 WiX 4.0.6 `build -arch x64` → `wix msi validate`。
+- 静态源 `ExcelDiffEDR.Installer.wxs`：包定义（Name=ExcelDiffEDR、Manufacturer=skanmera、UpgradeCode、Scope=perMachine、装到 `[ProgramFiles64Folder]$(var.InstallDirName)`，目录名出自 `ProjectPaths.ps1`）、.NET Framework 4.7.2 启动条件（`RegistrySearch Type=raw` 返回 `#十六进制`，条件必须与 `&quot;#461808&quot;` 比较）、ShellExtension COM 注册（deferred + Impersonate=no）及成对 rollback 动作、`MajorUpgrade Schedule=afterInstallInitialize`、安装目录记忆、开始菜单快捷方式、产品图标。
+- **版本规则**：默认从 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion 派生 MSI 三段版本；显式 `-Version` 的前三段必须与主 EXE 一致。Windows Installer 升级不依赖第四段 revision，发新版必须提升前三段之一。ProductCode 由 `UpgradeCode + MSI 三段版本` 稳定派生：同版本重建保持相同 ProductCode，新版本自动变化。
+- EDE 仍需随包携带 NPOI 及其依赖：虽然读取主路径是 EDR，但 `ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍使用 NPOI；未替换这些功能前不得从 MSI 强行排除 NPOI。
+- 未打包 `open_readme.vbs`、无安装向导 UI（WiX core 最小 UI；如需向导可后续加 `WixToolset.UI.wixext`）。
+- **INSTALLFOLDER 可被命令行覆盖并跨 major upgrade 记忆**：`msiexec /i x.msi INSTALLFOLDER="<绝对目录>"`；安装值持久化到 HKLM，升级 AppSearch 在目录定价前恢复（显式命令行值优先）。
+- **默认安装目录名 = `ProjectPaths.ps1` 的 `$EdrInstallDirName`**（打包时经 `-d InstallDirName=` 注入 `ExcelDiffEDR.Installer.wxs`），与 `Deploy-And-Restart.ps1` 的部署目录同名同源；基目录由 WiX 的 `[ProgramFiles64Folder]`（= 本机 Program Files）决定。
+- `wix msi validate` 是发布硬门禁；`-SkipValidation` 只允许生成本地诊断包。脚本会警告 MSI 尚未 Authenticode 签名，正式分发必须在发布流水线签名并复验签名。
+- 卸载文件删除正常（`msiexec /x` 验证通过）。若测试中出现"卸载后文件残留"，是测试时**手动删 `Classes\Installer\Products` 而未清 `UserData\S-1-5-18\{Products,Components}`** 导致组件 refcount 混乱，非 MSI 固有 bug。
 
 ### 一键验证门禁
 
@@ -159,9 +186,9 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 3. **测试**：NetDiff 算法改动用 `NetDiff.TestRunner`（31 用例，命令见 §4）。GUI 层回归用手工/脚本冒烟（见 ARCHITECTURE.md §9）。任何改动完成后跑 `AI_Script\verify.ps1` 一键门禁。
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。
 5. **读取层定位**：**EDE=EDR 主版本**（读取快约 72%）；**ED=NPOI 保底对照**（NPOI 语义最全，代码保留、不日常构建）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 ED 保底代码保留的意义，**不得移除 ED 代码**。基准测试以 EDE 为准，ED 代码仅作保底对照验证。
-6. **构建与部署次序**：只构建/部署 **EDE 主版本**（构建 EDE → 部署 EDE → 重启 EDE 常驻；ED 保底代码不参与，见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。**部署动作（提权写 Program Files）**：用 `Start-Process powershell -Verb RunAs`（**不带 `-Wait`**）启动提权脚本 → 轮询其日志文件出现 `DONE` → 再重启常驻（见陷阱 §8.6）。**⚠️ `Start-Process -ArgumentList` 数组拼接不会自动给含空格路径加引号**——含空格的目标路径（如 `D:\Program Files\...`）必须在数组元素里**手动内嵌引号**（`"-Dst","`"D:\Program Files\ExcelDiffTool`""`），否则会被截断（见陷阱 §8.7）。
-   - **固化脚本 `AI_Script\Deploy-And-Restart.ps1`**（可人工双击 / `powershell -File` 执行，也可由临时命令调用）：自动完成“构建 EDE→部署→重启 EDE 常驻”。**必须非提权运行**（GUI 须以普通用户 IL 运行，否则与 Fork 等非提权 difftool 客户端的命名管道 IPC / 托盘交互会因 UIPI 失败）。脚本**仅对复制步骤自提权**：未以管理员运行时用 `Start-Process -Verb RunAs`（不带 `-Wait`）拉起一个提权子进程仅做“杀进程释放锁 + 复制”，父进程（非提权）轮询 `deploy_edr.log` 出现 `DONE`/`FAIL`；提权数组元素对含空格路径内嵌引号（§8.7）；杀进程按进程名 `ExcelDiffEDR.GUI`（经提权父进程启动的进程 `Path` 可能为空，须按 `Name` 而非 `Path` 匹配）；复制前删目标 `lang` 目录规避 `lang\lang` 嵌套坑（ARCHITECTURE §8）；复制后校验目标 exe 已落盘；**重启常驻由非提权父进程 `Start-Process`（不带 `-Wait`）拉起**以保普通用户 IL。开关：`-NoBuild`（仅部署当前 bin）、`-NoRestart`（部署后不拉起常驻）。人工/临时命令执行范例：`powershell -ExecutionPolicy Bypass -File AI_Script\Deploy-And-Restart.ps1`。
-7. **对比测试数据源**：`D:\P\BackPack\baggame\Config\Data`（git 管理的 xlsx 配置表目录）。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。常用测试文件：`Level.xlsx`（**有差异**）、`PostMatchDefeat.xlsx`（**无差异**）。
+6. **构建与部署次序**：只构建/部署 **EDE 主版本**（构建 EDE → 部署 EDE → 重启 EDE 常驻；ED 保底代码不参与，见陷阱 §8.2）。**每次构建部署后必须立即重启对应常驻进程**（杀进程 → 从部署路径 `--startup` 拉起），保证新构建即时生效。原因：常驻进程从 Program Files 启动且锁住 exe——不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果会失真。**部署动作（提权写 Program Files）**：用 `Start-Process powershell -Verb RunAs`（**不带 `-Wait`**）启动提权脚本 → 轮询其日志文件出现 `DONE` → 再重启常驻（见陷阱 §8.6）。**⚠️ `Start-Process -ArgumentList` 数组拼接不会自动给含空格路径加引号**——含空格的目标路径（部署目录一般在 `...\Program Files\...` 下）必须在数组元素里**手动内嵌引号**（`"-Dst","`"<部署目录>`""`），否则会被截断（见陷阱 §8.7）。
+   - **固化脚本 `AI_Script\Deploy-And-Restart.ps1`**（可人工双击 / `powershell -File` 执行，也可由临时命令调用）：自动完成“构建 EDE→部署→重启 EDE 常驻”。**必须非提权运行**（GUI 须以普通用户 IL 运行，否则与 Fork 等非提权 difftool 客户端的命名管道 IPC / 托盘交互会因 UIPI 失败）。脚本**仅对复制步骤自提权**：未以管理员运行时用 `Start-Process -Verb RunAs`（不带 `-Wait`）拉起一个提权子进程仅做“杀进程释放锁 + 复制”，父进程（非提权）轮询 `deploy_edr.log` 出现 `DONE`/`FAIL`；提权数组元素对含空格路径内嵌引号（§8.7）；杀进程按进程名 `ExcelDiffEDR.GUI`（经提权父进程启动的进程 `Path` 可能为空，须按 `Name` 而非 `Path` 匹配）；复制前删目标 `lang` 目录规避 `lang\lang` 嵌套坑（ARCHITECTURE §8）；复制后校验目标 exe 已落盘；**重启常驻由非提权父进程 `Start-Process`（不带 `-Wait`）拉起**以保普通用户 IL。开关：`-NoBuild`（仅部署当前 bin）、`-NoRestart`（部署后不拉起常驻）；`-Src`/`-Dst`/`-LogDir` 默认值全部来自根目录 `ProjectPaths.ps1`（仓库内 bin\Release / `$EdrDeployPath` / 仓库根），脚本内不写盘符。人工/临时命令执行范例：`powershell -ExecutionPolicy Bypass -File AI_Script\Deploy-And-Restart.ps1`。
+7. **对比测试数据源**：xlsx 配置表所在的**外部 git 仓**（不属本仓库、不入库），路径出自 `ProjectPaths.ps1` 的 `$TestDataRepoPath`（可用 `EXCELDIFF_TESTDATA_REPO` 或 harness 的 `-Repo` 覆盖）。该值可以指仓根或数据子目录（现配置为数据子目录），`run_diff_compare.ps1` 会向上找 `.git` 定出仓根并把子目录拼进 `-RelPath`（**不要**解析 `git rev-parse` 的文本来拿路径：中文路径在 PS 5.1 的 GBK 控制台解码下会错位）。**严禁**在脚本里写死盘符默认值，换机器只改 `ProjectPaths.ps1`。**严格规则：只用同名文件的 Unstaged（工作区）VS HEAD 做对比**——工作区文件直接引用，HEAD 版用 `cmd /c "git -C <repo> show HEAD:<相对路径> > <tmp>"` 提取（二进制安全），禁止跨文件/跨版本组合。**若某文件两版无差异而需要制造差异时，修改工作区文件前必须先征得用户同意**；测试后可用 `git checkout -- <path>` 恢复。常用测试文件：现配置为 `F:\ProjectLibs\2_POP时空沙海` 的 `Data_POP\*.xlsx`（81 个文件被 git 跟踪、直接位于该目录，无 `Config/Data` 层级；默认 `-RelPath Artifact.xlsx`）。旧文档里的 `Config/Data/Level.xlsx` / `PostMatchDefeat.xlsx` 属上一台机器的 baggame 仓，已不适用；当前 `Data_POP` 无未提交改动，故 HEAD 版与工作区版相同，harness 只验证 ED/EDE 两变体输出一致。
    - **本地样例文件夹 `TestExcel/`**（仓库根目录）：本地对比用的样例 Excel/CSV/TSV 放置处，供手动拉起 Fork / 对比验证（如大表弹窗、差异驱动省内存等行为）使用。
 8. **测试模态弹窗注意事项**（自动化/脚本测试会被强制阻塞）：
    - **无差异弹窗 `NoDiffWindow`**：两文件无差异且 `NotifyEqual` 开启时，由 `DiffView.ExecuteDiff` `ShowDialog` 弹出（模态）。识别：无系统标题栏（`WindowStyle=None`）、顶部绿色条（`#FF43A047`）带自定义"✕"、正文为 `Message_NoDiffFormat`（如"左[...] - 右[...] = 没有区别"）。**关闭 = 点右上角"✕"**（`CloseButton_Click`：仅关弹窗、不关对比窗口；ESC 等效）；红色"退出"按钮是 `IsDefault`（回车触发）会连对比窗口一起关，脚本注意区分。
@@ -173,6 +200,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 ## 8. 已知陷阱（务必遵守）
 
 1. **UTF-8 破坏**：PowerShell 5.1 的 `Get-Content`/`Set-Content -Encoding UTF8` 按 ANSI 读写，破坏含中文的 YAML/JSON → 解析崩溃。改写非 ASCII 文件必须用文件写入工具（UTF-8 无 BOM）或 `[System.IO.File]::WriteAllText` + 显式 UTF8。
+   - **反向坑（.ps1 需要 BOM）**：含非 ASCII 字面量的 `.ps1` 若存成 **UTF-8 无 BOM**，PS 5.1 会按系统 ACP（本机 936/GBK）解码 → 中文路径变乱码、`Test-Path` 静默 False（实测：`F:\ProjectLibs\2_POP时空沙海` 被读成 `2_POPʱ`）。因此脚本里写中文路径的文件必须存 **UTF-8 带 BOM**（`ProjectPaths.ps1` 即如此）；纯 ASCII 的脚本不需要。
 2. **MSBuild 增量互删**：不能在同一条命令里连续构建两个变体——增量构建会把另一变体的 exe 当过期输出清掉。仅在手工同时构建 EDE/ED 两变体时才需分步（日常门禁只构建 EDE，无此问题）。
 3. **`-Wait` 挂起**：对转发进程 `Start-Process -Wait` 会挂起（无常驻进程时转发器变常驻永不退出）。
    - **检测**：`AI_Script\verify.ps1` 已内置坑扫描——任一入库 `*.ps1`（注释除外）出现 `Start-Process ... -Wait ... ExcelDiff` 即门禁失败（verify.ps1 自身排除）。
@@ -180,14 +208,15 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 4. **IPC 不得阻塞**：管道线程只能用 `Dispatcher.BeginInvoke` 投递，绝不能同步等待模态框，否则模态框存在时死锁。
 5. **`bin`/`obj`/`Build` 均 gitignore**：构建产物不入库，改代码后构建不污染 git 状态。`backup_installed_*` 是部署前快照，勿动。
 6. **提权部署 `-Wait` 挂起**：`Start-Process powershell -Verb RunAs -Wait` 在 UAC 提权 + msbuild 子进程场景下**不返回**，bash 会卡到超时（部署实际 10-30 秒已完成）。预防：提权启动**不带 `-Wait`** → 轮询部署脚本写出的日志文件（出现 `DONE`）再继续，然后重启常驻。
-7. **`-ArgumentList` 空格路径截断**：`Start-Process -ArgumentList` 把数组拼接成命令行字符串时**不会**自动给含空格参数加引号。给部署脚本传 `-Dst "D:\Program Files\ExcelDiffTool"` 若写成普通数组元素，实际拼接为 `-Dst D:\Program Files\ExcelDiffTool` → 目标被截断成 `D:\Program`，部署静默落到错误目录。预防：**数组元素内嵌双引号**（`"-Dst","`"D:\Program Files\ExcelDiffTool`""`），部署后核对目标 exe 的 LastWriteTime/Length 已更新再重启常驻。
+7. **`-ArgumentList` 空格路径截断**：`Start-Process -ArgumentList` 把数组拼接成命令行字符串时**不会**自动给含空格参数加引号。给部署脚本传 `-Dst "<ProgramFilesBase>\ExcelDiffEDRTool"`（Program Files 路径必含空格）若写成普通数组元素，实际拼接为 `-Dst <ProgramFilesBase>\ExcelDiffEDRTool` → 目标在第一个空格处被截断，部署静默落到错误目录。预防：**数组元素内嵌双引号**（`"-Dst","`"$EdrDeployPath`""`），部署后核对目标 exe 的 LastWriteTime/Length 已更新再重启常驻。
+8. **在提权终端跑部署脚本 → 复制成功但常驻起不来**（2026-09-25 实测并已加固）：AI/自动化终端常以管理员运行。此时脚本旧的降级分支 `Start-Process explorer.exe "<exe>" --startup` **不会**拉起任何进程（explorer 把参数当导航吞掉），而日志仍是 `DONE`——即"看起来成功了，其实没有常驻"。直接 `Start-Process $exe` 又会起在高 IL，与 Fork 等非提权 difftool 的命名管道 IPC 因 UIPI 失败。**现在的行为**：`Start-Resident` 检测到提权就**拒绝启动**并打印待执行命令，重启步骤随即失败、`deploy_all.log` 记 `FAIL`（不再假 DONE）。**要常驻必须在非提权终端**执行 `AI_Script\Deploy-And-Restart.ps1`，或手动 `"<部署目录>\ExcelDiffEDR.GUI.exe" --startup`，或让 difftool 首次调用自然拉起。核对：`Get-Process ExcelDiffEDR.GUI` 有进程且 IL 为 Medium。
 
 ## 9. 项目状态
 
 > **动态 git 状态（分支 / HEAD / 最近提交）以 `PROJECT_STATE.md` 为单一事实源**（`AI_Script\refresh_state.ps1` 刷新）。
 
 - **版本定位**：EDE=EDR 主版本（读取快约 72%）；ED=NPOI 保底代码保留、不日常构建（见 §7.5 / ADR-012）。
-- **部署目录**：`D:\Program Files\ExcelDiffEDRTool`（EDE 主版本）。
+- **部署目录**（EDE 主版本）= `ProjectPaths.ps1` 的 `$EdrDeployPath`（= `$ProgramFilesBasePath` + `$EdrInstallDirName`，可用 `EXCELDIFF_PROGRAM_FILES` / `EXCELDIFF_DEPLOY_DIR` 或 `-Dst` 覆盖）。实际值用 `powershell -File ProjectPaths.ps1 -Print` 查，文档/脚本不写死盘符。
 - **自动刷新**：git 钩子（`.githooks\` + `core.hooksPath=.githooks`）：`pre-commit` 提交前刷新 `PROJECT_STATE.md`（本次提交触及 C# 源码时并校准 `CODEX.md`）并 `git add` 回本次提交；`post-checkout` / `post-merge` 在操作后刷新。一次性启用：`git config core.hooksPath .githooks`。
 - 改动前先 `git status` / `git log --oneline -3` 确认；任何改动完成后跑 `AI_Script\verify.ps1`；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。
 

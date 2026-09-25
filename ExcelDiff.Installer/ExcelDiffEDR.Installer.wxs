@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!--
+    ExcelDiff EDR (main version) MSI installer.
+    App files (isolated obj\stage output) are harvested by Build-Installer.ps1 into
+    AppFiles.generated.wxs (ComponentGroup "AppComponents"). This file holds the
+    package definition, ShellExtension COM registration custom actions, .NET
+    Framework launch condition, Start Menu shortcut, and product icon.
+  -->
+  <Package Name="ExcelDiffEDR"
+           Manufacturer="skanmera"
+           Version="$(var.ProductVersion)"
+           ProductCode="$(var.ProductCode)"
+           UpgradeCode="294F9E11-17CF-4F3D-8ECE-EC7F97A6BCDB"
+           Scope="perMachine"
+           Language="1033">
+
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                  DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Default install folder name comes from ProjectPaths.ps1 ($EdrInstallDirName), which is also
+         the directory Deploy-And-Restart.ps1 copies into. Overridable per machine at msiexec time
+         via INSTALLFOLDER="..." and remembered in HKLM. -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="$(var.InstallDirName)" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="ExcelDiffEDR" />
+    </StandardDirectory>
+
+    <!-- .NET Framework 4.7.2 launch condition (target framework is net472). -->
+    <Property Id="NETFRAMEWORK472">
+      <RegistrySearch Id="NetFramework472" Root="HKLM"
+                      Key="SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"
+                      Name="Release" Type="raw" />
+    </Property>
+    <Launch Condition="Installed OR (NETFRAMEWORK472 &gt;= &quot;#461808&quot;)"
+            Message="[ProductName] requires Microsoft .NET Framework 4.7.2 or later. Install it and run this setup again." />
+
+    <Property Id="PREVIOUSINSTALLFOLDER">
+      <RegistrySearch Id="PreviousInstallFolder" Root="HKLM"
+                      Key="Software\skanmera\ExcelDiffEDR"
+                      Name="InstallFolder" Type="raw" />
+    </Property>
+    <SetProperty Id="INSTALLFOLDER" Value="[PREVIOUSINSTALLFOLDER]"
+                 After="AppSearch" Condition="PREVIOUSINSTALLFOLDER AND NOT INSTALLFOLDER" />
+
+    <!--
+      SharpShell shell extension registration via srm.exe (deferred, elevated).
+      srm.exe install "<dll>" -codebase   on install
+      srm.exe uninstall "<dll>"           on uninstall
+    -->
+    <CustomAction Id="RegisterShellExt" FileRef="F_SRM"
+                  ExeCommand="install &quot;[INSTALLFOLDER]ExcelDiff.ShellExtension.dll&quot; -codebase"
+                  Execute="deferred" Impersonate="no" Return="check" />
+
+    <CustomAction Id="RollbackUnregisterShellExt" FileRef="F_SRM"
+                  ExeCommand="uninstall &quot;[INSTALLFOLDER]ExcelDiff.ShellExtension.dll&quot;"
+                  Execute="rollback" Impersonate="no" Return="ignore" />
+
+    <CustomAction Id="UnregisterShellExt" FileRef="F_SRM"
+                  ExeCommand="uninstall &quot;[INSTALLFOLDER]ExcelDiff.ShellExtension.dll&quot;"
+                  Execute="deferred" Impersonate="no" Return="check" />
+
+    <CustomAction Id="RollbackRegisterShellExt" FileRef="F_SRM"
+                  ExeCommand="install &quot;[INSTALLFOLDER]ExcelDiff.ShellExtension.dll&quot; -codebase"
+                  Execute="rollback" Impersonate="no" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RollbackUnregisterShellExt" Before="RegisterShellExt" Condition="NOT Installed" />
+      <Custom Action="RegisterShellExt" After="InstallFiles" Condition="NOT REMOVE" />
+      <Custom Action="RollbackRegisterShellExt" Before="UnregisterShellExt" Condition="Installed AND (REMOVE=&quot;ALL&quot;)" />
+      <Custom Action="UnregisterShellExt" Before="RemoveFiles" Condition="Installed AND (REMOVE=&quot;ALL&quot;)" />
+    </InstallExecuteSequence>
+
+    <!-- Product icon (Add/Remove Programs + shortcut). -->
+    <Icon Id="Icon_App" SourceFile="$(var.RepoRoot)/ExcelDiff.GUI/app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="Icon_App" />
+
+    <Feature Id="ProductFeature" Title="ExcelDiffEDR" Level="1">
+      <ComponentGroupRef Id="AppComponents" />
+      <ComponentRef Id="C_ShellExtension" />
+      <ComponentRef Id="C_SharpShell" />
+      <ComponentRef Id="C_SystemResourcesExtensions" />
+      <ComponentRef Id="C_SRM" />
+      <ComponentRef Id="C_InstallLocation" />
+      <ComponentRef Id="C_Shortcut" />
+    </Feature>
+  </Package>
+
+  <!-- Shell extension DLL + SharpShell runtime + registration tool. -->
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="C_ShellExtension" Guid="739DF632-E206-4AB2-8464-F88CF85B9D9C">
+        <File Id="F_ShellExtension" Source="$(var.StageRoot)/shell/ExcelDiff.ShellExtension.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="C_SharpShell" Guid="5C772748-AFFA-42DE-8F04-4D522CCBDE8F">
+        <File Id="F_SharpShell" Source="$(var.StageRoot)/shell/SharpShell.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="C_SystemResourcesExtensions" Guid="A48C6219-56AC-49A1-89A5-EDAC13CB7BD9">
+        <File Id="F_SystemResourcesExtensions" Source="$(var.StageRoot)/shell/System.Resources.Extensions.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="C_SRM" Guid="E7D903A4-B5AD-4961-B93F-551407B6541D">
+        <File Id="F_SRM" Source="$(var.StageRoot)/tools/srm.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="C_InstallLocation" Guid="54653BCA-09E8-4636-8D9A-16639E843B71">
+        <RegistryValue Root="HKLM" Key="Software\skanmera\ExcelDiffEDR"
+                       Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <!-- Start Menu shortcut. -->
+  <Fragment>
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="C_Shortcut" Guid="65C2C6BE-FEAC-4877-B7F7-E221A25D960B">
+        <Shortcut Id="Shortcut_Main" Name="ExcelDiffEDR"
+                  Description="ExcelDiff EDR"
+                  Target="[INSTALLFOLDER]ExcelDiffEDR.GUI.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="Icon_App" />
+        <RegistryValue Root="HKCU" Key="Software\skanmera\ExcelDiffEDR"
+                       Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>
