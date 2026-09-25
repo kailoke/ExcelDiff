@@ -7,18 +7,19 @@
 ## Branch / upstream
 - Branch:   `master`
 - Upstream: `origin/master`
-- HEAD:     `50bd207a44ce32310522d4cbbb8f4a8ccedd3a06`
+- HEAD:     `5f7a566d62cee1a4cf4c0ab0ea8847d7993a97e1`
 
 ## HEAD commit
 ```
-50bd207 fix(diff): 列保留判据改为“任一非空值即真实列”，修复表头列删除被漏报
+5f7a566 fix(harness): DiffHarness 转 SDK-style，EDN 变体不再缺 NPOI 依赖
 Author: 万余 <f476947408@163.com>
 Date:   2026-09-25
 ```
 
 ## Recent commits
 ```
-50bd207 (HEAD -> master) fix(diff): 列保留判据改为“任一非空值即真实列”，修复表头列删除被漏报
+5f7a566 (HEAD -> master) fix(harness): DiffHarness 转 SDK-style，EDN 变体不再缺 NPOI 依赖
+50bd207 fix(diff): 列保留判据改为“任一非空值即真实列”，修复表头列删除被漏报
 6d93697 (tag: ver2.0.0) refactor(version): 版本标签 ED/EDE 改为 EDN/EDR，产品自有程序集升 2.0.0.0
 555a924 fix(deploy): 常驻完整性判定改为“与桌面同级”，不再假设必须非提权
 50795a2 chore: 忽略 wix extension add 生成的 .wix/ 本地缓存（可重新下载）
@@ -27,5 +28,4 @@ ba87a62 docs(readme): 记录 Fork 外部 diff 工具参数与常驻权限要求
 1c61878 build: WiX v4 MSI 打包链（隔离 staging + 稳定 ProductCode + 可回滚的 ShellExtension 注册）
 c4887ea refactor(paths): 机器路径集中到 ProjectPaths.ps1，脚本与文档去盘符
 1950a39 (origin/master, origin/HEAD) build: migrate packages.config to PackageReference (SDK-style csproj)
-be857df upgrade: Tier C - Prism 9.0.537, Extended.Wpf.Toolkit 5.1.2, Microsoft.Xaml.Behaviors.Wpf
 ```

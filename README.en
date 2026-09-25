@@ -117,9 +117,10 @@ Fork → Settings → External Diff Tools → Add:
 |-------|-------|
 | Name | `EDR` (any name) |
 | Path | `<install dir>\ExcelDiffEDR.GUI.exe` |
-| Arguments | `diff -s "$LOCAL" -d "$REMOTE"` |
+| Arguments | `diff -s "$REMOTE" -d "$LOCAL"` |
 
-- `$LOCAL` / `$REMOTE` are Fork's left/right file placeholders. Keep the quotes when paths may contain spaces; drop them (`diff -s $LOCAL -d $REMOTE`) if Fork mishandles the quoting.
+- **`-s` fills the left table, `-d` the right table** (source = left, destination = right), so "remote on the left, local on the right" needs `-s "$REMOTE" -d "$LOCAL"`. Reordering the `-s` / `-d` **flags** changes nothing - swap the values after them.
+- `$LOCAL` / `$REMOTE` are the two temporary file placeholders Fork passes in. After configuring, run one comparison and read the "Source / Destination" path boxes at the top of the window to confirm the sides. Keep the quotes when paths may contain spaces; drop them (`diff -s $REMOTE -d $LOCAL`) if Fork mishandles the quoting.
 - Optional flags: `-k` keeps the comparison out of the recent-file history (recommended for difftool use), `-v` validates the extension before opening, `-c <tool> -i` hands unsupported types straight to an external tool without an error dialog.
 - **Resident process and "waiting for external tool"**: ExcelDiff is designed to stay resident in the tray, so the process does not exit when a window closes. If no resident instance is running, the process Fork starts becomes the resident one and **never exits**, so Fork keeps waiting. Start the resident instance first (`ExcelDiffEDR.GUI.exe --startup`); after that every call is forwarded to it and exits immediately. The resident's integrity level must match the interactive desktop's — on a mismatch a Fork started from the desktop cannot reach it over the named pipe (UIPI). "Match" is not the same as "must be non-elevated": on a machine with UAC disabled, explorer, Fork and the app all run High.
 

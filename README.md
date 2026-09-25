@@ -117,9 +117,10 @@ Fork → Settings → External Diff Tools → Add：
 |------|----|
 | Name | `EDR`（任意名字） |
 | Path | `<安装目录>\ExcelDiffEDR.GUI.exe` |
-| Arguments | `diff -s "$LOCAL" -d "$REMOTE"` |
+| Arguments | `diff -s "$REMOTE" -d "$LOCAL"` |
 
-- `$LOCAL` / `$REMOTE` 是 Fork 的左/右文件占位符。路径可能含空格时保留引号；若 Fork 对引号处理异常，去掉引号写 `diff -s $LOCAL -d $REMOTE`。
+- **`-s` 决定左表、`-d` 决定右表**（源=左、目标=右），所以"左边显示远端、右边显示本地"要写 `-s "$REMOTE" -d "$LOCAL"`。只调换 `-s` / `-d` 的**书写顺序**不改变任何东西 —— 要换的是它们后面的值。
+- `$LOCAL` / `$REMOTE` 是 Fork 传出的两个临时文件占位符。配好后点一次对比，看窗口顶部"源文件 / 目标文件"两个路径框，就能确认左右是否如预期。路径可能含空格时保留引号；若 Fork 对引号处理异常，去掉引号写 `diff -s $REMOTE -d $LOCAL`。
 - 可选参数：`-k` 不写入最近文件历史（difftool 场景建议加）、`-v` 打开前校验扩展名、`-c <工具> -i` 让不支持的类型直接转交外部工具而不弹错误框。
 - **常驻与"等待外部工具"**：ExcelDiff 是托盘常驻设计（进程不会因窗口关闭而退出）。若调用时没有常驻实例，被启动的那个进程会自己变成常驻且**不退出**，Fork 那边就一直显示在等外部工具。先把常驻启动起来（`ExcelDiffEDR.GUI.exe --startup`），之后每次对比都是"转发给常驻后立刻退出"。常驻的完整性级别要与桌面一致：不同级时 Fork 通过命名管道连不上（UIPI 拦截）。注意"一致"不等于"必须普通权限"——UAC 被关闭的机器上 explorer / Fork / 应用本来就全是 High。
 
