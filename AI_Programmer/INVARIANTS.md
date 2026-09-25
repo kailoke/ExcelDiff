@@ -42,12 +42,12 @@
 - [ ] **E4 不主动加注释**：沿用既有代码风格，改动不添加新注释（除非必须解释架构决策）。
 - [ ] **E5 NetDiff 算法**：改动 `EditGraph.cs`/`DiffUtil.cs` 后必须跑通 `NetDiff.TestRunner`（31 用例）。（AGENTS §7.3）
 - [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（`<repo>`=仓库根，实际值取 `ProjectPaths.ps1` 的 `$RefAssemblyPath`；.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
-- [ ] **E7 MSI 输入隔离**：EDR MSI 只能收集 `ExcelDiff.Installer\obj\stage` 的专用构建，禁止扫描共享 `bin\Release`；WiX 版本由 `.config\dotnet-tools.json` 固定。（AGENTS §4 / ADR-013）
-- [ ] **E8 MSI 身份稳定**：MSI 三段版本必须与主 EXE FileVersion 前三段一致；ProductCode 按 `UpgradeCode + 三段版本` 稳定派生，同版本重建不得产生新 ProductCode。（ADR-013）
-- [ ] **E9 MSI 事务完整**：ShellExtension deferred 注册/反注册必须有成对 rollback 动作；major upgrade 必须安排在 `InstallInitialize` 后的可回滚事务内。（ADR-013）
-- [ ] **E10 MSI 发布门禁**：正式发布不得使用 `Build-Installer.ps1 -SkipValidation`；必须通过 `wix msi validate`，并在分发前完成 Authenticode 签名。（AGENTS §4 / ADR-013）
+- [ ] **E7 安装输入隔离**：setup 载荷只能来自 `ExcelDiff.Installer\obj\stage` 的专用构建（禁止扫描共享 `bin\Release`），且不得含 `.pdb`、EDN 三件套（`ExcelDiff.GUI.exe/.config/.pdb`）与任何辅助注册工具；打包不依赖外部安装器工具链。（AGENTS §4 / ADR-017）
+- [ ] **E8 安装身份一致**：`ExcelDiffSetup.exe` 的 FileVersion 必须等于 staged 主 EXE `ExcelDiffEDR.GUI.exe` 的 FileVersion，ARP `DisplayVersion` 取同一值；同版本重装必须复用同一注册表键与目录，不得产生第二份"应用和功能"条目。（`Build-Setup.ps1` 校验 / ADR-017）
+- [ ] **E9 安装事务完整**：ShellExtension 的 COM 注册/注销必须成对且**在子进程里执行**（进程内 `LoadFrom` 会锁住扩展 DLL 导致卸载删不掉）；重装必须先 `Directory.Move` 旧目录并保留 undo 栈，任一步失败要还原旧目录、恢复 HKLM 状态快照；文件删除只能按 `install-manifest.txt` 逐项执行，清单缺失时只删已知文件名，绝不递归删未知目录。（ADR-017）
+- [ ] **E10 安装发布门禁**：正式分发前必须 `AI_Script\verify-installer.ps1 -Install` 全绿（静态检查 + 真实安装/卸载/重装/回滚三用例），并在发布流水线完成 Authenticode 签名；未签名产物不得对外。（AGENTS §4 / ADR-017）
 - [ ] **E11 路径不写死**：脚本/文档不得出现机器相关绝对路径（盘符）。Program Files 基目录、安装目录名/部署目录、外部测试数据仓一律经根目录 `ProjectPaths.ps1`（可用其标注的环境变量或脚本参数覆盖）。（AGENTS §0.2 / §9）
-- [ ] **E12 版本口径**：只有**产品自有且被部署/安装链路消费**的程序集跟随产品版本 —— `ExcelDiff.GUI`（主 EXE，MSI 版本源）、`ExcelDiff`、`ExcelDiff.ShellExtension`。vendored 上游库（`FastWpfGrid` / `NetDiff` / `NetDiff.Test` / `WriteableBitmapEx.Wpf`）与对外包清单（`NetDiff.nuspec` 的 `Diff4Net`）保持自身版本，**不得随产品升版**；废弃安装包 `ExcelDiff.Installer.vdproj` 里的版本快照同样不动。（ADR-014）
+- [ ] **E12 版本口径**：只有**产品自有且被部署/安装链路消费**的程序集跟随产品版本 —— `ExcelDiff.GUI`（主 EXE，setup 版本源）、`ExcelDiff`、`ExcelDiff.ShellExtension`，以及 `ExcelDiff.Installer`（setup exe 自身，按 E8 与主 EXE 对齐）。vendored 上游库（`FastWpfGrid` / `NetDiff` / `NetDiff.Test` / `WriteableBitmapEx.Wpf`）与对外包清单（`NetDiff.nuspec` 的 `Diff4Net`）保持自身版本，**不得随产品升版**。（ADR-014 / ADR-017）
 
 ## F. 性能 / 渲染（FastWpfGrid）
 

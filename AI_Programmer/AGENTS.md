@@ -37,10 +37,11 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `INVARIANTS.md` | 工程硬约束清单（改动前逐条核对，违反=阻断提交） |
 | `ADR.md` | 架构决策记录（关键决策的 why，避免重开争论） |
 | `PROJECT_STATE.md` | **项目与 git 版本状态单一事实源**（分支/HEAD/最近提交；由 `AI_Script\refresh_state.ps1` 生成，勿手改） |
-| `ProjectPaths.ps1` | **路径单一事实源**（Program Files 基目录、安装目录名/部署目录、外部测试数据仓、refs/NuGet.Config/WiX manifest/csc）；脚本 dot-source 它，`-Print` 自查 |
+| `ProjectPaths.ps1` | **路径单一事实源**（Program Files 基目录、安装目录名/部署目录、外部测试数据仓、refs/NuGet.Config）；脚本 dot-source 它，`-Print` 自查 |
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
-| `AI_Script\verify.ps1` | 一键验证门禁：构建 EDR 主版本 + NetDiff 单测 + lang↔resx 同步 + WIP 快照 |
+| `AI_Script\verify.ps1` | 一键验证门禁：构建 EDR 主版本 + NetDiff 单测 + lang↔resx 同步 + 安装器工程编译 + WIP 快照 |
+| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集；`-Install` 追加 6 个真实安装用例（含回滚与越界保护），机器上留有安装记录时拒绝运行 |
 | `README.md` | 用户向使用说明（CLI 参数、快捷键、外部命令） |
 
 ## 3. 目录结构（解决方案 = `ExcelDiff.sln`）
@@ -74,12 +75,12 @@ NetDiff\NetDiff.TestRunner\      # 离线测试 runner（MSTest shim + 反射执
 DiffHarness\                     # headless diff 对比工具（库层直调，EDN/EDR 输出对比，见 §7.9）
 FastWpfGrid\                     # 高性能虚拟化网格控件 + WriteableBitmapEx 位图扩展
 ExcelDiff.ShellExtension\       # COM 外壳扩展（资源管理器右键菜单）
-ExcelDiff.Installer\            # MSI 打包（WiX v4，见 §4；旧 vdproj 已废弃不参与构建）
+ExcelDiff.Installer\            # setup exe 打包（自研 WPF 向导安装器，见 §4；MSI/WiX 链已删除）
 lang\                            # 外置语言文件 en-US.json / zh-CN.json（UTF-8，随 exe 目录部署）
 packages\refs\                   # .NET Framework 参考程序集（构建必需，见 §4）
 backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
-AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
+AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / verify-installer.ps1 安装包门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
 .githooks\                       # git 钩子（core.hooksPath=.githooks）：pre-commit 提交前刷新并并入本次提交 / post-checkout、post-merge 后刷新 + 条件校准 CODEX.md
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 ProjectPaths.ps1                 # 路径单一事实源（机器相关值 + 仓库派生路径），工作流脚本 dot-source 它
@@ -93,9 +94,9 @@ AI_Programmer\                    # AI 上下文（见 §2）：AGENTS/ARCHITECT
 
 - 本机仅有 `dotnet SDK 8.0`（`dotnet` 已在 PATH，用 `Get-Command dotnet` 确认），**没有独立 msbuild**，用 `dotnet msbuild`。
 - `<repo>` = 仓库根目录绝对路径（`git rev-parse --show-toplevel`），在文档命令里作占位；脚本内一律取 `ProjectPaths.ps1` 的 `$RepoRootPath` / `$RefAssemblyPath`，不写盘符。
-- 关键：.NET Framework 参考程序集不在本机 SDK 里，**必须**传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（旧属性名 `TargetFrameworkRootPath` 已弃用）。四个 csproj 现为 SDK-style（`<Project Sdk="Microsoft.NET.Sdk">`：`ExcelDiff`、`ExcelDiff.GUI`、`ExcelDiff.ShellExtension`、`DiffHarness`），依赖走 `PackageReference`（原 `packages.config` 已删除，`dotnet restore` 还原）。GUI 构建还依赖 `ExcelDiff.GUI.csproj` 内的 `EnsureNetStandardForMarkupCompile` 目标（net472 标记编译器需 `netstandard` 桥接程序集）与 `AppendTargetFrameworkToOutputPath=false`（输出保持扁平 `bin\Release\`，兼容部署脚本）。
+- 关键：.NET Framework 参考程序集不在本机 SDK 里，**必须**传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（旧属性名 `TargetFrameworkRootPath` 已弃用）。五个 csproj 现为 SDK-style（`<Project Sdk="Microsoft.NET.Sdk">`：`ExcelDiff`、`ExcelDiff.GUI`、`ExcelDiff.ShellExtension`、`ExcelDiff.Installer`、`DiffHarness`），依赖走 `PackageReference`（原 `packages.config` 已删除，`dotnet restore` 还原）。GUI 构建还依赖 `ExcelDiff.GUI.csproj` 内的 `EnsureNetStandardForMarkupCompile` 目标（net472 标记编译器需 `netstandard` 桥接程序集）与 `AppendTargetFrameworkToOutputPath=false`（输出保持扁平 `bin\Release\`，兼容部署脚本）。
 
-- `ExcelDiff.ShellExtension` 当前 `SignAssembly=false`，可由 `dotnet msbuild` 构建；旧 PFX 不参与现行构建。强名称与发布用 Authenticode 是两件事，MSI 脚本会对未签名成品给出警告，正式分发前仍需使用可信代码签名证书签署 MSI/EXE/ShellExtension。
+- `ExcelDiff.ShellExtension` 当前 `SignAssembly=false`，可由 `dotnet msbuild` 构建；旧 PFX 不参与现行构建。强名称与发布用 Authenticode 是两件事，`Build-Setup.ps1` 会对未签名成品给出警告，正式分发前仍需使用可信代码签名证书签署 `ExcelDiffSetup.exe` 与 `ExcelDiff.ShellExtension.dll`（E10）。
 - 下列命令均已在本机验证可编译（Release, AnyCPU）。SDK-style 依赖走 `PackageReference`，**手动 `dotnet msbuild` 前需先 `dotnet restore <proj> --configfile <repo>\.nuget\NuGet.Config`**（日常走 `verify.ps1` / `Deploy-And-Restart.ps1` 已内置 restore）。
 
 ### EDR（主版本，ExcelDataReader 读取）— 产物 `ExcelDiffEDR.GUI.exe`
@@ -125,29 +126,28 @@ dotnet msbuild NetDiff/NetDiff.TestRunner/NetDiff.TestRunner.csproj /p:Configura
 & "NetDiff\NetDiff.TestRunner\bin\Release\NetDiff.TestRunner.exe"
 ```
 
-### MSI 安装包（WiX v4）
+### 安装程序（自研 WPF 向导 setup exe）
 
-本机无 VS/InstallShield/WiX v3，旧 `ExcelDiff.Installer.vdproj`（需 VS + Installer Projects 扩展）已废弃。改用仓库 `.config\dotnet-tools.json` 固定的 **WiX Toolset 4.0.6**，脚本自动 `dotnet tool restore`，纯 CLI 产出标准 MSI。
+MSI/WiX 路线已于 2026-09-25 **整体删除**（ADR-017）：`ExcelDiffEDR.Installer.wxs`、`Build-Installer.ps1`、`SrmRegistrar/`、`ExcelDiff.Installer.vdproj`、`.config\dotnet-tools.json` 都不在了。废弃的直接原因是产品要求做不到：**MSI 的界面语言在 `msiexec` 打开库的那一刻就固定**（数据库代码页与 `String` 表都是构建期烘进去的，`.mst` 转换也在第一个对话框画出来之前选定），而 WiX 4.0.6 的 UI 扩展里没有任何语言对话框、295 个控件中**一个 ComboBox 都没有**；唯一带语言下拉的 Burn 需要本机没有、且离线取不到的 `WixToolset.BootstrapperApplications.wixext`。
 
 ```
-powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1            # 构建 EDR + ShellExtension → ExcelDiff.Installer\Release\ExcelDiffEDRSetup.msi
-powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipBuild  # 跳过 msbuild，复用 obj\stage 的上次隔离构建
-powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -Version 2.0.0   # 显式 -Version 仅在前三段与主 EXE FileVersion 一致时才通过校验
-powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipValidation # 仅受限本地环境；该产物不得发布
-powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipBuild -Wizard # 带安装向导 UI 的包（见下方向导条目）
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1              # 隔离构建 EDR+ShellExtension → 载荷 zip → Release\ExcelDiffSetup-<版本>.exe
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1 -SkipBuild   # 复用 obj\stage，只重打载荷与 setup exe
+powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1                   # 静态门禁：载荷内容/嵌入资源/版本一致/双语键集
+powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加真实安装·卸载·重装·回滚三用例（需管理员）
 ```
 
-- 脚本内部：清理并构建 EDR GUI + ShellExtension 到专用 `ExcelDiff.Installer\obj\stage\{app,shell}` → **用 `csc.exe` 和 staged `SharpShell.dll` 编译 `SrmRegistrar\SrmRegistrar.cs`**（替代与 SharpShell 2.7.2 不匹配的旧 srm.exe 2.2.0.0）→ 只枚举 staging app 文件并按相对路径排序 → 生成 `AppFiles.generated.wxs`（组件 GUID 按规范化相对路径稳定派生，ID 带哈希防碰撞，该文件 gitignore）→ 仓库固定的 WiX 4.0.6 `build -arch x64` → `wix msi validate`。
-- 静态源 `ExcelDiffEDR.Installer.wxs`：包定义（Name=ExcelDiffEDR、Manufacturer=skanmera、UpgradeCode、Scope=perMachine、装到 `[ProgramFiles64Folder]$(var.InstallDirName)`，目录名出自 `ProjectPaths.ps1`）、.NET Framework 4.7.2 启动条件（`RegistrySearch Type=raw` 返回 `#十六进制`，条件必须与 `&quot;#461808&quot;` 比较）、ShellExtension COM 注册（deferred + Impersonate=no）及成对 rollback 动作、`MajorUpgrade Schedule=afterInstallInitialize`、安装目录记忆、开始菜单快捷方式、产品图标。
-- **版本规则**：默认从 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion 派生 MSI 三段版本；显式 `-Version` 的前三段必须与主 EXE 一致。Windows Installer 升级不依赖第四段 revision，发新版必须提升前三段之一。ProductCode 由 `UpgradeCode + MSI 三段版本` 稳定派生：同版本重建保持相同 ProductCode，新版本自动变化。**升版只动产品自有三件**（`ExcelDiff.GUI` / `ExcelDiff` / `ExcelDiff.ShellExtension`），vendored 上游库（FastWpfGrid / NetDiff / NetDiff.Test）与 `NetDiff.nuspec` 的 `Diff4Net` 版本保持自身口径（INVARIANT E12 / ADR-014）。
-- EDR 仍需随包携带 NPOI 及其依赖：虽然读取主路径是 EDR，但 `ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍使用 NPOI；未替换这些功能前不得从 MSI 强行排除 NPOI。
-- 未打包 `open_readme.vbs`。默认包**无安装向导 UI**（双击即按默认目录静默装完）。
-- **安装向导：框架已通，步骤待设计**。`-Wizard` 启用 `WixToolset.UI.wixext` 的 `WixUI_InstallDir`——`ExcelDiffEDR.Installer.wxs` 里该元素被 `<?if $(var.EnableWizard) = "yes" ?>` 包住，打包脚本注入 `-d EnableWizard=yes|no` 并仅在 `-Wizard` 时传 `-ext`（所以默认构建不依赖网络）。实测 `-SkipBuild -Wizard`：构建通过、`wix msi validate` 通过，包内出现 `WelcomeDlg`/`InstallDirDlg`/`VerifyReadyDlg`/`ProgressDlg`/`MaintenanceTypeDlg`，体积 5,398,528 → 5,697,536 字节。**这套对话框只是占位验证**：页面清单与顺序、要不要 EULA 页、是否暴露修复/卸载入口、横幅与对话框图片、中英双语文案、默认目录取 `[ProgramFiles64Folder]` 还是 `ProjectPaths.ps1` 的 `$EdrDeployPath`，都必须先出设计再定稿。
-- **WiX 扩展版本必须与 wix 主工具一致**：`wix extension add WixToolset.UI.wixext`（不带版本）会拉 NuGet 最新版，实测装成 7.0.0 后 `extension list` 标 `damaged`、4.0.6 的 CLI 用不了；且 `wix extension remove <id>/<ver>` 会按包名把该包所有版本一起删掉。脚本因此从 `.config\dotnet-tools.json` 读钉住的 wix 版本，拼 `WixToolset.UI.wixext/<version>` 安装，并以 `extension list` 的实际条目（而非 `add` 的退出码——重复添加时它非 0 且无输出）判定可用性。扩展装在用户目录、不入库 → 新机器首次 `-Wizard` 需联网。
-- **INSTALLFOLDER 可被命令行覆盖并跨 major upgrade 记忆**：`msiexec /i x.msi INSTALLFOLDER="<绝对目录>"`；安装值持久化到 HKLM，升级 AppSearch 在目录定价前恢复（显式命令行值优先）。
-- **默认安装目录名 = `ProjectPaths.ps1` 的 `$EdrInstallDirName`**（打包时经 `-d InstallDirName=` 注入 `ExcelDiffEDR.Installer.wxs`），与 `Deploy-And-Restart.ps1` **只有目录名同源**；基目录不同源（MSI 走 WiX 的 `[ProgramFiles64Folder]` = 本机 Program Files，脚本走 `$ProgramFilesBasePath`），两者不一致时会落成两个目录（本机即如此，用户已裁定“读工程配置文件、无需在意”）。
-- `wix msi validate` 是发布硬门禁；`-SkipValidation` 只允许生成本地诊断包。脚本会警告 MSI 尚未 Authenticode 签名，正式分发必须在发布流水线签名并复验签名。
-- 卸载文件删除正常（`msiexec /x` 验证通过）。若测试中出现"卸载后文件残留"，是测试时**手动删 `Classes\Installer\Products` 而未清 `UserData\S-1-5-18\{Products,Components}`** 导致组件 refcount 混乱，非 MSI 固有 bug。
+- **产物是单个 exe**：`ExcelDiffSetup.exe`（net472 WPF，`app.manifest` = `requireAdministrator`）。应用载荷由脚本打成 zip，再以 manifest resource `ExcelDiff.Setup.Payload.zip` 嵌入；`.csproj` 里该 `EmbeddedResource` 带 `Condition="Exists(...)"`，所以没有载荷时工程仍能编译、运行时给明确错误——打包链不污染 `verify.ps1`。
+- **向导五页**：① 语言（默认按 `CultureInfo.InstalledUICulture`，`zh*`→中文、其余英文；点选后整个向导立即换语言）② 安装位置 + 组件勾选 ③ 确认 ④ 进度（真实步骤日志，日志文件 `%TEMP%\ExcelDiff-Setup-<时间戳>.log`）⑤ 完成（用法提示）。**故意不放"立即运行"**：setup 是提权进程，它拉起的常驻是高完整性级别，桌面侧 difftool 连不上命名管道（见 §7.6 / §8.8）。
+- **文案在 `ExcelDiff.Installer\Strings\{zh-CN,en-US}.txt`**（`key=value`，UTF-8 无 BOM，读取端显式 `UTF8Encoding`）。两份键集必须一致，`verify-installer.ps1` 比对；PowerShell 侧读它们**必须 `-Encoding UTF8`**，否则 5.1 按 GBK 解码会把中文尾字节与后面的 ASCII 合成一行（实测假报 19 个键缺失）。
+- **注册表口径（业主裁定）**：产品键 `HKLM\SOFTWARE\ExcelDiffEDR`（`InstallFolder` / `InstallVersion` / `SetupCulture` / `SetupStartOnBoot` / `ShellExtRegistered`），ARP 键 `HKLM\...\Uninstall\ExcelDiffEDR`，用户可见名 `ExcelDiff`（`ExcelDiffEDR` 只作内部标识与键名）。`SetupCulture` / `SetupStartOnBoot` 是**给程序读的种子**：`ApplicationSetting.EnsureCulture()` 的解析顺序是「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」，`Load()` 仅在配置为空时 `SeedFromInstaller()`。必须这样改，因为程序原先每次启动都按 `startOnBoot = true` 重写 HKCU Run，安装器的勾选会被冲掉。
+- **COM 注册必须在子进程里做**：`ShellRegistrar.RunChild("register|unregister", dir)` 用 `/silent /shell-op:… /dir="…"` 重新拉起自己。实测教训：在 setup 进程内 `Assembly.LoadFrom` 扩展 DLL 会把它锁到进程退出，卸载时 3 个 DLL 删不掉、目录残留。另注意 `/dir="…\"` 这种**结尾反斜杠紧跟引号**会被 Windows 命令行解析成转义引号，拼参数前要去掉尾分隔符。
+- **删除一律清单驱动**：安装时写 `install-manifest.txt`（文件 / 快捷方式 / 注册表值与键 / 目录，且清单把自己也记进去），卸载按清单删、只删空目录，绝不递归删未知目录；清单缺失时只删已知文件名。文件被占用则保留清单并提示"重启资源管理器后再卸载一次"。
+- **重装=先卸后装带回滚**：旧目录 `Directory.Move` 成 `<dir>.old-<时间戳>`（同卷），任一步失败按 undo 栈还原并把 HKLM 状态写回 `RegistryStore.Snapshot()` 的快照。实测：占住旧 `ExcelDiffEDR.GUI.exe` 再执行安装 → 安装报失败、旧安装仍可运行、无 `.old-*` 残留。
+- **静默参数**：`/silent|/quiet`、`/uninstall`、`/culture:zh-CN|en-US`、`/dir=<path>`（`:` 与 `=` 都接受，值保留原大小写）、`/components:shell,desktop,autostart|none|all`、`/log:<path>`、`/?`；退出码 0 成功。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。
+- **卸载会删除当前用户的 `%APPDATA%\ExcelDiffEDR.GUI`**（业主裁定"卸载时清理配置"）。因此任何自动化跑 `-Install` 都必须先备份该目录与 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的 `ExcelDiffEDR.GUI` 值再还原——`verify-installer.ps1` 已内置这层保护（注意 `Environment.GetFolderPath(ApplicationData)` 不认临时的 `$env:APPDATA` 覆盖）。
+- 版本口径不变：setup exe 的 FileVersion 必须等于 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion（E8，脚本会校验），产品保持 2.0.0.0（业主裁定本轮不升）。NPOI 及其依赖仍必须随包（`ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍在用），`open_readme.vbs` 仍不打包。
+- 发布前必须外部 Authenticode 签名（E10）：setup exe 与它自己复制进安装目录的 `ExcelDiffSetup.exe` 同源，未签名会触发 SmartScreen。
 
 ### 一键验证门禁
 

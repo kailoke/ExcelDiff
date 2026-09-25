@@ -21,7 +21,7 @@
 | `FastWpfGrid` | 类库 | 高性能虚拟化网格控件 |
 | `WriteableBitmapEx.Wpf` | 类库 | FastWpfGrid 依赖的位图扩展 |
 | `ExcelDiff.ShellExtension` | COM 外壳扩展 | 资源管理器右键菜单入口 |
-| `ExcelDiff.Installer` | WiX v4 | MSI 打包（`Build-Installer.ps1` + `ExcelDiffEDR.Installer.wxs`，见 AGENTS §4） |
+| `ExcelDiff.Installer` | WPF setup exe | 安装向导与打包（`Build-Setup.ps1`，应用载荷以 zip 内嵌为 manifest resource，见 AGENTS §4） |
 
 依赖关系：
 
@@ -63,7 +63,7 @@ ExcelDiff ──> NPOI 2.5.6, ExcelDataReader 3.9.0 (代码级条件编译)
 | 单实例/IPC | `SingleInstance.cs` | 命名管道 server/client；channel id 由 exe 名派生，保证 EDN/EDR 独立；远程命令经 `Dispatcher.BeginInvoke` 回到 UI 线程，非阻塞管道线程（模态框存在时不死锁） |
 | 托盘 | `TrayIconManager.cs` | 显示/隐藏、文本 = `App.DisplayName`、双击恢复窗口、右键菜单（显示/退出） |
 | 设置 | `Settings/` | `ApplicationSetting : Setting<T>`（YamlDotNet 序列化到 `%APPDATA%\<程序集名>\<程序集名>.yml`）；`Ensure()` 缺省补齐；`IgnoreEqual`/`DeepClone` 提供脏检查 |
-| 本地化 | `Localization/` `LocalizationManager.cs` | 外置 `lang\<culture>.json`（自定义 JSON 解析器，UTF-8）；`Resources.Designer.cs` 桥接到 `LocalizationManager.GetString`；`{x:Static Resources.*}` 在窗口加载时固化 → 语言变更需重建窗口（`App.RebuildMainWindow`） |
+| 本地化 | `Localization/` `LocalizationManager.cs` | 外置 `lang\<culture>.json`（自定义 JSON 解析器，UTF-8）；`Resources.Designer.cs` 桥接到 `LocalizationManager.GetString`；`{x:Static Resources.*}` 在窗口加载时固化 → 语言变更需关闭主窗口、下次命令再重建（`App.CloseMainWindowForLanguageChange`，`App.xaml.cs:346`） |
 | 视图 | `Views/` | `MainWindow`（含 PowerShell 控制台宿主）；`DiffView`（对比网格 + 差异导航 + 搜索 + 日志输出）；`NoDiffWindow`（无差异提示，`CloseResultButton.IsDefault` 支持回车关闭）；`ProgressWindow`；设置/外部命令系列窗口 |
 | ViewModel | `ViewModels/` | `MainWindowViewModel`、`DiffViewModel`、各设置窗口 VM，基于 Prism `BindableBase` |
 | 模型 | `Models/` | `DiffGridModel`（行状态预计算、按需刷新 minimap 优化）；`DiffType` |
@@ -135,11 +135,11 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ```
 
 - `<ProgramFilesBase>` / 目录名都出自根目录 `ProjectPaths.ps1`：`$ProgramFilesBasePath` + `$EdrInstallDirName` = `$EdrDeployPath`（`Deploy-And-Restart.ps1` 的 `-Dst` 默认值）。自查：`powershell -File ProjectPaths.ps1 -Print`。文档不写盘符。
-- **MSI 的基目录由 Windows Installer 的 `[ProgramFiles64Folder]` 决定**（= 本机 Program Files），只有目录名与 `ProjectPaths.ps1` 同源。若本机 Program Files ≠ `$ProgramFilesBasePath`，覆盖式部署与 MSI 会落到两个目录 → 设 `EXCELDIFF_PROGRAM_FILES` 对齐，或部署时显式传 `-Dst`。
+- **setup 的默认目录 = 本机 `%ProgramFiles%\ExcelDiffEDRTool`**（`Environment.SpecialFolder.ProgramFiles` + `ProductInfo.InstallDirName`），只有目录名与 `ProjectPaths.ps1` 同源；`$ProgramFilesBasePath`（本机可能是别的盘）不进分发包，否则会把开发机的盘符写进客户机器。若本机 Program Files ≠ `$ProgramFilesBasePath`，覆盖式部署与 setup 会落到两个目录 → 设 `EXCELDIFF_PROGRAM_FILES` 对齐，或部署时显式传 `-Dst`。
 
-- EDR 发布包由 `ExcelDiff.Installer\Build-Installer.ps1` 构建：仓库 tool manifest 固定 WiX 4.0.6，GUI/ShellExtension 先进入 `ExcelDiff.Installer\obj\stage`，MSI 只收集该隔离目录。MSI 三段版本取自主 EXE FileVersion，ProductCode 按 UpgradeCode+版本稳定派生；ShellExtension 注册/反注册带 rollback，`wix msi validate` 为发布硬门禁（ADR-013）。
-- MSI 默认安装到 `[ProgramFiles64Folder]$(var.InstallDirName)`（目录名由打包脚本从 `ProjectPaths.ps1` 注入）；命令行 `INSTALLFOLDER` 会写入 HKLM 并在 major upgrade 时恢复。正式对外分发前需在发布流水线完成 Authenticode 签名。
-- 包默认无安装向导 UI；`Build-Installer.ps1 -Wizard` 通过 `WixToolset.UI.wixext`（版本随钉住的 wix 走）产出带向导的包，`EnableWizard` 由脚本注入 `.wxs` 的 `<?if?>` 分支。向导的具体页面、顺序、图片与双语文案属**待设计项**，当前对话框集仅用于验证工具链（AGENTS §4）。
+- EDR 发布包由 `ExcelDiff.Installer\Build-Setup.ps1` 构建：GUI/ShellExtension 先进入 `ExcelDiff.Installer\obj\stage`（隔离输入，E7），载荷打成 zip 后以 manifest resource 内嵌进 `ExcelDiffSetup.exe`。setup 的 FileVersion 必须等于主 EXE FileVersion（E8），ARP `DisplayVersion` 同源。ShellExtension 的 COM 注册/注销走自己拉起的子进程（`/shell-op:`），因为进程内 `LoadFrom` 会锁住扩展 DLL 让卸载删不掉文件（E9）。发布门禁是 `AI_Script\verify-installer.ps1 -Install`（静态检查 + 安装/卸载/重装/回滚真实用例，E10）。
+- setup 默认装到 `%ProgramFiles%\ExcelDiffEDRTool`，路径写入 `HKLM\SOFTWARE\ExcelDiffEDR\InstallFolder` 并在下次安装时沿用；命令行 `/dir=` 优先。卸载按 `install-manifest.txt` 逐项删除并清当前用户 `%APPDATA%\ExcelDiffEDR.GUI`（业主裁定）。正式对外分发前需在发布流水线完成 Authenticode 签名。
+- 向导第一页是语言选择，默认值取 `CultureInfo.InstalledUICulture`（`zh*`→中文，其余英文），选择结果同时写入 `HKLM\...\SetupCulture` 供程序首启动读取；程序侧解析顺序为「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」（`ApplicationSetting.EnsureCulture` / `SeedFromInstaller`）。许可/EULA 页、修复入口、自定义美术均**明确不做**（ADR-017）。
 - NGEN 已对 EDR exe 预编译。
 - Git difftool：`difftool.ExcelDiffEDR`（EDR，主）；`difftool.ExcelDiff`（EDN，历史，仍可用）。
 - **lang 部署坑**：构建时 `CopyLangFiles` 会把仓库 `..\lang\*.json` 复制到 `bin\Release\lang`（自动、正确）；但部署脚本用 `Copy-Item -Recurse` 复制整个 `lang` 目录到已存在的目标时会**嵌套成 `lang\lang`**，顶层文件不更新。部署后必须单独校验/同步 `lang\*.json`（或先删目标 `lang` 目录再 `-Recurse` 复制）。
@@ -160,4 +160,3 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 - EDR 无法识别仅样式单元格（`s=` 无 `<v>`），导致空列被吞 → 列对齐漂移 → 漏报真实差异。EDR 盲区由 EDN（NPOI）保底对照兜底，EDN 代码不得移除。
 - `EditGraph`（NetDiff）为 Myers 启发式 BFS，最坏 O(D²) 节点分配（病态"两表几乎全不同"大表）。已用行级 `Limit=2000` 前沿守卫兜底（ADR-010）；不重写（31 测试编码当前路径平局规则）。
 - `backup_installed_*` 目录为部署前快照，勿改动。
-- `ExcelDiff.Installer.vdproj` 为旧 VDProj（EDN 时代、需 VS + Installer Projects 扩展），已废弃、不再使用；现改由 WiX v4（`Build-Installer.ps1` → `ExcelDiffEDR.Installer.wxs`）生成 MSI。

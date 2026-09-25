@@ -101,7 +101,7 @@
 
 ## ADR-013 EDR MSI 使用隔离、确定且可回滚的 WiX v4 打包链
 
-- **状态**：已定
+- **状态**：**已废止（2026-09-25，被 ADR-017 取代）**——整条 WiX/MSI 打包链已删除，隔离输入 / 稳定身份 / 可回滚事务 / 发布门禁这四条要求由 ADR-017 在 setup exe 上重新实现（INVARIANTS E7–E10 同步改写）。
 - **背景**：从共享 `bin\Release` 收集文件会混入历史构建残留；全局 WiX 和随机 ProductCode 使同版本重建不可复现；ShellExtension 外部 EXE 自定义动作没有 rollback 时会在安装失败后留下损坏的 COM 状态。
 - **决策**：WiX 4.0.6 用仓库 tool manifest 固定；EDR GUI/ShellExtension 构建到 installer 专用 staging；MSI 三段版本取自主 EXE FileVersion，ProductCode 按 `UpgradeCode + 版本` 稳定派生，文件组件 GUID 按规范化相对路径稳定派生；major upgrade 排在 `InstallInitialize` 后，COM 注册/反注册均配套 rollback；ICE validation 为发布硬门禁。
 - **后果**：同版本重建保持产品身份，新版本自动触发 major upgrade；失败安装/卸载可恢复 ShellExtension 注册；`-SkipBuild` 只能复用 staging，`-SkipValidation` 产物只能用于本地诊断；正式分发仍需外部可信证书完成 Authenticode 签名。
@@ -115,6 +115,7 @@
 - **后果**：全仓标签字样一次性改名（`EDE` 137 处 + 独立 `ED` 104 处 = 241 处，按 ASCII 词边界统计——用 `\b` 会把紧贴中文的出现漏掉；覆盖文档/脚本输出/代码注释/harness 局部变量名），机械替换产生的同义反复（如 "EDR=EDR 主版本"）手改为 "EDR=ExcelDataReader 主版本" 等显式写法；版本机制不变（仍是 `AssemblyInfo.cs` 单一来源 + MSI 派生），本次只改落值。旧 git tag 保留不动。
 - **被否**：① 六个程序集全部统一 2.0.0.0 —— 我一度按"全部修改"这么做过，被用户驳回：FastWpfGrid / NetDiff 有各自的库版本身份（NetDiff 还带对外包 `Diff4Net` 的 nuspec），跟产品版本绑死会丢掉"这颗 DLL 是哪一版上游库"的信息；② 只改文档不改代码注释/变量名 —— 同一事实两处口径，后续会话仍会看到混用；③ 保留 ED/EDE —— "EDE" 无表意且与产品名不一致，改名成本只会随提交数继续上升。
 - **刻意未改**：`NetDiff/NetDiff/NetDiff.nuspec` 的 `<version>1.2.0</version>`（对外包 `Diff4Net` 自己的发布标识）；`ExcelDiff.Installer.vdproj`（ED 时代废弃安装包，`ProductName=ExcelDiff`、`ProductVersion 1.3.4` 与冻结的依赖快照，且仍挂在 `ExcelDiff.sln` 里 —— 建议后续从解决方案移除并删文件）；FastWpfGrid 的 `FastWpfGridTest` / `FastWpfGridSyncTest` / `FastWpfGridUnitTest` 三个工程 `1.0.0.0`（上游自带示例/测试，不在 `ExcelDiff.sln` 内）；`app.manifest` 的 `version="1.0.0.0"`（VS 模板默认值，`name="MyApplication.app"`，不承载产品版本）。
+- **后续（2026-09-25，ADR-017）**：`ExcelDiff.Installer.vdproj` 连同 `ExcelDiff.sln` 里的条目已随 MSI 链一并删除，上面那条"建议移除"已执行；本 ADR 的版本口径结论仍然有效，只有被点名的 vdproj 不再存在。
 
 ## ADR-015 CLI 接受裸位置文件参数，归一化在解析前单点完成
 
@@ -131,3 +132,11 @@
 - **决策**：删除整条链，不留兼容别名、不加替代开关 —— `CommandLineOption` 的 `[Option('k', "keep-file-history")]` 属性、`App.KeepFileHistory` 转发属性、`DiffView` 的条件判断（改为无条件记录）、`CommandLineArguments.SwitchOptions` 里的 `-k`。README.md / README.en 的选项表、Git difftool 与 Mercurial 示例同步去掉 `-k`。
 - **后果**：最近文件表无条件写入（上限 20 条，`App.UpdateRecentFiles`），difftool 场景会把 Fork/git 的临时路径灌进历史并挤掉真实记录 —— 这是本次裁决明确接受的代价。仍在参数里带 `-k` 的外部工具配置会立刻拿到 `Invalid argument.` 弹窗（`-k` 退化为未知选项，由解析器裁决），而不是被静默忽略；本机 `~/.gitconfig` 实测只有 `[user]` 段，故 git 侧无受影响配置，Fork 条目需使用者自查。
 - **被否**：① 改名 `--no-file-history` 保留等价能力 —— 裁决是去除功能而非修正命名，留着开关就还得维护"名字与方向"的第二处真值；② 参数保留但变成 no-op —— 对外承诺一个不再兑现的选项，比直接报错更难排查。
+
+## ADR-017 安装程序改为自研 WPF setup exe，删除整条 MSI/WiX 链
+
+- **状态**：已定（2026-09-25，业主裁定"不要用 MSI 的方案了，用 exe 的构建方案吧，把整个 MSI 的构建方案全部删掉"）
+- **背景**：需求是"向导第一步选语言，默认按机器显示语言"。实测该要求在 MSI 里物理不可实现：界面语言由数据库代码页与 `String` 表决定，二者在 `wix build -culture` 时烘死，`.mst` 语言转换也在 `msiexec` 打开库、第一个对话框画出来之前就选定；钉住的 `WixToolset.UI.wixext 4.0.6` 内嵌 wixlib 解包后 `Language`/`Rtg`/`LCID`/`SelectLanguage` 命中数为 0，28 个对话框中没有语言对话框，295 个控件里**没有任何 ComboBox**；带语言下拉的 Burn 需要 `WixToolset.BootstrapperApplications.wixext`、`WixToolset.Util.wixext`、`WixToolset.BootstrapperCore.dll`，本机三者都不存在且这台机器连不上 GitHub（Inno/NSIS 同样未安装）。
+- **决策**：删除 `ExcelDiffEDR.Installer.wxs`、`Build-Installer.ps1`、`SrmRegistrar/`、`ExcelDiff.Installer.vdproj`、`.config\dotnet-tools.json` 以及文档/不变量里的 MSI 口径，改为 `ExcelDiff.Installer` WPF 工程产出单个 `ExcelDiffSetup.exe`：应用载荷打成 zip 以 manifest resource 内嵌（`EmbeddedResource` 带 `Condition="Exists(...)"`，无载荷时工程仍可编译，不污染 `verify.ps1`）；页面为 语言 / 位置与组件 / 确认 / 进度 / 完成；COM 注册用 `/shell-op:` 子进程；删除按 `install-manifest.txt`；重装是"移动旧目录 + undo 栈回滚"；`AI_Script\verify-installer.ps1` 取代 `wix msi validate` 成为发布门禁。程序侧配套改掉 `ApplicationSetting` 两处硬编码（无条件 `Culture = "zh-CN"`，以及每次启动都按 `startOnBoot = true` 重写 HKCU Run），改为读 setup 写在 `HKLM\SOFTWARE\ExcelDiffEDR` 的 `SetupCulture` / `SetupStartOnBoot` 种子。
+- **后果**：语言页成为可能且立即生效（实测本机中文默认、窗口标题 `ExcelDiff 安装向导`）；离线可构建、零外部工具依赖。代价是安装器语义从此由本仓库自己承担：升级、卸载、回滚、提权、杀软与 SmartScreen 对未签名 exe 的拦截都要自己测；失去 Windows Installer 的 ICE 校验与 `msiexec` 的企业分发语义。实测记录：`verify-installer.ps1 -Install` 50 项全通过（含"占住旧主 EXE 再安装 → 安装失败且旧安装完好"）；本轮踩到的两个坑已写进 AGENTS §4 —— 进程内 `LoadFrom` 锁死扩展 DLL 导致卸载残留，以及 `/dir="…\"` 结尾反斜杠被解析成转义引号。产品版本按裁定保持 2.0.0.0，因此同版本再安装语义上是"重装"而不是"升级"。
+- **被否**：① 单 MSI + 第一页语言按钮 —— 后续内置页仍是构建期语言，产出半翻译向导；② `wix msi transform` 做多语言 MST —— 语言转换改不了代码页、WiX 没有声明转换的元素、需构建后用 COM 回写 SummaryInformation 且会打乱 E10"validate 是最后一步"的顺序，未经证实；③ 极小启动器 exe 探测语言再拉起对应 MSI —— 确实满足"机器决定"，但多一个签名对象与自制引导器的长期维护面；④ 升 WiX 大版本换 Burn —— 需要联网，且是整条打包链与 wxs schema 的重写，属独立 ADR；⑤ MSI 链保留、另加一套 exe 安装包 —— 两个安装包各存一份安装身份，违背"一个事实一个归属层"。
