@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.IO;
 using System.Windows.Media;
+using Microsoft.Win32;
 using YamlDotNet.Serialization;
 using ExcelDiff.GUI.Styles;
 
@@ -212,6 +214,14 @@ namespace ExcelDiff.GUI.Settings
             set { SetProperty(ref startOnBoot, value); }
         }
 
+        // Which setup choice has already been applied; see ApplyInstallerSeed.
+        private string installerSeedApplied;
+        public string InstallerSeedApplied
+        {
+            get { return installerSeedApplied; }
+            set { SetProperty(ref installerSeedApplied, value); }
+        }
+
         private bool runInBackground = true;
         public bool RunInBackground
         {
@@ -317,11 +327,13 @@ namespace ExcelDiff.GUI.Settings
                 using (var fs = File.Create(Location)) { }
 
             ApplicationSetting setting = Deserialize(Location);
-            if (setting == null)
-            {
+            var fresh = setting == null;
+            if (fresh)
                 setting = new ApplicationSetting();
+
+            // A fresh install re-declares language/auto-start; afterwards the user's own choices win.
+            if (setting.ApplyInstallerSeed() || fresh)
                 setting.Save();
-            }
 
             return setting;
         }
@@ -333,17 +345,92 @@ namespace ExcelDiff.GUI.Settings
 
         public bool EnsureCulture(bool isChanged = false)
         {
-            // Only Chinese and English are supported; Chinese is the default.
+            // Only Chinese and English are supported.
             var culture = Culture;
-            if (string.IsNullOrEmpty(culture) ||
-                (!culture.Equals("zh-CN", StringComparison.OrdinalIgnoreCase) &&
-                 !culture.Equals("en-US", StringComparison.OrdinalIgnoreCase)))
-            {
-                Culture = "zh-CN";
-                isChanged |= true;
-            }
+            if (IsSupportedCulture(culture))
+                return isChanged;
 
-            return isChanged;
+            // Resolution order: what the setup recorded, then the machine's display language.
+            culture = ReadInstallerSetting(InstallerCultureValue);
+            if (!IsSupportedCulture(culture))
+                culture = SuggestCultureFromMachine();
+
+            Culture = culture;
+            return true;
+        }
+
+        // The setup wizard records its choices here. The key carries the build-variant identity so an
+        // EDN build never reads an EDR install's seed (INVARIANTS A4); Build-Setup.ps1 asserts that
+        // this literal and the installer's ProductInfo.ProductRegKey stay identical.
+        private static readonly string InstallerStateKey =
+#if EDR_READ
+            @"SOFTWARE\ExcelDiffEDR";
+#else
+            @"SOFTWARE\ExcelDiff";
+#endif
+        private const string InstallerCultureValue = "SetupCulture";
+        private const string InstallerStartOnBootValue = "SetupStartOnBoot";
+
+        /// <summary>Read through the same 64-bit view the installer writes through.</summary>
+        private static string ReadInstallerSetting(string name)
+        {
+            try
+            {
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var key = baseKey.OpenSubKey(InstallerStateKey))
+                    return key == null ? null : key.GetValue(name) as string;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool IsSupportedCulture(string culture)
+        {
+            return string.Equals(culture, "zh-CN", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(culture, "en-US", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string SuggestCultureFromMachine()
+        {
+            try
+            {
+                var name = CultureInfo.InstalledUICulture.Name ?? string.Empty;
+                if (name.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+                    return "zh-CN";
+                return "en-US";
+            }
+            catch
+            {
+                return "zh-CN";
+            }
+        }
+
+        /// <summary>
+        /// Apply the setup wizard's language / auto-start choices. Signature-gated: a fresh install
+        /// re-declares intent, but a later in-app choice is never overwritten on the next start.
+        /// </summary>
+        private bool ApplyInstallerSeed()
+        {
+            var culture = ReadInstallerSetting(InstallerCultureValue);
+            var startOnBoot = ReadInstallerSetting(InstallerStartOnBootValue);
+            if (string.IsNullOrEmpty(culture) && string.IsNullOrEmpty(startOnBoot))
+                return false;
+
+            var signature = (culture ?? string.Empty) + "|" + (startOnBoot ?? string.Empty);
+            if (string.Equals(InstallerSeedApplied, signature, StringComparison.Ordinal))
+                return false;
+
+            if (IsSupportedCulture(culture))
+                Culture = culture;
+            if (startOnBoot == "1")
+                StartOnBoot = true;
+            else if (startOnBoot == "0")
+                StartOnBoot = false;
+
+            InstallerSeedApplied = signature;
+            return true;
         }
 
         public override bool Ensure(bool isChanged = false)

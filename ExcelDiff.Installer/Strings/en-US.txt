@@ -1,0 +1,75 @@
+# ExcelDiffEDR setup wizard strings - English
+# Format: key=value  (\\n = newline, lines starting with # are comments)
+
+app.title={0} Setup
+step.language=Step 1 of 5: Choose a language
+step.location=Step 2 of 5: Location and components
+step.confirm=Step 3 of 5: Confirm install
+step.progress=Step 4 of 5: Installing
+step.finish=Step 5 of 5: Finished
+step.uninstall=Uninstall
+
+language.prompt=Choose the language for this setup. It is preselected from this machine's display language.
+language.zh=中文
+language.en=English
+language.note=This choice also sets the language ExcelDiff starts in the first time; you can change it later in the program's extraction settings.
+
+location.prompt=Install to:
+location.browse=Browse…
+components.title=Optional components
+components.shell=Add the Explorer context menu (compare files in one right-click)
+components.desktop=Create a desktop shortcut
+components.autostart=Start automatically at sign-in (stays in the system tray)
+location.note=The install location is remembered in the registry and reused by the next setup.
+upgrade.notice=Version {0} is already installed. Its folder will be reused: moved aside first and deleted on success, restored automatically if the install fails.
+
+confirm.prompt=Ready to install.
+confirm.note=Setup needs administrator rights (HKLM and COM registration). An installed version is removed first.
+confirm.version=Version: {0}
+confirm.dir=Location: {0}
+confirm.language=Language: {0}
+confirm.component={0}: {1}
+confirm.on=on
+confirm.off=off
+
+progress.prompt=Installing…
+finish.prompt=Setup was completed.
+finish.howto=How to use it: right-click an .xls / .xlsx / .csv / .tsv file in Explorer and choose "ExcelDiff", or start it from the Start menu.
+finish.tray=ExcelDiff keeps running in the system tray; right-click the tray icon to exit.
+finish.log=Log: {0}
+finish.failed=Setup failed.
+
+uninstall.prompt=Ready to uninstall the installed ExcelDiff.
+uninstall.note=Uninstall removes the files, shortcuts and registry entries recorded in the install manifest, and clears the current user's settings folder. Other programs are untouched.
+uninstall.progress=Uninstalling…
+uninstall.done=Uninstalled.
+
+btn.back=Back
+btn.next=Next
+btn.install=Install
+btn.uninstall=Uninstall
+btn.cancel=Cancel
+btn.close=Finish
+
+shortcut.description=Diff tool for Excel / CSV / TSV files
+
+log.begin=Setup started: version {0}, target {1}
+log.found=Found installed version {0}
+log.extract=Writing program files…
+log.shell=Registering the Explorer context menu…
+log.registry=Writing registry and the Apps entry…
+log.done=Install complete
+log.failed=Failed: {0}
+log.rollback.ok=Rolled back to the state before setup
+log.rollback.fail=Rollback incomplete, see the log: {0}
+log.uninstall.begin=Uninstall started
+log.uninstall.done=Uninstall complete
+log.fileslocked={0} file(s) are still held by another process (usually Explorer) and were not removed. Restart Explorer or sign out, then run uninstall once more.
+
+err.locked=A file is in use: exit the running ExcelDiff (right-click the tray icon, then Exit) and close any program holding these files, then try again.
+err.nopayload=This setup package contains no application payload.\nRebuild it with ExcelDiff.Installer\\Build-Setup.ps1.
+err.title=Setup failed
+err.badTarget=Invalid install location: pick a concrete folder, not a drive root or a relative path.
+err.noUninstallTarget=No install found to remove: the registry has no recorded install folder. Run it with the folder you installed to, e.g. ExcelDiffSetup.exe /uninstall /dir=<install folder>.
+err.driveRoot=Installing straight into a drive root is not allowed; choose a subfolder instead.
+log.settingskept=Kept the user settings folder because another install of this variant is still on this machine: {0}

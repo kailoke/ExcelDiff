@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{7E2C4A18-5B9D-4F36-8C7A-2D6E9B41F0A3}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>ExcelDiff.Setup</RootNamespace>
+    <AssemblyName>ExcelDiffSetup</AssemblyName>
+    <TargetFramework>net472</TargetFramework>
+    <FrameworkPathOverride>$(MSBuildThisFileDirectory)..\packages\refs\.NETFramework\v4.7.2</FrameworkPathOverride>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <FileAlignment>512</FileAlignment>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Core\ProductInfo.cs" />
+    <Compile Include="Core\Strings.cs" />
+    <Compile Include="Core\Options.cs" />
+    <Compile Include="Core\SetupLog.cs" />
+    <Compile Include="Core\Payload.cs" />
+    <Compile Include="Core\InstallManifest.cs" />
+    <Compile Include="Core\RegistryStore.cs" />
+    <Compile Include="Core\ShellRegistrar.cs" />
+    <Compile Include="Core\Shortcuts.cs" />
+    <Compile Include="Core\InstallEngine.cs" />
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="WizardWindow.xaml.cs">
+      <DependentUpon>WizardWindow.xaml</DependentUpon>
+    </Compile>
+    <Page Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="WizardWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Strings\zh-CN.txt" LogicalName="ExcelDiff.Setup.Strings.zh-CN.txt" />
+    <EmbeddedResource Include="Strings\en-US.txt" LogicalName="ExcelDiff.Setup.Strings.en-US.txt" />
+    <!-- The app payload is zipped by Build-Setup.ps1 right before this project is built.
+         It stays optional so a plain solution build still compiles; the installer then
+         fails with a clear "payload missing" message instead of breaking the gate. -->
+    <EmbeddedResource Include="obj\payload.zip" LogicalName="ExcelDiff.Setup.Payload.zip"
+                      Condition="Exists('$(MSBuildProjectDirectory)\obj\payload.zip')" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.manifest" />
+    <None Include="Build-Setup.ps1" />
+  </ItemGroup>
+</Project>

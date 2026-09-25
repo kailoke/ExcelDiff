@@ -36,24 +36,20 @@ else { $TestDataRepoPath = 'F:\ProjectLibs\2_POP时空沙海\Data_POP' }
 # ---- repo-derived ----
 $RefAssemblyPath     = Join-Path $RepoRootPath 'packages\refs\.NETFramework\v4.7.2'
 $NuGetConfigPath     = Join-Path $RepoRootPath '.nuget\NuGet.Config'
-$WiXToolManifestPath = Join-Path $RepoRootPath '.config\dotnet-tools.json'
 $GuiReleasePath      = Join-Path $RepoRootPath 'ExcelDiff.GUI\bin\Release'
 $WorkflowLogDir      = $RepoRootPath
-$NetFx64CscPath      = Join-Path $env:SystemRoot 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 
 if ($Print) {
     foreach ($entry in @(
         @{ Name = 'RepoRootPath';          Value = $RepoRootPath;          Source = 'this file location' },
         @{ Name = 'ProgramFilesBasePath';  Value = $ProgramFilesBasePath;  Source = 'EXCELDIFF_PROGRAM_FILES or ProjectPaths.ps1' },
-        @{ Name = 'EdrInstallDirName';     Value = $EdrInstallDirName;     Source = 'ProjectPaths.ps1 (also passed to WiX)'; Raw = $true },
+        @{ Name = 'EdrInstallDirName';     Value = $EdrInstallDirName;     Source = 'ProjectPaths.ps1 (installer default folder name)'; Raw = $true },
         @{ Name = 'EdrDeployPath';         Value = $EdrDeployPath;         Source = 'Deploy-And-Restart -Dst / EXCELDIFF_DEPLOY_DIR' },
         @{ Name = 'TestDataRepoPath';      Value = $TestDataRepoPath;      Source = 'ProjectPaths.ps1 / EXCELDIFF_TESTDATA_REPO' },
         @{ Name = 'RefAssemblyPath';       Value = $RefAssemblyPath;       Source = 'repo-derived' },
         @{ Name = 'NuGetConfigPath';       Value = $NuGetConfigPath;       Source = 'repo-derived' },
-        @{ Name = 'WiXToolManifestPath';   Value = $WiXToolManifestPath;   Source = 'repo-derived' },
         @{ Name = 'GuiReleasePath';        Value = $GuiReleasePath;        Source = 'repo-derived' },
-        @{ Name = 'WorkflowLogDir';        Value = $WorkflowLogDir;        Source = 'repo-derived' },
-        @{ Name = 'NetFx64CscPath';        Value = $NetFx64CscPath;        Source = '$env:SystemRoot' }
+        @{ Name = 'WorkflowLogDir';        Value = $WorkflowLogDir;        Source = 'repo-derived' }
     )) {
         $exists = if ($entry.Raw) { 'name' }
         elseif ($entry.Value) { if (Test-Path $entry.Value) { 'OK' } else { 'MISSING' } }

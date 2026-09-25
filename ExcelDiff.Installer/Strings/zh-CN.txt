@@ -1,0 +1,75 @@
+# ExcelDiffEDR setup wizard strings - Simplified Chinese
+# Format: key=value  (\\n = newline, lines starting with # are comments)
+
+app.title={0} 安装向导
+step.language=第 1 步，共 5 步：选择语言
+step.location=第 2 步，共 5 步：安装位置与组件
+step.confirm=第 3 步，共 5 步：确认安装
+step.progress=第 4 步，共 5 步：正在安装
+step.finish=第 5 步，共 5 步：安装完成
+step.uninstall=卸载
+
+language.prompt=请选择安装向导使用的语言。已按这台机器的显示语言为你预选。
+language.zh=中文
+language.en=English
+language.note=这个选择同时决定 ExcelDiff 首次启动时使用的语言；之后你可以在程序的"提取设置"里随时改。
+
+location.prompt=安装到：
+location.browse=浏览…
+components.title=可选组件
+components.shell=添加资源管理器右键菜单（选中文件后直接对比）
+components.desktop=创建桌面快捷方式
+components.autostart=登录时自动启动（常驻系统托盘）
+location.note=安装位置会记在注册表里，下次安装默认沿用它。
+upgrade.notice=检测到已安装版本 {0}。将继续使用该目录：安装时先把它移走备份，装完再删除；中途失败会自动还原。
+
+confirm.prompt=准备就绪，可以开始安装。
+confirm.note=安装需要管理员权限（写 HKLM 与 COM 注册）。已安装版本会先被卸载。
+confirm.version=版本：{0}
+confirm.dir=位置：{0}
+confirm.language=语言：{0}
+confirm.component={0}：{1}
+confirm.on=开
+confirm.off=关
+
+progress.prompt=正在安装…
+finish.prompt=安装完成。
+finish.howto=用法：在资源管理器里右键点击 .xls / .xlsx / .csv / .tsv 文件，选择 "ExcelDiff" 即可对比；也可以从开始菜单启动。
+finish.tray=ExcelDiff 会常驻右下角托盘；右键托盘图标可以退出。
+finish.log=日志：{0}
+finish.failed=安装失败。
+
+uninstall.prompt=准备卸载已安装的 ExcelDiff。
+uninstall.note=卸载会按安装清单删除文件、快捷方式与注册表项，并清理当前用户的设置目录；其它程序的配置不受影响。
+uninstall.progress=正在卸载…
+uninstall.done=已卸载。
+
+btn.back=上一步
+btn.next=下一步
+btn.install=安装
+btn.uninstall=卸载
+btn.cancel=取消
+btn.close=完成
+
+shortcut.description=Excel / CSV / TSV 表格差异对比工具
+
+log.begin=安装开始：版本 {0}，目标 {1}
+log.found=发现已安装版本 {0}
+log.extract=正在释放程序文件…
+log.shell=正在注册资源管理器右键菜单…
+log.registry=正在写入注册表与"应用和功能"条目…
+log.done=安装完成
+log.failed=失败：{0}
+log.rollback.ok=已回滚到安装前的状态
+log.rollback.fail=回滚未完成，请查看日志：{0}
+log.uninstall.begin=卸载开始
+log.uninstall.done=卸载完成
+log.fileslocked={0} 个文件被其它程序（通常是资源管理器）占用，没能删除。重启资源管理器或注销后再运行一次卸载即可清干净。
+
+err.locked=文件被占用：请先退出正在运行的 ExcelDiff（右键托盘图标 → 退出），并关闭打开它的程序后重试。
+err.nopayload=这个安装包里没有找到程序载荷（payload）。\n请用 ExcelDiff.Installer\\Build-Setup.ps1 重新构建。
+err.title=安装失败
+err.badTarget=安装位置无效：请填写具体的文件夹，不能是磁盘根目录或相对路径。
+err.noUninstallTarget=找不到要卸载的安装：注册表里没有安装目录记录。请带上安装时的目录运行，例如 ExcelDiffSetup.exe /uninstall /dir=<安装时的目录>。
+err.driveRoot=不能直接安装在磁盘根目录，请指定一个子文件夹。
+log.settingskept=保留了用户设置目录，因为机器上还有另一处同版本安装：{0}

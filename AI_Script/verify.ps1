@@ -63,6 +63,17 @@ if (-not $SkipBuild) {
     Write-Host '--- Build EDR (ExcelDataReader, main) ---'
     & dotnet msbuild $guiProj @common
     if ($LASTEXITCODE -ne 0) { FailStep 'EDR build failed' } else { OkStep 'EDR built (ExcelDiffEDR.GUI.exe)' }
+
+    # The setup wizard project must keep compiling even without obj\payload.zip,
+    # otherwise a broken installer stays invisible to this gate.
+    Write-Host '--- Build setup wizard project ---'
+    $installerProj = Join-Path $root 'ExcelDiff.Installer\ExcelDiff.Installer.csproj'
+    & dotnet restore $installerProj --configfile $nugetConfig /v:m
+    if ($LASTEXITCODE -ne 0) { FailStep 'Package restore failed (Installer)' }
+    else {
+        & dotnet msbuild $installerProj /p:Configuration=Release "/p:FrameworkPathOverride=$refs" /t:Build /v:m /nologo
+        if ($LASTEXITCODE -ne 0) { FailStep 'setup wizard build failed' } else { OkStep 'setup wizard built (ExcelDiffSetup.exe)' }
+    }
 } else {
     OkStep 'Builds skipped (-SkipBuild)'
 }
