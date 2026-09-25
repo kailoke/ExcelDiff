@@ -253,3 +253,6 @@ ExcelDiff.Installer/AppFiles.generated.wxs
 
 # Vendored NuGet bootstrapper binary (8 MB); restore works through the dotnet CLI, do not commit it
 .nuget/nuget.exe
+
+# WiX local-tool extension cache created by `wix extension add` (re-downloadable)
+.wix/
