@@ -43,7 +43,6 @@ while (-not (Test-Path (Join-Path $dir '.git'))) {
 $RelInRepo = if ($relPrefix) { $relPrefix + '/' + $RelPath } else { $RelPath }
 Write-Host ("git root=$dir  file=$RelInRepo")
 
-$refs = Join-Path $root 'packages\refs'
 $harnessProj = Join-Path $PSScriptRoot 'DiffHarness.csproj'
 $ednExe = Join-Path $PSScriptRoot 'bin\Release\DiffHarness.exe'
 $edrExe = Join-Path $PSScriptRoot 'bin\Release-EDR\DiffHarnessEDR.exe'
@@ -61,11 +60,14 @@ $ednOut = Join-Path $tmpDir 'edn.txt'
 $edrOut = Join-Path $tmpDir 'edr.txt'
 
 if (-not $NoBuild) {
+    Write-Host 'Restoring harness packages...'
+    & dotnet restore $harnessProj --configfile $NuGetConfigPath /v:m
+    if ($LASTEXITCODE -ne 0) { throw 'harness restore failed' }
     Write-Host 'Building EDR harness (ExcelDataReader)...'
-    & dotnet msbuild $harnessProj /p:Configuration=Release /p:EdrRead=true "/p:TargetFrameworkRootPath=$refs" /t:Build /v:q /nologo
+    & dotnet msbuild $harnessProj /p:Configuration=Release /p:EdrRead=true "/p:FrameworkPathOverride=$RefAssemblyPath" /t:Build /v:q /nologo
     if ($LASTEXITCODE -ne 0) { throw 'EDR harness build failed' }
     Write-Host 'Building EDN harness (NPOI)...'
-    & dotnet msbuild $harnessProj /p:Configuration=Release "/p:TargetFrameworkRootPath=$refs" /t:Build /v:q /nologo
+    & dotnet msbuild $harnessProj /p:Configuration=Release "/p:FrameworkPathOverride=$RefAssemblyPath" /t:Build /v:q /nologo
     if ($LASTEXITCODE -ne 0) { throw 'EDN harness build failed' }
 }
 
