@@ -20,11 +20,17 @@
 .PARAMETER SkipValidation
     Skip ICE validation. Intended only for constrained local environments;
     release artifacts must be built without this switch.
+
+.PARAMETER Wizard
+    Build the MSI with the setup wizard UI (WixToolset.UI.wixext dialog set) instead of the
+    default no-UI package. The concrete step design is still open; see the EnableWizard block
+    in ExcelDiffEDR.Installer.wxs.
 #>
 param(
     [switch]$SkipBuild,
     [string]$Version,
-    [switch]$SkipValidation
+    [switch]$SkipValidation,
+    [switch]$Wizard
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,6 +54,11 @@ $NuGetConfig = $NuGetConfigPath
 $ToolManifest = $WiXToolManifestPath
 $InstallDirName = $EdrInstallDirName
 $UpgradeCode = "294F9E11-17CF-4F3D-8ECE-EC7F97A6BCDB"
+
+# WiX extensions are version-locked to the wix CLI, so the UI extension follows the pinned tool
+# version in .config\dotnet-tools.json instead of taking whatever is newest on NuGet.
+$WixVersion = (Get-Content $ToolManifest -Raw | ConvertFrom-Json).tools.wix.version
+$UiExtension = "WixToolset.UI.wixext"
 
 function Get-StableGuid([string]$key) {
     $md5 = [System.Security.Cryptography.MD5]::Create()
@@ -83,6 +94,17 @@ function Invoke-Wix([string[]]$Arguments) {
     return $exitCode
 }
 
+# Capture wix output as text (used where the exit code is not a reliable signal).
+function Get-WixText([string[]]$Arguments) {
+    Push-Location $RepoRoot
+    try {
+        return (& dotnet tool run wix @Arguments 2>&1 | Out-String)
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 if (-not (Test-Path $ToolManifest)) {
     throw "WiX tool manifest not found: $ToolManifest"
 }
@@ -90,6 +112,24 @@ if (-not (Test-Path $ToolManifest)) {
 Write-Host "== Restore repository-pinned WiX tool =="
 dotnet tool restore --tool-manifest $ToolManifest --configfile $NuGetConfig -v minimal
 if ($LASTEXITCODE -ne 0) { throw "WiX tool restore failed" }
+
+Write-Host "== Ensure WiX UI extension $UiExtension/$WixVersion =="
+# `wix extension add` is not a trustworthy success signal (already-added and fresh-add both print
+# nothing, and a duplicate add has been seen to exit non-zero), so gate on the listed state instead.
+# Only needed for -Wizard builds, so a default build keeps working offline.
+$extMarker = "$UiExtension $WixVersion"
+if ($Wizard) {
+    if ((Get-WixText @('extension', 'list')) -notlike "*$extMarker*") {
+        Invoke-Wix @('extension', 'add', "$UiExtension/$WixVersion") | Out-Null
+    }
+    if ((Get-WixText @('extension', 'list')) -notlike "*$extMarker*") {
+        throw "WiX UI extension $extMarker is not installed (offline? run once with network access)"
+    }
+    Write-Host "  $extMarker available"
+}
+else {
+    Write-Host "  skipped (-Wizard not set)"
+}
 
 if (-not $SkipBuild) {
     if (Test-Path $StageDir) {
@@ -241,16 +281,19 @@ if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out
 
 $RepoRootFwd = $RepoRoot.Replace('\', '/')
 $StageRootFwd = $StageDir.Replace('\', '/')
-$buildArguments = @(
-    'build', '-arch', 'x64', '-nologo',
+$EnableWizard = if ($Wizard) { 'yes' } else { 'no' }
+$buildArguments = @('build', '-arch', 'x64', '-nologo')
+if ($Wizard) { $buildArguments += @('-ext', $UiExtension) }
+$buildArguments += @(
     '-d', "RepoRoot=$RepoRootFwd",
     '-d', "StageRoot=$StageRootFwd",
     '-d', "ProductVersion=$MsiVersion",
     '-d', "ProductCode=$ProductCode",
     '-d', "InstallDirName=$InstallDirName",
+    '-d', "EnableWizard=$EnableWizard",
     $StaticWxs, $GeneratedWxs, '-o', $MsiPath
 )
-Write-Host "== wix build -> $MsiPath =="
+Write-Host "== wix build (wizard=$EnableWizard) -> $MsiPath =="
 $wixExitCode = Invoke-Wix $buildArguments
 if ($wixExitCode -ne 0) { throw "wix build failed (exit $wixExitCode)" }
 

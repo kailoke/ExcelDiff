@@ -139,6 +139,7 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 
 - EDE 发布包由 `ExcelDiff.Installer\Build-Installer.ps1` 构建：仓库 tool manifest 固定 WiX 4.0.6，GUI/ShellExtension 先进入 `ExcelDiff.Installer\obj\stage`，MSI 只收集该隔离目录。MSI 三段版本取自主 EXE FileVersion，ProductCode 按 UpgradeCode+版本稳定派生；ShellExtension 注册/反注册带 rollback，`wix msi validate` 为发布硬门禁（ADR-013）。
 - MSI 默认安装到 `[ProgramFiles64Folder]$(var.InstallDirName)`（目录名由打包脚本从 `ProjectPaths.ps1` 注入）；命令行 `INSTALLFOLDER` 会写入 HKLM 并在 major upgrade 时恢复。正式对外分发前需在发布流水线完成 Authenticode 签名。
+- 包默认无安装向导 UI；`Build-Installer.ps1 -Wizard` 通过 `WixToolset.UI.wixext`（版本随钉住的 wix 走）产出带向导的包，`EnableWizard` 由脚本注入 `.wxs` 的 `<?if?>` 分支。向导的具体页面、顺序、图片与双语文案属**待设计项**，当前对话框集仅用于验证工具链（AGENTS §4）。
 - NGEN 已对 EDE exe 预编译。
 - Git difftool：`difftool.ExcelDiffEDR`（EDE，主）；`difftool.ExcelDiff`（ED，历史，仍可用）。
 - **lang 部署坑**：构建时 `CopyLangFiles` 会把仓库 `..\lang\*.json` 复制到 `bin\Release\lang`（自动、正确）；但部署脚本用 `Copy-Item -Recurse` 复制整个 `lang` 目录到已存在的目标时会**嵌套成 `lang\lang`**，顶层文件不更新。部署后必须单独校验/同步 `lang\*.json`（或先删目标 `lang` 目录再 `-Recurse` 复制）。

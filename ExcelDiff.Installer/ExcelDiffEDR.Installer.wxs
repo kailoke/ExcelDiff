@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <!--
     ExcelDiff EDR (main version) MSI installer.
     App files (isolated obj\stage output) are harvested by Build-Installer.ps1 into
@@ -18,6 +19,16 @@
     <MajorUpgrade Schedule="afterInstallInitialize"
                   DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
     <MediaTemplate EmbedCab="yes" />
+
+    <!--
+      Setup wizard plumbing. EnableWizard is injected by Build-Installer.ps1 (-Wizard switch).
+      The dialog set below is a placeholder to prove the toolchain, NOT the agreed step design:
+      which pages appear, their order, banner/dialog images, per-language texts, whether an EULA
+      page and a maintenance (repair/uninstall) page exist are still open design decisions.
+    -->
+    <?if $(var.EnableWizard) = "yes" ?>
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <?endif ?>
 
     <!-- Default install folder name comes from ProjectPaths.ps1 ($EdrInstallDirName), which is also
          the directory Deploy-And-Restart.ps1 copies into. Overridable per machine at msiexec time

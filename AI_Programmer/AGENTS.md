@@ -134,13 +134,16 @@ powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipBuild  # 跳过 msbuild，复用 obj\stage 的上次隔离构建
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -Version 1.4.0
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipValidation # 仅受限本地环境；该产物不得发布
+powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Installer.ps1 -SkipBuild -Wizard # 带安装向导 UI 的包（见下方向导条目）
 ```
 
 - 脚本内部：清理并构建 EDE GUI + ShellExtension 到专用 `ExcelDiff.Installer\obj\stage\{app,shell}` → **用 `csc.exe` 和 staged `SharpShell.dll` 编译 `SrmRegistrar\SrmRegistrar.cs`**（替代与 SharpShell 2.7.2 不匹配的旧 srm.exe 2.2.0.0）→ 只枚举 staging app 文件并按相对路径排序 → 生成 `AppFiles.generated.wxs`（组件 GUID 按规范化相对路径稳定派生，ID 带哈希防碰撞，该文件 gitignore）→ 仓库固定的 WiX 4.0.6 `build -arch x64` → `wix msi validate`。
 - 静态源 `ExcelDiffEDR.Installer.wxs`：包定义（Name=ExcelDiffEDR、Manufacturer=skanmera、UpgradeCode、Scope=perMachine、装到 `[ProgramFiles64Folder]$(var.InstallDirName)`，目录名出自 `ProjectPaths.ps1`）、.NET Framework 4.7.2 启动条件（`RegistrySearch Type=raw` 返回 `#十六进制`，条件必须与 `&quot;#461808&quot;` 比较）、ShellExtension COM 注册（deferred + Impersonate=no）及成对 rollback 动作、`MajorUpgrade Schedule=afterInstallInitialize`、安装目录记忆、开始菜单快捷方式、产品图标。
 - **版本规则**：默认从 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion 派生 MSI 三段版本；显式 `-Version` 的前三段必须与主 EXE 一致。Windows Installer 升级不依赖第四段 revision，发新版必须提升前三段之一。ProductCode 由 `UpgradeCode + MSI 三段版本` 稳定派生：同版本重建保持相同 ProductCode，新版本自动变化。
 - EDE 仍需随包携带 NPOI 及其依赖：虽然读取主路径是 EDR，但 `ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍使用 NPOI；未替换这些功能前不得从 MSI 强行排除 NPOI。
-- 未打包 `open_readme.vbs`、无安装向导 UI（WiX core 最小 UI；如需向导可后续加 `WixToolset.UI.wixext`）。
+- 未打包 `open_readme.vbs`。默认包**无安装向导 UI**（双击即按默认目录静默装完）。
+- **安装向导：框架已通，步骤待设计**。`-Wizard` 启用 `WixToolset.UI.wixext` 的 `WixUI_InstallDir`——`ExcelDiffEDR.Installer.wxs` 里该元素被 `<?if $(var.EnableWizard) = "yes" ?>` 包住，打包脚本注入 `-d EnableWizard=yes|no` 并仅在 `-Wizard` 时传 `-ext`（所以默认构建不依赖网络）。实测 `-SkipBuild -Wizard`：构建通过、`wix msi validate` 通过，包内出现 `WelcomeDlg`/`InstallDirDlg`/`VerifyReadyDlg`/`ProgressDlg`/`MaintenanceTypeDlg`，体积 5,398,528 → 5,697,536 字节。**这套对话框只是占位验证**：页面清单与顺序、要不要 EULA 页、是否暴露修复/卸载入口、横幅与对话框图片、中英双语文案、默认目录取 `[ProgramFiles64Folder]` 还是 `ProjectPaths.ps1` 的 `$EdrDeployPath`，都必须先出设计再定稿。
+- **WiX 扩展版本必须与 wix 主工具一致**：`wix extension add WixToolset.UI.wixext`（不带版本）会拉 NuGet 最新版，实测装成 7.0.0 后 `extension list` 标 `damaged`、4.0.6 的 CLI 用不了；且 `wix extension remove <id>/<ver>` 会按包名把该包所有版本一起删掉。脚本因此从 `.config\dotnet-tools.json` 读钉住的 wix 版本，拼 `WixToolset.UI.wixext/<version>` 安装，并以 `extension list` 的实际条目（而非 `add` 的退出码——重复添加时它非 0 且无输出）判定可用性。扩展装在用户目录、不入库 → 新机器首次 `-Wizard` 需联网。
 - **INSTALLFOLDER 可被命令行覆盖并跨 major upgrade 记忆**：`msiexec /i x.msi INSTALLFOLDER="<绝对目录>"`；安装值持久化到 HKLM，升级 AppSearch 在目录定价前恢复（显式命令行值优先）。
 - **默认安装目录名 = `ProjectPaths.ps1` 的 `$EdrInstallDirName`**（打包时经 `-d InstallDirName=` 注入 `ExcelDiffEDR.Installer.wxs`），与 `Deploy-And-Restart.ps1` 的部署目录同名同源；基目录由 WiX 的 `[ProgramFiles64Folder]`（= 本机 Program Files）决定。
 - `wix msi validate` 是发布硬门禁；`-SkipValidation` 只允许生成本地诊断包。脚本会警告 MSI 尚未 Authenticode 签名，正式分发必须在发布流水线签名并复验签名。
