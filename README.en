@@ -6,10 +6,10 @@
 # ExcelDiff
 
 A Windows desktop GUI diff tool for Excel / CSV / TSV. Can be used as a Git / Mercurial difftool.
-Two products are built from the same source (EDE is the main build; ED is retained as a fallback reference):
+Two products are built from the same source (EDR is the main build; EDN is retained as a fallback reference):
 
-- **EDE** (main build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of ED's time, ~72% faster); daily build / deploy / gate all target EDE.
-- **ED** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; code is retained as the fallback for EDR blind spots and as a validation reference, but is not built / deployed in the daily flow.
+- **EDR** (main build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of EDN's time, ~72% faster); daily build / deploy / gate all target EDR.
+- **EDN** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; code is retained as the fallback for EDR blind spots and as a validation reference, but is not built / deployed in the daily flow.
 
 The two builds are fully isolated (process / assembly / config / display name). The UI defaults to Simplified Chinese and supports Chinese/English switching.
 
@@ -44,22 +44,22 @@ The two builds are fully isolated (process / assembly / config / display name). 
 
 Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must be specified. `<repo>` below means the absolute path of the repository root (`git rev-parse --show-toplevel`).
 
-### EDE (main build, EDR read) — output `ExcelDiffEDR.GUI.exe`
+### EDR (main build, ExcelDataReader) — output `ExcelDiffEDR.GUI.exe`
 
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### ED (fallback, NPOI read; code retained, not built daily) — output `ExcelDiff.GUI.exe`
+### EDN (fallback, NPOI read; code retained, not built daily) — output `ExcelDiff.GUI.exe`
 
-Same as above without `/p:EdrRead=true` (default). Build manually only when an ED fallback comparison is needed.
+Same as above without `/p:EdrRead=true` (default). Build manually only when an EDN fallback comparison is needed.
 
 ### Deploy order & resident restart
 
-1. Build EDE → deploy EDE.
-2. **Restart the EDE resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
+1. Build EDR → deploy EDR.
+2. **Restart the EDR resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
 
-Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results. The ED (NPOI) fallback code is retained but not built / deployed in the daily flow.
+Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results. The EDN (NPOI) fallback code is retained but not built / deployed in the daily flow.
 
 ### One-command verification gate
 
@@ -67,7 +67,7 @@ Reason: the resident process starts from the deployed directory and locks the ex
 powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-All green = EDE main build compiles + 31 NetDiff tests pass + lang↔resx in sync.
+All green = EDR main build compiles + 31 NetDiff tests pass + lang↔resx in sync.
 
 ## Usage
 
@@ -96,7 +96,7 @@ ExcelDiff.GUI diff [Options]
 
 ### Git difftool
 
-`.gitconfig` (`<install dir>` = where the app is actually installed: the MSI defaults to `<ProgramFiles64Folder>\ExcelDiffEDRTool` and can be overridden with `msiexec INSTALLFOLDER=`; the EDE main build ships `ExcelDiffEDR.GUI.exe`, the ED build ships `ExcelDiff.GUI.exe`)
+`.gitconfig` (`<install dir>` = where the app is actually installed: the MSI defaults to `<ProgramFiles64Folder>\ExcelDiffEDRTool` and can be overridden with `msiexec INSTALLFOLDER=`; the EDR main build ships `ExcelDiffEDR.GUI.exe`, the EDN build ships `ExcelDiff.GUI.exe`)
 
 ```
 [diff]
@@ -121,7 +121,7 @@ Fork → Settings → External Diff Tools → Add:
 
 - `$LOCAL` / `$REMOTE` are Fork's left/right file placeholders. Keep the quotes when paths may contain spaces; drop them (`diff -s $LOCAL -d $REMOTE`) if Fork mishandles the quoting.
 - Optional flags: `-k` keeps the comparison out of the recent-file history (recommended for difftool use), `-v` validates the extension before opening, `-c <tool> -i` hands unsupported types straight to an external tool without an error dialog.
-- **Resident process and "waiting for external tool"**: ExcelDiff is designed to stay resident in the tray, so the process does not exit when a window closes. If no resident instance is running, the process Fork starts becomes the resident one and **never exits**, so Fork keeps waiting. Start the resident instance first at **normal (non-elevated) integrity** (`ExcelDiffEDR.GUI.exe --startup`); after that every call is forwarded to it and exits immediately. The resident process must not be elevated — a non-elevated Fork cannot reach a high-integrity instance over the named pipe (UIPI).
+- **Resident process and "waiting for external tool"**: ExcelDiff is designed to stay resident in the tray, so the process does not exit when a window closes. If no resident instance is running, the process Fork starts becomes the resident one and **never exits**, so Fork keeps waiting. Start the resident instance first (`ExcelDiffEDR.GUI.exe --startup`); after that every call is forwarded to it and exits immediately. The resident's integrity level must match the interactive desktop's — on a mismatch a Fork started from the desktop cannot reach it over the named pipe (UIPI). "Match" is not the same as "must be non-elevated": on a machine with UAC disabled, explorer, Fork and the app all run High.
 
 ### Mercurial difftool
 
@@ -136,7 +136,7 @@ exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 vdiff = exceldiff
 ```
 
-> Adjust paths to your actual deployment directory; benchmark comparisons use EDE, ED serves as the fallback validation reference.
+> Adjust paths to your actual deployment directory; benchmark comparisons use EDR, EDN serves as the fallback validation reference.
 
 ### Explorer context menu
 
@@ -210,13 +210,13 @@ Settings are saved as YAML at:
 %APPDATA%\<assembly name>\<assembly name>.yml
 ```
 
-- EDE: `%APPDATA%\ExcelDiffEDR.GUI\`
-- ED: `%APPDATA%\ExcelDiff.GUI\`
+- EDR: `%APPDATA%\ExcelDiffEDR.GUI\`
+- EDN: `%APPDATA%\ExcelDiff.GUI\`
 
 ## Regression Verification
 
-- `AI_Script\verify.ps1`: one-command gate (EDE main build compiles + 31 NetDiff tests + lang↔resx sync).
-- `DiffHarness\`: headless diff comparison (deterministic diff text of ED/EDE outputs).
+- `AI_Script\verify.ps1`: one-command gate (EDR main build compiles + 31 NetDiff tests + lang↔resx sync).
+- `DiffHarness\`: headless diff comparison (deterministic diff text of EDN/EDR outputs).
 - `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
 
 ## Known Problems

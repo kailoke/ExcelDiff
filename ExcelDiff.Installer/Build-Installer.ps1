@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Build the ExcelDiffEDR (EDE main) MSI installer with WiX Toolset v4.
+    Build the EDR (ExcelDiffEDR) MSI installer with WiX Toolset v4.
 
 .DESCRIPTION
-    Builds the EDE GUI and ShellExtension into an isolated staging directory,
+    Builds the EDR GUI and ShellExtension into an isolated staging directory,
     harvests the staged app files into AppFiles.generated.wxs, and invokes the
     repository-pinned WiX CLI to produce ExcelDiffEDRSetup.msi.
 
@@ -142,9 +142,9 @@ if (-not $SkipBuild) {
     }
     New-Item -ItemType Directory -Path $GuiSrc, $ShellSrc, $ToolSrc -Force | Out-Null
 
-    Write-Host "== Restore + build EDE GUI into isolated staging =="
+    Write-Host "== Restore + build EDR GUI into isolated staging =="
     dotnet restore "$RepoRoot\ExcelDiff.GUI\ExcelDiff.GUI.csproj" --configfile $NuGetConfig /v:m
-    if ($LASTEXITCODE -ne 0) { throw "EDE restore failed" }
+    if ($LASTEXITCODE -ne 0) { throw "EDR restore failed" }
     dotnet msbuild "$RepoRoot\ExcelDiff.GUI\ExcelDiff.GUI.csproj" /p:Configuration=Release /p:EdrRead=true `
         /p:FrameworkPathOverride="$FrameworkPathOverride" `
         /p:IncludePackageReferencesDuringMarkupCompilation=false `
@@ -152,7 +152,7 @@ if (-not $SkipBuild) {
         /p:GenerateResourceMSBuildRuntime=CurrentRuntime `
         /p:OutputPath="$GuiSrc\" /p:AppendTargetFrameworkToOutputPath=false `
         /t:Rebuild /v:m /nologo
-    if ($LASTEXITCODE -ne 0) { throw "EDE build failed" }
+    if ($LASTEXITCODE -ne 0) { throw "EDR build failed" }
 
     Write-Host "== Restore + build ShellExtension into isolated staging =="
     dotnet restore "$RepoRoot\ExcelDiff.ShellExtension\ExcelDiff.ShellExtension.csproj" --configfile $NuGetConfig /v:m

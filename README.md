@@ -6,10 +6,10 @@
 # ExcelDiff
 
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
-同一份源码编译出两套产品（EDE 为主版本，ED 保留保底对照）：
+同一份源码编译出两套产品（EDR 为主版本，EDN 保留保底对照）：
 
-- **EDE**（主版本，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 ED 的 28%，提升约 72%），日常构建 / 部署 / 门禁均以 EDE 为准。
-- **ED**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，代码保留作为 EDR 盲区兜底与验证对照，不参与日常构建 / 部署。
+- **EDR**（主版本，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 EDN 的 28%，提升约 72%），日常构建 / 部署 / 门禁均以 EDR 为准。
+- **EDN**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，代码保留作为 EDR 盲区兜底与验证对照，不参与日常构建 / 部署。
 
 两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
 
@@ -44,22 +44,22 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录；下文 `<repo>` 表示仓库根目录的绝对路径（`git rev-parse --show-toplevel`）。
 
-### EDE（主版本，EDR 读取）— 产物 `ExcelDiffEDR.GUI.exe`
+### EDR（主版本，ExcelDataReader 读取）— 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
 
-### ED（保底版，NPOI 读取，代码保留 / 不日常构建）— 产物 `ExcelDiff.GUI.exe`
+### EDN（保底版，NPOI 读取，代码保留 / 不日常构建）— 产物 `ExcelDiff.GUI.exe`
 
-同上，去掉 `/p:EdrRead=true`（默认）。仅在需要 ED 保底对照时手工构建。
+同上，去掉 `/p:EdrRead=true`（默认）。仅在需要 EDN 保底对照时手工构建。
 
 ### 部署次序与常驻进程重启
 
-1. 构建 EDE → 部署 EDE。
-2. **每次部署后立即重启 EDE 常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
+1. 构建 EDR → 部署 EDR。
+2. **每次部署后立即重启 EDR 常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
 
-原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。ED（NPOI）保底代码保留但不参与日常构建 / 部署。
+原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。EDN（NPOI）保底代码保留但不参与日常构建 / 部署。
 
 ### 一键验证门禁
 
@@ -67,7 +67,7 @@ dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:Ed
 powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-全绿 = EDE 主版本编译通过 + NetDiff 31 用例通过 + lang↔resx 同步。
+全绿 = EDR 主版本编译通过 + NetDiff 31 用例通过 + lang↔resx 同步。
 
 ## 使用方式
 
@@ -96,7 +96,7 @@ ExcelDiff.GUI diff [Options]
 
 ### Git difftool
 
-`.gitconfig`（`<安装目录>` = 实际安装位置：MSI 默认 `<ProgramFiles64Folder>\ExcelDiffEDRTool`，可用 `msiexec INSTALLFOLDER=` 覆盖；EDE 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，ED 为 `ExcelDiff.GUI.exe`）
+`.gitconfig`（`<安装目录>` = 实际安装位置：MSI 默认 `<ProgramFiles64Folder>\ExcelDiffEDRTool`，可用 `msiexec INSTALLFOLDER=` 覆盖；EDR 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，EDN 为 `ExcelDiff.GUI.exe`）
 
 ```
 [diff]
@@ -121,7 +121,7 @@ Fork → Settings → External Diff Tools → Add：
 
 - `$LOCAL` / `$REMOTE` 是 Fork 的左/右文件占位符。路径可能含空格时保留引号；若 Fork 对引号处理异常，去掉引号写 `diff -s $LOCAL -d $REMOTE`。
 - 可选参数：`-k` 不写入最近文件历史（difftool 场景建议加）、`-v` 打开前校验扩展名、`-c <工具> -i` 让不支持的类型直接转交外部工具而不弹错误框。
-- **常驻与"等待外部工具"**：ExcelDiff 是托盘常驻设计（进程不会因窗口关闭而退出）。若调用时没有常驻实例，被启动的那个进程会自己变成常驻且**不退出**，Fork 那边就一直显示在等外部工具。先把常驻以**普通用户权限**启动（`ExcelDiffEDR.GUI.exe --startup`），之后每次对比都是"转发给常驻后立刻退出"。常驻进程必须是普通权限：高权限常驻进程，非提权的 Fork 通过命名管道连不上（UIPI 拦截）。
+- **常驻与"等待外部工具"**：ExcelDiff 是托盘常驻设计（进程不会因窗口关闭而退出）。若调用时没有常驻实例，被启动的那个进程会自己变成常驻且**不退出**，Fork 那边就一直显示在等外部工具。先把常驻启动起来（`ExcelDiffEDR.GUI.exe --startup`），之后每次对比都是"转发给常驻后立刻退出"。常驻的完整性级别要与桌面一致：不同级时 Fork 通过命名管道连不上（UIPI 拦截）。注意"一致"不等于"必须普通权限"——UAC 被关闭的机器上 explorer / Fork / 应用本来就全是 High。
 
 ### Mercurial difftool
 
@@ -136,7 +136,7 @@ exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
 vdiff = exceldiff
 ```
 
-> 路径请按实际部署目录调整；基准对比以 EDE 为准，ED 作保底验证对照。
+> 路径请按实际部署目录调整；基准对比以 EDR 为准，EDN 作保底验证对照。
 
 ### 资源管理器右键菜单
 
@@ -210,13 +210,13 @@ vdiff = exceldiff
 %APPDATA%\<程序集名>\<程序集名>.yml
 ```
 
-- EDE：`%APPDATA%\ExcelDiffEDR.GUI\`
-- ED：`%APPDATA%\ExcelDiff.GUI\`
+- EDR：`%APPDATA%\ExcelDiffEDR.GUI\`
+- EDN：`%APPDATA%\ExcelDiff.GUI\`
 
 ## 回归验证
 
-- `AI_Script\verify.ps1`：一键门禁（EDE 主版本编译 + NetDiff 31 用例 + lang↔resx 同步）。
-- `DiffHarness\`：headless diff 对比（ED/EDE 输出确定性 diff 文本）。
+- `AI_Script\verify.ps1`：一键门禁（EDR 主版本编译 + NetDiff 31 用例 + lang↔resx 同步）。
+- `DiffHarness\`：headless diff 对比（EDN/EDR 输出确定性 diff 文本）。
 - `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 
 ## Known problems

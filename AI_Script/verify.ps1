@@ -1,7 +1,7 @@
 # verify.ps1 - One-command development gate.
-# Builds the EDE (EDR) main variant, runs the NetDiff unit tests, checks
+# Builds the EDR (ExcelDataReader) main variant, runs the NetDiff unit tests, checks
 # lang\*.json <-> .resx sync, and prints the WIP snapshot.
-# The ED (NPOI) fallback variant is retained in source but is not part of the gate.
+# The EDN (NPOI) fallback variant is retained in source but is not part of the gate.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 [-SkipBuild]
 # Exit code 0 = all checks passed.
@@ -13,7 +13,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot   # repo root (script lives in AI_Script\)
-$refs = Join-Path $root 'packages\refs\.NETFramework\v4.7.2'
+. (Join-Path $root 'ProjectPaths.ps1')
+$refs = $RefAssemblyPath
 $fail = $false
 
 function FailStep($msg) { $script:fail = $true; Write-Host ('[FAIL] ' + $msg) -ForegroundColor Red }
@@ -35,12 +36,12 @@ if (-not (Test-Path $runnerExe)) { FailStep 'NetDiff.TestRunner.exe missing'; ex
 & $runnerExe | ForEach-Object { Write-Host '        ' $_ }
 if ($LASTEXITCODE -ne 0) { FailStep 'NetDiff unit tests failed' } else { OkStep 'NetDiff unit tests passed' }
 
-# --- 2. Restore + Build EDE (main version, EDR read) ---
+# --- 2. Restore + Build EDR (main version, ExcelDataReader read) ---
 if (-not $SkipBuild) {
     $guiProj = Join-Path $root 'ExcelDiff.GUI\ExcelDiff.GUI.csproj'
     $libProj = Join-Path $root 'ExcelDiff\ExcelDiff.csproj'
     $shellProj = Join-Path $root 'ExcelDiff.ShellExtension\ExcelDiff.ShellExtension.csproj'
-    $nugetConfig = Join-Path $root '.nuget\NuGet.Config'
+    $nugetConfig = $NuGetConfigPath
     $common = @(
         '/p:Configuration=Release',
         '/p:EdrRead=true',
@@ -59,9 +60,9 @@ if (-not $SkipBuild) {
     & dotnet restore $shellProj --configfile $nugetConfig /v:m
     if ($LASTEXITCODE -ne 0) { FailStep 'Package restore failed (ShellExtension)'; exit 1 }
 
-    Write-Host '--- Build EDE (EDR, main) ---'
+    Write-Host '--- Build EDR (ExcelDataReader, main) ---'
     & dotnet msbuild $guiProj @common
-    if ($LASTEXITCODE -ne 0) { FailStep 'EDE build failed' } else { OkStep 'EDE built (ExcelDiffEDR.GUI.exe)' }
+    if ($LASTEXITCODE -ne 0) { FailStep 'EDR build failed' } else { OkStep 'EDR built (ExcelDiffEDR.GUI.exe)' }
 } else {
     OkStep 'Builds skipped (-SkipBuild)'
 }

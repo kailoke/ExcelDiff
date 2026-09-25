@@ -3,19 +3,19 @@
 > 改动任何代码前逐条核对。**违反任一条 = 阻断提交/部署。**
 > 来源：ARCHITECTURE.md、AGENTS.md、CODEX.md（各条标注出处）。
 
-## A. 双版本（ED/EDE）隔离（EDE 为主版本）
+## A. 双版本（EDN/EDR）隔离（EDR 为主版本）
 
-- [ ] **A1 单一代码源**：ED/EDE 由同一份源码 + `#if NPOI_READ / EDR_READ` 编译产出，禁止复制两套实现。（AGENTS §5）
-- [ ] **A2 主版本必编译**：EDE（`EdrRead=true`）必须编译通过；ED（`EdrRead` 空）代码保留作保底对照、**不参与日常门禁**（仅对照验证时手工 build）。（AGENTS §7.1 / ADR-012）
-- [ ] **A3 ED 代码不得移除**：ED（NPOI）分支、`ExcelDiff.GUI` 程序集名、`%APPDATA%\ExcelDiff.GUI\` 配置路径等保留，作为 EDR 盲区兜底与对照验证。（AGENTS §7.5 / ARCH §10）
-- [ ] **A4 隔离派生**：配置目录/IPC channel/显示名均按程序集名（exe 名）派生，ED/EDE 天然隔离，不要硬编码共享。（ARCH §7.5、CODEX 链路B）
+- [ ] **A1 单一代码源**：EDN/EDR 由同一份源码 + `#if NPOI_READ / EDR_READ` 编译产出，禁止复制两套实现。（AGENTS §5）
+- [ ] **A2 主版本必编译**：EDR（`EdrRead=true`）必须编译通过；EDN（`EdrRead` 空）代码保留作保底对照、**不参与日常门禁**（仅对照验证时手工 build）。（AGENTS §7.1 / ADR-012）
+- [ ] **A3 EDN 代码不得移除**：EDN（NPOI）分支、`ExcelDiff.GUI` 程序集名、`%APPDATA%\ExcelDiff.GUI\` 配置路径等保留，作为 EDR 盲区兜底与对照验证。（AGENTS §7.5 / ARCH §10）
+- [ ] **A4 隔离派生**：配置目录/IPC channel/显示名均按程序集名（exe 名）派生，EDN/EDR 天然隔离，不要硬编码共享。（ARCH §7.8、CODEX 链路B）
 
 ## B. 读取层（核心库 ExcelDiff）
 
-- [ ] **B1 版本定位**：EDE=EDR **主版本**（读取快约 72%）；ED=NPOI **保底对照**（语义最全，代码保留、不日常构建）。基准测试以 EDE 为准；**ED 代码不得移除**（EDR 盲区兜底）。（ARCH §5/§10、ADR-012）
+- [ ] **B1 版本定位**：EDR=ExcelDataReader **主版本**（读取快约 72%）；EDN=NPOI **保底对照**（语义最全，代码保留、不日常构建）。基准测试以 EDR 为准；**EDN 代码不得移除**（EDR 盲区兜底）。（ARCH §5/§10、ADR-012）
 - [ ] **B2 EDR 语义对齐**：EDR 路径必须跳整空行、裁剪尾空单元格，保持与 NPOI 行/列语义一致。（ExcelWorkbook.cs:132-141）
-- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景用 `ExcelWorkbook.VerifyRead` 双读校验 / ED（NPOI）保底对照。（ARCH §9.6）
-- [ ] **B4 回归比对（可选）**：ED/EDE 输出比对（如需对照）必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件/跨版本互比。（AGENTS §7.4/§7.7）
+- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景用 `ExcelWorkbook.VerifyRead` 双读校验 / EDN（NPOI）保底对照。（ARCH §9.6）
+- [ ] **B4 回归比对（可选）**：EDN/EDR 输出比对（如需对照）必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件/跨版本互比。（AGENTS §7.4/§7.7）
 - [ ] **B5 扩展名分发**：新增文件类型解析在 `ExcelWorkbook.Create` 里统一分发，CSV/TSV 保持自研零依赖。
 
 ## C. 生命周期 / IPC（GUI 高危区）
@@ -42,11 +42,12 @@
 - [ ] **E4 不主动加注释**：沿用既有代码风格，改动不添加新注释（除非必须解释架构决策）。
 - [ ] **E5 NetDiff 算法**：改动 `EditGraph.cs`/`DiffUtil.cs` 后必须跑通 `NetDiff.TestRunner`（31 用例）。（AGENTS §7.3）
 - [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（`<repo>`=仓库根，实际值取 `ProjectPaths.ps1` 的 `$RefAssemblyPath`；.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
-- [ ] **E7 MSI 输入隔离**：EDE MSI 只能收集 `ExcelDiff.Installer\obj\stage` 的专用构建，禁止扫描共享 `bin\Release`；WiX 版本由 `.config\dotnet-tools.json` 固定。（AGENTS §4 / ADR-013）
+- [ ] **E7 MSI 输入隔离**：EDR MSI 只能收集 `ExcelDiff.Installer\obj\stage` 的专用构建，禁止扫描共享 `bin\Release`；WiX 版本由 `.config\dotnet-tools.json` 固定。（AGENTS §4 / ADR-013）
 - [ ] **E8 MSI 身份稳定**：MSI 三段版本必须与主 EXE FileVersion 前三段一致；ProductCode 按 `UpgradeCode + 三段版本` 稳定派生，同版本重建不得产生新 ProductCode。（ADR-013）
 - [ ] **E9 MSI 事务完整**：ShellExtension deferred 注册/反注册必须有成对 rollback 动作；major upgrade 必须安排在 `InstallInitialize` 后的可回滚事务内。（ADR-013）
 - [ ] **E10 MSI 发布门禁**：正式发布不得使用 `Build-Installer.ps1 -SkipValidation`；必须通过 `wix msi validate`，并在分发前完成 Authenticode 签名。（AGENTS §4 / ADR-013）
 - [ ] **E11 路径不写死**：脚本/文档不得出现机器相关绝对路径（盘符）。Program Files 基目录、安装目录名/部署目录、外部测试数据仓一律经根目录 `ProjectPaths.ps1`（可用其标注的环境变量或脚本参数覆盖）。（AGENTS §0.2 / §9）
+- [ ] **E12 版本口径**：只有**产品自有且被部署/安装链路消费**的程序集跟随产品版本 —— `ExcelDiff.GUI`（主 EXE，MSI 版本源）、`ExcelDiff`、`ExcelDiff.ShellExtension`。vendored 上游库（`FastWpfGrid` / `NetDiff` / `NetDiff.Test` / `WriteableBitmapEx.Wpf`）与对外包清单（`NetDiff.nuspec` 的 `Diff4Net`）保持自身版本，**不得随产品升版**；废弃安装包 `ExcelDiff.Installer.vdproj` 里的版本快照同样不动。（ADR-014）
 
 ## F. 性能 / 渲染（FastWpfGrid）
 

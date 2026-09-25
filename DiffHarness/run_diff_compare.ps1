@@ -1,4 +1,4 @@
-# run_diff_compare.ps1 - Headless ED (NPOI) vs EDE (EDR) comparison on one file.
+# run_diff_compare.ps1 - Headless EDN (NPOI) vs EDR (ExcelDataReader) comparison on one file.
 # Compares a same-named file: git HEAD version vs working-tree version, per AI_Programmer\AGENTS.md 7.7.
 #
 # Usage:
@@ -8,7 +8,7 @@
 # -Repo comes from ProjectPaths.ps1 ($TestDataRepoPath, override with EXCELDIFF_TESTDATA_REPO or -Repo).
 # It may be the git root or a data subfolder inside it; -RelPath is relative to that folder.
 #
-# Exit code 0 = ED and EDE outputs match (excluding the READER line).
+# Exit code 0 = EDN and EDR outputs match (excluding the READER line).
 
 param(
     [string]$RelPath = 'Artifact.xlsx',
@@ -45,8 +45,8 @@ Write-Host ("git root=$dir  file=$RelInRepo")
 
 $refs = Join-Path $root 'packages\refs'
 $harnessProj = Join-Path $PSScriptRoot 'DiffHarness.csproj'
-$edExe = Join-Path $PSScriptRoot 'bin\Release\DiffHarness.exe'
-$edeExe = Join-Path $PSScriptRoot 'bin\Release-EDR\DiffHarnessEDR.exe'
+$ednExe = Join-Path $PSScriptRoot 'bin\Release\DiffHarness.exe'
+$edrExe = Join-Path $PSScriptRoot 'bin\Release-EDR\DiffHarnessEDR.exe'
 
 $trimArgs = @()
 if ($SkipFirstBlankRows)    { $trimArgs += '--skip-first-blank-rows' }
@@ -57,41 +57,41 @@ if ($TrimLastBlankColumns)  { $trimArgs += '--trim-last-blank-columns' }
 $tmpDir = Join-Path $env:TEMP 'opencode\diffcompare'
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 $head = Join-Path $tmpDir ('head_' + [System.IO.Path]::GetFileName($RelPath))
-$edOut = Join-Path $tmpDir 'ed.txt'
-$edeOut = Join-Path $tmpDir 'ede.txt'
+$ednOut = Join-Path $tmpDir 'edn.txt'
+$edrOut = Join-Path $tmpDir 'edr.txt'
 
 if (-not $NoBuild) {
-    Write-Host 'Building EDE harness (EDR)...'
+    Write-Host 'Building EDR harness (ExcelDataReader)...'
     & dotnet msbuild $harnessProj /p:Configuration=Release /p:EdrRead=true "/p:TargetFrameworkRootPath=$refs" /t:Build /v:q /nologo
-    if ($LASTEXITCODE -ne 0) { throw 'EDE harness build failed' }
-    Write-Host 'Building ED harness (NPOI)...'
+    if ($LASTEXITCODE -ne 0) { throw 'EDR harness build failed' }
+    Write-Host 'Building EDN harness (NPOI)...'
     & dotnet msbuild $harnessProj /p:Configuration=Release "/p:TargetFrameworkRootPath=$refs" /t:Build /v:q /nologo
-    if ($LASTEXITCODE -ne 0) { throw 'ED harness build failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'EDN harness build failed' }
 }
 
 Write-Host "Extracting HEAD of $RelInRepo ..."
-cmd /c "git -C `"$Repo`" show HEAD:$RelInRepo > `"$head`""
+cmd /c "git -C `"$dir`" show HEAD:$RelInRepo > `"$head`""
 if (-not (Test-Path $head)) { throw 'HEAD extraction failed' }
-$work = Join-Path $Repo ($RelPath -replace '/', '\')
+$work = Join-Path $dir ($RelInRepo -replace '/', '\')
 
-Write-Host 'Running EDE harness ...'
-& $edeExe @('--src', $head, '--dst', $work, '--out', $edeOut, '--src-header', "$SrcHeader", '--dst-header', "$DstHeader") @trimArgs
-if ($LASTEXITCODE -ne 0) { throw 'EDE harness run failed' }
-Write-Host 'Running ED harness ...'
-& $edExe @('--src', $head, '--dst', $work, '--out', $edOut, '--src-header', "$SrcHeader", '--dst-header', "$DstHeader") @trimArgs
-if ($LASTEXITCODE -ne 0) { throw 'ED harness run failed' }
+Write-Host 'Running EDR harness ...'
+& $edrExe @('--src', $head, '--dst', $work, '--out', $edrOut, '--src-header', "$SrcHeader", '--dst-header', "$DstHeader") @trimArgs
+if ($LASTEXITCODE -ne 0) { throw 'EDR harness run failed' }
+Write-Host 'Running EDN harness ...'
+& $ednExe @('--src', $head, '--dst', $work, '--out', $ednOut, '--src-header', "$SrcHeader", '--dst-header', "$DstHeader") @trimArgs
+if ($LASTEXITCODE -ne 0) { throw 'EDN harness run failed' }
 
-$edLines = [System.IO.File]::ReadAllLines($edOut, [System.Text.Encoding]::UTF8) | Where-Object { $_ -notlike 'READER=*' }
-$edeLines = [System.IO.File]::ReadAllLines($edeOut, [System.Text.Encoding]::UTF8) | Where-Object { $_ -notlike 'READER=*' }
-$c = Compare-Object $edLines $edeLines
+$ednLines = [System.IO.File]::ReadAllLines($ednOut, [System.Text.Encoding]::UTF8) | Where-Object { $_ -notlike 'READER=*' }
+$edrLines = [System.IO.File]::ReadAllLines($edrOut, [System.Text.Encoding]::UTF8) | Where-Object { $_ -notlike 'READER=*' }
+$c = Compare-Object $ednLines $edrLines
 if ($c) {
-    Write-Host ('DIFF between ED and EDE (' + $c.Count + ' lines):') -ForegroundColor Yellow
+    Write-Host ('DIFF between EDN and EDR (' + $c.Count + ' lines):') -ForegroundColor Yellow
     $c | Select-Object -First 30 | ForEach-Object { Write-Host ('  ' + $_.SideIndicator + ' ' + $_.InputObject) }
     exit 1
 }
 
-Write-Host 'MATCH: ED (NPOI) and EDE (EDR) outputs identical' -ForegroundColor Green
+Write-Host 'MATCH: EDN (NPOI) and EDR (ExcelDataReader) outputs identical' -ForegroundColor Green
 Write-Host ''
-Write-Host '--- First modified cells (ED) ---'
-$edLines | Where-Object { $_ -like 'SHEET*' -or $_ -like 'CELL*' } | Select-Object -First 20 | ForEach-Object { Write-Host '  ' $_ }
+Write-Host '--- First modified cells (EDN) ---'
+$ednLines | Where-Object { $_ -like 'SHEET*' -or $_ -like 'CELL*' } | Select-Object -First 20 | ForEach-Object { Write-Host '  ' $_ }
 exit 0

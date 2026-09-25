@@ -27,7 +27,7 @@ $EdrInstallDirName = 'ExcelDiffEDRTool'
 if ($env:EXCELDIFF_DEPLOY_DIR) { $EdrDeployPath = $env:EXCELDIFF_DEPLOY_DIR }
 else { $EdrDeployPath = Join-Path $ProgramFilesBasePath $EdrInstallDirName }
 
-# External git repo holding the xlsx config tables for ED/EDE regression (AGENTS 7.7).
+# External git repo holding the xlsx config tables for EDN/EDR regression (AGENTS 7.7).
 # May point at the repo root OR a data subfolder — run_diff_compare.ps1 walks up to the git root
 # and prefixes -RelPath accordingly. Override with EXCELDIFF_TESTDATA_REPO.
 if ($env:EXCELDIFF_TESTDATA_REPO) { $TestDataRepoPath = $env:EXCELDIFF_TESTDATA_REPO }
