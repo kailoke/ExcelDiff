@@ -1,23 +1,24 @@
 <#
 .SYNOPSIS
-    Build EDE (main), deploy to Program Files, and restart the resident process.
+    Build EDR (main), deploy to Program Files, and restart the resident process.
 
 .DESCRIPTION
     Solidifies the deploy/restart procedure documented in AI_Programmer\AGENTS.md §7.6 / §8.6 / §8.7.
-    EDE (EdrRead=true) is the main/primary version and the only variant built, deployed,
-    and restarted by this script. The ED (NPOI) fallback variant is retained in source for
+    EDR (EdrRead=true) is the main/primary version and the only variant built, deployed,
+    and restarted by this script. The EDN (NPOI) fallback variant is retained in source for
     reference/对照 but is no longer built or deployed in the daily flow.
 
     IMPORTANT - integrity level:
-    The GUI must run at the NORMAL user's integrity level, not elevated. An elevated GUI
-    cannot serve a non-elevated difftool client (e.g. Fork) over the named-pipe IPC, and its
-    tray icon is unresponsive to the non-elevated explorer (UIPI). Therefore this script
-    elevates ONLY the deploy step (which writes to Program Files and kills the old process
-    to release file locks) and relaunches the GUI from the NON-elevated parent process.
-    Run this script NON-elevated; it self-elevates just the copy worker. If you run it as
-    Administrator the copy still works, but the script refuses to launch the resident process
-    (it cannot drop back to normal integrity) and tells you to start it from a non-elevated
-    shell - the final restart step then fails with exit code 1.
+    The resident GUI must run at the SAME integrity level as the interactive desktop; otherwise a
+    difftool client started from the desktop (e.g. Fork) cannot reach the named-pipe IPC and the
+    tray icon is unresponsive (UIPI). "Same level" is the invariant, NOT "non-elevated": on a
+    machine with UAC off (HKLM\...\Policies\System\EnableLUA = 0) explorer, Fork and this script
+    are all High, so running this script from an elevated shell is correct there; with UAC on the
+    desktop shell is Medium and the resident must be Medium too.
+    This script elevates ONLY the copy worker (Program Files write + killing the old process to
+    release file locks), launches the resident from the parent process, and then verifies the
+    resident's integrity level against explorer - a mismatch fails with exit code 1, while an
+    unreadable token only warns (inconclusive comparison must not block a working deploy).
 
     Elevation uses Start-Process -Verb RunAs WITHOUT -Wait (ADR-011); the parent polls the
     worker log for DONE. Space-containing paths are quoted in the -ArgumentList array (§8.7).
@@ -56,9 +57,44 @@ if (-not $Src)    { $Src = $GuiReleasePath }
 if (-not $Dst)    { $Dst = $EdrDeployPath }
 if (-not $LogDir) { $LogDir = $WorkflowLogDir }
 
-function Test-IsAdmin {
-    $wp = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-    return $wp.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# Integrity level of a process token as an SID string (S-1-16-8192 Medium, S-1-16-12288 High).
+# Any failure returns "unknown" - the caller must treat that as inconclusive, never as a mismatch.
+function Get-ProcessIntegrity([System.Diagnostics.Process]$proc) {
+    try {
+        if (-not ('IntegrityLevel' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class IntegrityLevel {
+    [DllImport("advapi32.dll", SetLastError=true)] static extern bool OpenProcessToken(IntPtr h, uint a, out IntPtr tok);
+    [DllImport("advapi32.dll", SetLastError=true)] static extern bool GetTokenInformation(IntPtr tok, int cls, IntPtr buf, uint len, out uint ret);
+    [DllImport("advapi32.dll", CharSet=CharSet.Unicode)] static extern bool ConvertSidToStringSid(IntPtr sid, out IntPtr str);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr h);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    public static string Of(IntPtr procHandle) {
+        IntPtr tok;
+        if (!OpenProcessToken(procHandle, 0x0008, out tok)) return "unknown";
+        try {
+            uint ret;
+            IntPtr buf = Marshal.AllocHGlobal(64);
+            try {
+                if (!GetTokenInformation(tok, 25, buf, 64, out ret)) return "unknown";
+                IntPtr str;
+                IntPtr sid = Marshal.ReadIntPtr(buf);
+                string s = ConvertSidToStringSid(sid, out str) ? Marshal.PtrToStringUni(str) : "unknown";
+                if (str != IntPtr.Zero) LocalFree(str);
+                return s;
+            }
+            finally { Marshal.FreeHGlobal(buf); }
+        }
+        finally { CloseHandle(tok); }
+    }
+}
+'@
+        }
+        return [IntegrityLevel]::Of($proc.Handle)
+    }
+    catch { return "unknown" }
 }
 
 # ---- Elevated deploy worker: kill old process (release locks) + copy ----
@@ -101,7 +137,7 @@ if ($Stage -eq "deploy") {
     return
 }
 
-# ---- Main: runs NON-elevated; elevates only the deploy worker ----
+# ---- Main: runs at the interactive desktop's integrity; elevates only the deploy worker ----
 Set-Location (Split-Path -Parent $PSScriptRoot)   # repo root (script lives in AI_Script\)
 
 function Invoke-ElevatedDeploy($src, $dst, $log) {
@@ -130,55 +166,70 @@ function Invoke-ElevatedDeploy($src, $dst, $log) {
     return $false
 }
 
-# Relaunch the GUI at the NORMAL user integrity level (never elevated - see header).
-# Returns $true when the resident process is confirmed running.
+# Relaunch the resident and confirm it is reachable by the desktop's difftool client.
+# The invariant is "same integrity level as the interactive desktop", NOT "non-elevated": with UAC off
+# (HKLM...\Policies\System\EnableLUA = 0) explorer, Fork and this script are all High, and a Medium
+# requirement would be unsatisfiable. Returns $true when the resident runs at the desktop's level.
 function Start-Resident($exe, $wd) {
-    if (Test-IsAdmin) {
-        # Deliberately NOT launching here. Launching from an elevated parent yields a high-IL GUI,
-        # which a non-elevated difftool (Fork) cannot reach over the named pipe (UIPI); the old
-        # `explorer.exe "<exe>" --startup` downgrade trick was measured to start nothing (2026-09-25).
-        Write-Host "  [!] This shell is ELEVATED - cannot start the resident at normal integrity from here." -ForegroundColor Yellow
-        Write-Host "  [!] Run this in a normal (non-admin) PowerShell instead:" -ForegroundColor Yellow
-        Write-Host "          `"$exe`" --startup" -ForegroundColor Yellow
-        return $false
-    }
-
     Start-Process $exe -ArgumentList "--startup" -WorkingDirectory $wd
     Start-Sleep -Seconds 3
     $proc = Get-Process -Name "ExcelDiffEDR.GUI" -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $proc) { return $false }
-    Write-Host ("  resident running: pid=" + $proc.Id)
+
+    $desktop = Get-Process -Name explorer -ErrorAction SilentlyContinue | Select-Object -First 1
+    $guiIL = Get-ProcessIntegrity $proc
+    if (-not $desktop) {
+        Write-Host ("  resident pid=" + $proc.Id + " IL=" + $guiIL + "  (no explorer to compare; cannot verify)")
+        return $true
+    }
+    $shellIL = Get-ProcessIntegrity $desktop
+    Write-Host ("  resident pid=" + $proc.Id + " IL=" + $guiIL + "  desktop IL=" + $shellIL)
+    if ($guiIL -eq 'unknown' -or $shellIL -eq 'unknown') {
+        # A token we are not allowed to open (e.g. querying a higher-IL process) makes the comparison
+        # inconclusive, not failed - do not block a working deploy on that.
+        Write-Warning '  integrity comparison inconclusive; check manually: $env:WINDIR\System32\whoami.exe /groups'
+        return $true
+    }
+    if ($guiIL -ne $shellIL) {
+        # Do not leave a wrong-level resident running: the next run would pick it up via
+        # Get-Process -First 1 and report a false pass while the new binary never actually ran.
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        Write-Warning ("resident started at $guiIL but the desktop is $shellIL - a difftool launched from the " +
+                       "desktop cannot reach it over the named pipe, so it was stopped. Rerun this script from " +
+                       "a shell at the desktop integrity level.")
+        return $false
+    }
     return $true
 }
 
 try {
     if (-not $NoBuild) {
-        Write-Host "== Restore EDE packages =="
+        Write-Host "== Restore EDR packages =="
         dotnet restore ExcelDiff.GUI/ExcelDiff.GUI.csproj --configfile "$NuGetConfigPath" /v:m
-        if ($LASTEXITCODE -ne 0) { throw "EDE restore failed (exit $LASTEXITCODE)" }
+        if ($LASTEXITCODE -ne 0) { throw "EDR restore failed (exit $LASTEXITCODE)" }
         dotnet restore ExcelDiff/ExcelDiff.csproj --configfile "$NuGetConfigPath" /v:m
         if ($LASTEXITCODE -ne 0) { throw "ExcelDiff restore failed (exit $LASTEXITCODE)" }
 
-        Write-Host "== Build EDE (main) =="
+        Write-Host "== Build EDR (main) =="
         dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true `
             "/p:FrameworkPathOverride=$RefAssemblyPath" `
             /p:IncludePackageReferencesDuringMarkupCompilation=false `
             /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture `
             /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
-        if ($LASTEXITCODE -ne 0) { throw "EDE build failed (exit $LASTEXITCODE)" }
+        if ($LASTEXITCODE -ne 0) { throw "EDR build failed (exit $LASTEXITCODE)" }
     }
 
-    Write-Host "== Deploy EDE -> $Dst =="
+    Write-Host "== Deploy EDR -> $Dst =="
     if (-not (Invoke-ElevatedDeploy $Src $Dst (Join-Path $LogDir "deploy_edr.log"))) {
-        throw "EDE deploy failed"
+        throw "EDR deploy failed"
     }
 
     if (-not $NoRestart) {
-        Write-Host "== Relaunch resident process (non-elevated) =="
+        Write-Host "== Relaunch resident process (integrity verified against the desktop) =="
         Start-Sleep -Seconds 1
         if (-not (Start-Resident "$Dst\ExcelDiffEDR.GUI.exe" $Dst)) {
-            throw ("Copy finished but no resident is running. If this shell is elevated, start it " +
-                   "from a non-elevated one: `"$Dst\ExcelDiffEDR.GUI.exe`" --startup")
+            throw ("Copy finished but no usable resident is running (started, or integrity level differs " +
+                   "from the desktop). Manual check: `"$Dst\ExcelDiffEDR.GUI.exe`" --startup")
         }
     }
     else {
