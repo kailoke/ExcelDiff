@@ -109,6 +109,20 @@ cmd = \"<安装目录>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c 
 windiff = difftool -g -y -t ExcelDiff
 ```
 
+### Fork 外部对比工具
+
+Fork → Settings → External Diff Tools → Add：
+
+| 字段 | 值 |
+|------|----|
+| Name | `EDR`（任意名字） |
+| Path | `<安装目录>\ExcelDiffEDR.GUI.exe` |
+| Arguments | `diff -s "$LOCAL" -d "$REMOTE"` |
+
+- `$LOCAL` / `$REMOTE` 是 Fork 的左/右文件占位符。路径可能含空格时保留引号；若 Fork 对引号处理异常，去掉引号写 `diff -s $LOCAL -d $REMOTE`。
+- 可选参数：`-k` 不写入最近文件历史（difftool 场景建议加）、`-v` 打开前校验扩展名、`-c <工具> -i` 让不支持的类型直接转交外部工具而不弹错误框。
+- **常驻与"等待外部工具"**：ExcelDiff 是托盘常驻设计（进程不会因窗口关闭而退出）。若调用时没有常驻实例，被启动的那个进程会自己变成常驻且**不退出**，Fork 那边就一直显示在等外部工具。先把常驻以**普通用户权限**启动（`ExcelDiffEDR.GUI.exe --startup`），之后每次对比都是"转发给常驻后立刻退出"。常驻进程必须是普通权限：高权限常驻进程，非提权的 Fork 通过命名管道连不上（UIPI 拦截）。
+
 ### Mercurial difftool
 
 `mercurial.ini`

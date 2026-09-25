@@ -109,6 +109,20 @@ cmd = \"<install dir>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c W
 windiff = difftool -g -y -t ExcelDiff
 ```
 
+### Fork external diff tool
+
+Fork → Settings → External Diff Tools → Add:
+
+| Field | Value |
+|-------|-------|
+| Name | `EDR` (any name) |
+| Path | `<install dir>\ExcelDiffEDR.GUI.exe` |
+| Arguments | `diff -s "$LOCAL" -d "$REMOTE"` |
+
+- `$LOCAL` / `$REMOTE` are Fork's left/right file placeholders. Keep the quotes when paths may contain spaces; drop them (`diff -s $LOCAL -d $REMOTE`) if Fork mishandles the quoting.
+- Optional flags: `-k` keeps the comparison out of the recent-file history (recommended for difftool use), `-v` validates the extension before opening, `-c <tool> -i` hands unsupported types straight to an external tool without an error dialog.
+- **Resident process and "waiting for external tool"**: ExcelDiff is designed to stay resident in the tray, so the process does not exit when a window closes. If no resident instance is running, the process Fork starts becomes the resident one and **never exits**, so Fork keeps waiting. Start the resident instance first at **normal (non-elevated) integrity** (`ExcelDiffEDR.GUI.exe --startup`); after that every call is forwarded to it and exits immediately. The resident process must not be elevated — a non-elevated Fork cannot reach a high-integrity instance over the named pipe (UIPI).
+
 ### Mercurial difftool
 
 `mercurial.ini`
