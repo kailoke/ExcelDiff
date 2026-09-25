@@ -34,6 +34,7 @@ $Targets = @(
   @{ Key = 'Timing.cs';                           File = 'ExcelDiff.GUI\Timing.cs';                            Pattern = 'class Timing' },
   @{ Key = 'Commands/DiffCommand.cs';             File = 'ExcelDiff.GUI\Commands\DiffCommand.cs';              Pattern = 'class DiffCommand' },
   @{ Key = 'Commands/CommandFactory.cs';          File = 'ExcelDiff.GUI\Commands\CommandFactory.cs';           Pattern = 'class CommandFactory' },
+  @{ Key = 'Commands/CommandLineArguments.cs';    File = 'ExcelDiff.GUI\Commands\CommandLineArguments.cs';      Pattern = 'class CommandLineArguments' },
   @{ Key = 'Commands/CommandLineOption.cs';       File = 'ExcelDiff.GUI\Commands\CommandLineOption.cs';        Pattern = 'class CommandLineOption' },
   @{ Key = 'Views/MainWindow.xaml.cs';            File = 'ExcelDiff.GUI\Views\MainWindow.xaml.cs';             Pattern = 'class MainWindow' },
   @{ Key = 'Views/DiffView.xaml.cs';              File = 'ExcelDiff.GUI\Views\DiffView.xaml.cs';               Pattern = 'class DiffView\b' },

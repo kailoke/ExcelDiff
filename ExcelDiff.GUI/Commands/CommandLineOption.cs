@@ -30,10 +30,6 @@ namespace ExcelDiff.GUI.Commands
         [Option('e', "empty-file-name")]
         public string EmptyFileName { get; set; } = string.Empty;
 
-        [Option('k', "keep-file-history")]
-        public bool KeepFileHistory { get; set; }
-
-
         public CommandType MainCommand
         {
             get

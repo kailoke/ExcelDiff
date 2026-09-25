@@ -193,7 +193,7 @@ namespace ExcelDiff.GUI
             option = null;
             CommandLineOption local = null;
             bool parsed = false;
-            CommandLine.Parser.Default.ParseArguments<CommandLineOption>(args)
+            CommandLine.Parser.Default.ParseArguments<CommandLineOption>(CommandLineArguments.Normalize(args))
                 .WithParsed(o =>
                 {
                     local = o;
@@ -226,7 +226,7 @@ namespace ExcelDiff.GUI
         private ICommand CreateCommand(string[] args)
         {
             ICommand command = null;
-            CommandLine.Parser.Default.ParseArguments<CommandLineOption>(args)
+            CommandLine.Parser.Default.ParseArguments<CommandLineOption>(CommandLineArguments.Normalize(args))
                 .WithParsed(o =>
                 {
                     CommandLineOption = o;
@@ -387,11 +387,6 @@ namespace ExcelDiff.GUI
                 var files = f.Split('|');
                 return Tuple.Create(files.ElementAtOrDefault(0), files.ElementAtOrDefault(1));
             });
-        }
-
-        public bool KeepFileHistory
-        {
-            get { return CommandLineOption.KeepFileHistory; }
         }
     }
 }

@@ -78,8 +78,14 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ### 命令行
 
 ```
-ExcelDiff.GUI diff [Options]
+ExcelDiffEDR.GUI.exe [diff] <左文件> <右文件>
+ExcelDiffEDR.GUI.exe [diff] -s <左文件> -d <右文件> [-c <工具>] [-i] [-w] [-v] [-e <文件名>]
 ```
+
+- 左表 = 源文件（`-s`），右表 = 目标文件（`-d`）。位置参数按书写顺序依次填入这两个槽位，最多两个。
+- 命令词 `diff` 可省略。首参等于 `diff` / `none` / `merge` 时按命令词处理（`merge` 尚未实现，会提示 unknown command），否则按文件路径处理。
+- 位置参数与显式 `-s` / `-d` 不混用。参数不合法（多于两个位置参数、混用、空参数、值选项缺值）时弹 `Invalid argument.`。
+- 路径含空格必须加引号。
 
 | 选项 | 描述 | 类型 | 默认值 |
 |------|------|------|--------|
@@ -90,7 +96,6 @@ ExcelDiff.GUI diff [Options]
 | `-w` `--wait-external-cmd` | 等待外部进程结束。 | bool | false |
 | `-v` `--validate-extension` | 打开前校验扩展名。 | bool | false |
 | `-e` `--empty-file-name` | 空文件名称。 | string | |
-| `-k` `--keep-file-history` | 不记录最近文件。 | bool | false |
 
 > 单实例 IPC：若已有常驻实例在运行，新的命令行调用会通过命名管道转发给常驻实例处理，随后立即退出。常驻实例启动参数含 `--startup` 时隐藏运行。
 
@@ -103,7 +108,7 @@ ExcelDiff.GUI diff [Options]
 tool = ExcelDiff
 
 [difftool "ExcelDiff"]
-cmd = \"<安装目录>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v -k
+cmd = \"<安装目录>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v
 
 [alias]
 windiff = difftool -g -y -t ExcelDiff
@@ -117,11 +122,11 @@ Fork → Settings → External Diff Tools → Add：
 |------|----|
 | Name | `EDR`（任意名字） |
 | Path | `<安装目录>\ExcelDiffEDR.GUI.exe` |
-| Arguments | `diff -s "$REMOTE" -d "$LOCAL"` |
+| Arguments | `"$REMOTE" "$LOCAL"` |
 
-- **`-s` 决定左表、`-d` 决定右表**（源=左、目标=右），所以"左边显示远端、右边显示本地"要写 `-s "$REMOTE" -d "$LOCAL"`。只调换 `-s` / `-d` 的**书写顺序**不改变任何东西 —— 要换的是它们后面的值。
-- `$LOCAL` / `$REMOTE` 是 Fork 传出的两个临时文件占位符。配好后点一次对比，看窗口顶部"源文件 / 目标文件"两个路径框，就能确认左右是否如预期。路径可能含空格时保留引号；若 Fork 对引号处理异常，去掉引号写 `diff -s $REMOTE -d $LOCAL`。
-- 可选参数：`-k` 不写入最近文件历史（difftool 场景建议加）、`-v` 打开前校验扩展名、`-c <工具> -i` 让不支持的类型直接转交外部工具而不弹错误框。
+- **第一个占位符 = 左表、第二个 = 右表**（位置参数依次填入 `-s` / `-d`），所以"左边显示远端、右边显示本地"就写 `"$REMOTE" "$LOCAL"`；想显式写出来是 `diff -s "$REMOTE" -d "$LOCAL"`。决定左右的是 `-s` / `-d` 后面的值，不是两个选项的书写顺序。
+- `$LOCAL` / `$REMOTE` 是 Fork 传出的两个临时文件占位符。**引号必须保留**（临时文件目录可能含空格）。配好后点一次对比，看窗口顶部"源文件 / 目标文件"两个路径框即可确认左右。
+- 可选参数：`-v` 打开前校验扩展名、`-c <工具> -i` 让不支持的类型直接转交外部工具而不弹错误框。
 - **常驻与"等待外部工具"**：ExcelDiff 是托盘常驻设计（进程不会因窗口关闭而退出）。若调用时没有常驻实例，被启动的那个进程会自己变成常驻且**不退出**，Fork 那边就一直显示在等外部工具。先把常驻启动起来（`ExcelDiffEDR.GUI.exe --startup`），之后每次对比都是"转发给常驻后立刻退出"。常驻的完整性级别要与桌面一致：不同级时 Fork 通过命名管道连不上（UIPI 拦截）。注意"一致"不等于"必须普通权限"——UAC 被关闭的机器上 explorer / Fork / 应用本来就全是 High。
 
 ### Mercurial difftool
@@ -131,7 +136,7 @@ Fork → Settings → External Diff Tools → Add：
 ```
 [merge-tools]
 exceldiff.executable = <安装目录>\ExcelDiff.GUI.exe
-exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty -k
+exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty
 
 [tortoisehg]
 vdiff = exceldiff

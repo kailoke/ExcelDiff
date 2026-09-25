@@ -115,3 +115,19 @@
 - **后果**：全仓标签字样一次性改名（`EDE` 137 处 + 独立 `ED` 104 处 = 241 处，按 ASCII 词边界统计——用 `\b` 会把紧贴中文的出现漏掉；覆盖文档/脚本输出/代码注释/harness 局部变量名），机械替换产生的同义反复（如 "EDR=EDR 主版本"）手改为 "EDR=ExcelDataReader 主版本" 等显式写法；版本机制不变（仍是 `AssemblyInfo.cs` 单一来源 + MSI 派生），本次只改落值。旧 git tag 保留不动。
 - **被否**：① 六个程序集全部统一 2.0.0.0 —— 我一度按"全部修改"这么做过，被用户驳回：FastWpfGrid / NetDiff 有各自的库版本身份（NetDiff 还带对外包 `Diff4Net` 的 nuspec），跟产品版本绑死会丢掉"这颗 DLL 是哪一版上游库"的信息；② 只改文档不改代码注释/变量名 —— 同一事实两处口径，后续会话仍会看到混用；③ 保留 ED/EDE —— "EDE" 无表意且与产品名不一致，改名成本只会随提交数继续上升。
 - **刻意未改**：`NetDiff/NetDiff/NetDiff.nuspec` 的 `<version>1.2.0</version>`（对外包 `Diff4Net` 自己的发布标识）；`ExcelDiff.Installer.vdproj`（ED 时代废弃安装包，`ProductName=ExcelDiff`、`ProductVersion 1.3.4` 与冻结的依赖快照，且仍挂在 `ExcelDiff.sln` 里 —— 建议后续从解决方案移除并删文件）；FastWpfGrid 的 `FastWpfGridTest` / `FastWpfGridSyncTest` / `FastWpfGridUnitTest` 三个工程 `1.0.0.0`（上游自带示例/测试，不在 `ExcelDiff.sln` 内）；`app.manifest` 的 `version="1.0.0.0"`（VS 模板默认值，`name="MyApplication.app"`，不承载产品版本）。
+
+## ADR-015 CLI 接受裸位置文件参数，归一化在解析前单点完成
+
+- **状态**：已定（2026-09-25，用户裁决"设计可行就直接改代码"）
+- **背景**：外部工具（Fork 的 External Diff Tools）调用要写 `diff -s "$REMOTE" -d "$LOCAL"`，希望简化成 `"$REMOTE" "$LOCAL"`。**实测**（反射驱动构建产物内的真解析器，CommandLine 2.9.1）：`CommandLineOption` 只有一个位置槽 `Value(0)`（命令词），所以 `diff A B` 被判为**解析成功并静默丢弃** A/B（`Parsed=True Src=[] Dst=[]`）；`A B` 则把 A 当命令词，`Enum.Parse` 抛 `ArgumentException`（非 `ExcelDiffException`），绕过 `Invalid argument.` 友好路径，落到 `CurrentDomain_UnhandledException` 的 `Execute external command?` 框 + `Exit(-1)`。空 Src/Dst 的后果（左右两张空表、无任何提示）按 `DiffViewModel.cs:221-256` 的 `File.Exists("")` 分支推得，未实跑 UI。
+- **决策**：不放宽 DTO，在 `CommandLineParser` **之前**加纯函数 `CommandLineArguments.Normalize`：首参命中 `CommandType` 名（忽略大小写）→ 命令词；值选项 `-s/-d/-c/-e`（含长名）连同其值、开关 `-i/-w/-v` 按原序保留；其余不认识的 `-` 开头 token 原样透传（`--help` / `--version` / `--startup` 仍由解析器裁决）；剩下的位置参数按序改写成 `-s` / `-d`。多于两个位置参数、位置参数与显式 `-s`/`-d` 混用、空 token、值选项缺值 → 一律抛既有 `ExcelDiffException(true, "Invalid argument.\nargument:\n…")`。接入点两处：首实例 `CreateCommand` 与远程转发 `TryParseOption`，**两条入口必须过同一函数**。
+- **后果**：`exe A B`、`exe diff A B`、`exe -s A -d B`、`exe -s A`（右键菜单单文件用法）等价可用；原先可用的写法归一化后 token 序列不变（20 组参数矩阵实测，含 Mercurial 全串与含空格路径）。复用现有错误文案，不新增 UI 字符串 → 不触发 resx/lang 再生成。"写错就静默空白"这一类失败换成显式报错。代价是位置参数只认两个、且首参恰为命令词时按命令解释：名为 `diff` 的相对路径文件会被吃掉，difftool 场景（绝对临时文件路径）不可能命中，README 已写明该规则。
+- **被否**：① 只改文档、继续要求写全 `diff -s -d` —— 保留了"少写一个 `-d` 就静默出空表"的陷阱；② DTO 里加 `[Value(1)]/[Value(2)]` 并让 `Command` 兼任左表 —— 需要"这个 token 是命令还是路径"的推断，且 `-s A B`（漏 `-d`）仍会静默变成错误的单侧对比；③ 归一化放进 `DiffCommand.ValidateOption` —— 远程转发路径 `RouteCommand` 不调 `ValidateOption`，两条入口会分叉（首次调用创建常驻、后续调用转发，语法不一致）。
+
+## ADR-016 移除 `-k` / `--keep-file-history`，最近文件改为恒常记录
+
+- **状态**：已定（2026-09-25，用户裁决"-k 去除功能和参数；等待后续统一更新 README"）
+- **背景**：`-k` 的长名与行为正好相反 —— `DiffView.xaml.cs` 的判据是 `if (!App.Instance.KeepFileHistory) UpdateRecentFiles(...)`，即"传了 `-k` 就不记录"，而名字读作"保留历史"。裁决是整条去除，而不是改个名继续留着。
+- **决策**：删除整条链，不留兼容别名、不加替代开关 —— `CommandLineOption` 的 `[Option('k', "keep-file-history")]` 属性、`App.KeepFileHistory` 转发属性、`DiffView` 的条件判断（改为无条件记录）、`CommandLineArguments.SwitchOptions` 里的 `-k`。README.md / README.en 的选项表、Git difftool 与 Mercurial 示例同步去掉 `-k`。
+- **后果**：最近文件表无条件写入（上限 20 条，`App.UpdateRecentFiles`），difftool 场景会把 Fork/git 的临时路径灌进历史并挤掉真实记录 —— 这是本次裁决明确接受的代价。仍在参数里带 `-k` 的外部工具配置会立刻拿到 `Invalid argument.` 弹窗（`-k` 退化为未知选项，由解析器裁决），而不是被静默忽略；本机 `~/.gitconfig` 实测只有 `[user]` 段，故 git 侧无受影响配置，Fork 条目需使用者自查。
+- **被否**：① 改名 `--no-file-history` 保留等价能力 —— 裁决是去除功能而非修正命名，留着开关就还得维护"名字与方向"的第二处真值；② 参数保留但变成 no-op —— 对外承诺一个不再兑现的选项，比直接报错更难排查。

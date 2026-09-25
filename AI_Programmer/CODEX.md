@@ -9,13 +9,13 @@
 ### 链路 A：启动 / Git difftool → Diff 管道（UI 线程为主）
 
 ```
-exe diff -s <src> -d <dst> ...
+exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
   └─ App.Main()                                   App.xaml.cs:28    加载 Setting、EnsureCulture、UpdateResourceCulture、Run
   └─ App.OnStartup()                              App.xaml.cs:57    TryAcquire() 失败→转发给常驻实例后退出
        ├─ SingleInstance.StartServer(OnRemoteCommand)               后台管道线程
        ├─ InitializeTray() → TrayIconManager                        托盘常驻
        ├─ StartupHelper.SetEnabled(Setting.StartOnBoot)             Run 键
-       └─ CreateCommand(args) → CommandFactory.Create               解析 CLI → ICommand
+       └─ CreateCommand(args) → CommandFactory.Create               CommandLineArguments.Normalize → 解析 CLI → ICommand
   └─ DiffCommand.Execute()                        DiffCommand.cs:22
        ├─ new MainWindow() + new DiffView() + VMs，互设 DataContext
        ├─ App.CurrentDiffView = diffView；window.Show()
@@ -58,7 +58,8 @@ exe diff -s <src> -d <dst> ...
 | `Timing` | Timing.cs:12 | `[Conditional("PERF_TIMING")] Mark/Log`，写 `%TEMP%\em_open_timing.log`；正式版编译期裁掉 |
 | `DiffCommand` | Commands/DiffCommand.cs:8 | 组装 MainWindow+DiffView+VM；`ValidateOption`（`-e empty-file-name`→`EnsureFile`，扩展名校验）；`DefaultEnabledExtensions` |
 | `CommandFactory` | Commands/CommandFactory.cs:3 | `Create(option)` → DiffCommand |
-| `CommandLineOption` | Commands/CommandLineOption.cs:7 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e/-k`）；`MainCommand`（首参→`CommandType`） |
+| `CommandLineArguments` | Commands/CommandLineArguments.cs:11 | `Normalize(args)`：把位置参数改写成 `-s`/`-d`（最多两个，与显式 `-s`/`-d` 互斥，违规抛 `Invalid argument.`）；未知开关（`--help`/`--version`/`--startup`）原样透传交给 CommandLineParser |
+| `CommandLineOption` | Commands/CommandLineOption.cs:7 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e`）；`MainCommand`（首参→`CommandType`，缺省 `Diff`）；位置参数由 `CommandLineArguments` 先归一化 |
 | `MainWindow` | Views/MainWindow.xaml.cs:11 | PowerShell 宿主；窗口状态持久化（600ms 去抖 timer）；`OnClosing`（托盘/退出二分）；`WndProc` ESC 钩子；`RestoreWindowState/SaveWindowState` |
 | `DiffView` | Views/DiffView.xaml.cs:25 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`ReadWorkbooks`、`ExecuteDiff`（双重载）、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
 | `NoDiffWindow` | Views/NoDiffWindow.xaml.cs:15 | 无差异模态窗；ESC=仅关本窗；红色"退出"按钮连对比窗口一起关 |

@@ -627,8 +627,7 @@ namespace ExcelDiff.GUI.Views
             Timing.Log("PostModel", postSw.ElapsedMilliseconds);
 #endif
 
-            if (!App.Instance.KeepFileHistory)
-                App.Instance.UpdateRecentFiles(SrcPathTextBox.Text, DstPathTextBox.Text);
+            App.Instance.UpdateRecentFiles(SrcPathTextBox.Text, DstPathTextBox.Text);
 
             if (App.Instance.Setting.NotifyEqual && !summary.HasDiff)
             {

@@ -119,6 +119,7 @@
     <Compile Include="Behaviors\DragAcceptBehavior.cs" />
     <Compile Include="Behaviors\DragAcceptDescription.cs" />
     <Compile Include="Commands\CommandFactory.cs" />
+    <Compile Include="Commands\CommandLineArguments.cs" />
     <Compile Include="Commands\CommandLineOption.cs" />
     <Compile Include="Commands\CommandType.cs" />
     <Compile Include="Commands\DiffCommand.cs" />
