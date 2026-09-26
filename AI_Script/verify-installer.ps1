@@ -16,6 +16,9 @@
       D  run setup from inside the installed folder (the ARP shape) -> must succeed via the temp copy
       E  reinstall over an existing install -> same folder, no .old-* leftovers
       F  auto-start OFF while the Run value belongs to another folder -> that value is left alone
+      G  /clearsettings governs the user settings folder (default keeps it, switch removes it)
+      H  malformed command lines -> exit code 4, nothing installed, empty /dir= refused
+      I  well-formed command lines are still accepted (switch validation has no false positives)
 
     Every assertion is taken BEFORE the finally-block repairs anything, so a product bug cannot be
     hidden by the gate's own cleanup. -Install writes HKLM keys, registers a COM server and touches
@@ -48,7 +51,7 @@ $ArpRegPath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ExcelDi
 $ClsidPath = 'HKLM:\SOFTWARE\Classes\CLSID\{C7471DED-BC6E-4A86-8B71-2B9FE239FE07}'
 $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $RunValue = 'ExcelDiffEDR.GUI'
-$StartMenuDir = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\ExcelDiff'
+$StartMenuDir = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\ExcelDiffEDR'
 
 $script:failed = 0
 $script:passed = 0
@@ -151,6 +154,28 @@ $missingEn = @($zhKeys | Where-Object { $enKeys -notcontains $_ })
 Check 'string tables in sync' ($missingZh.Count -eq 0 -and $missingEn.Count -eq 0) `
     ('only-en=' + ($missingZh -join ',') + ' only-zh=' + ($missingEn -join ','))
 
+# Key sets matching is not enough: a {0} that drifts between the two languages throws at runtime.
+function Placeholders([string]$path) {
+    $map = @{}
+    foreach ($line in (Get-Content -LiteralPath $path -Encoding UTF8)) {
+        if ($line -notmatch '^([^#=]+)=(.*)$') { continue }
+        $map[$Matches[1].Trim()] = @([regex]::Matches($Matches[2], '\{\d+\}') | ForEach-Object { $_.Value } | Sort-Object)
+    }
+    return $map
+}
+$zhPh = Placeholders (Join-Path $StringsDir 'zh-CN.txt')
+$enPh = Placeholders (Join-Path $StringsDir 'en-US.txt')
+$drift = @($zhPh.Keys | Where-Object { -not $enPh.ContainsKey($_) -or (($zhPh[$_] -join ',') -ne ($enPh[$_] -join ',')) })
+Check 'placeholder sets match per key across languages' ($drift.Count -eq 0) ('drift=' + ($drift -join ','))
+
+# A green run against a stale binary proves nothing about the sources on disk.
+# -Include is ignored with -LiteralPath (measured: it returned pdb/exe/obj files), so filter by hand.
+$newestSource = (Get-ChildItem -LiteralPath (Join-Path $root 'ExcelDiff.Installer') -Recurse -File |
+    Where-Object { $_.Extension -in '.cs', '.xaml' -and $_.FullName -notmatch '\\bin\\|\\obj\\|\\Release\\' } |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+Check 'setup exe is newer than installer sources' ((Get-Item -LiteralPath $SetupExe).LastWriteTime -gt $newestSource.LastWriteTime) `
+    ($newestSource.FullName.Substring($root.Length + 1) + ' ' + $newestSource.LastWriteTime + ' vs exe ' + (Get-Item -LiteralPath $SetupExe).LastWriteTime)
+
 if (-not $Install) {
     Write-Host ''
     Write-Host '--- static checks only (pass -Install for the live cases) ---'
@@ -163,8 +188,15 @@ if (-not $Install) {
 # ---------------------------------------------------------------- live cases
 
 function RunSetup([string[]]$argList) {
-    $quoted = $argList | ForEach-Object { if ($_.Contains(' ')) { '"' + $_ + '"' } else { $_ } }
-    $p = Start-Process -FilePath $SetupExe -ArgumentList $quoted -Wait -PassThru
+    $quoted = @($argList | ForEach-Object { if ($_.Contains(' ')) { '"' + $_ + '"' } else { $_ } })
+    $p = Start-Process -FilePath $SetupExe -ArgumentList $quoted -PassThru
+    # A wizard or modal left on screen would otherwise block the gate forever; a timeout turns that
+    # into a failure that names the command line that produced it.
+    if (-not $p.WaitForExit(180000)) {
+        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+        Check ('setup hung: ' + ($argList -join ' ')) $false 'no exit within 180s - a dialog is blocking it'
+        return -99
+    }
     return $p.ExitCode
 }
 
@@ -205,7 +237,7 @@ $appDataBefore = Hash-Dir $liveAppData
 if ($appDataBefore -ne 'absent') {
     Copy-Item -LiteralPath $liveAppData -Destination $configBackupPath -Recurse -Force
 }
-$desktopLnk = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'ExcelDiff.lnk'
+$desktopLnk = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'ExcelDiffEDR.lnk'
 
 try {
     # ---- A: full install, then clean uninstall
@@ -227,14 +259,14 @@ try {
     $arp = Get-Item -LiteralPath $ArpRegPath -ErrorAction SilentlyContinue
     Check 'A ARP entry present' ($null -ne $arp)
     if ($arp) {
-        CheckKey 'A ARP DisplayName' $arp.GetValue('DisplayName') 'ExcelDiff'
+        CheckKey 'A ARP DisplayName' $arp.GetValue('DisplayName') 'ExcelDiffEDR'
         Check 'A ARP uninstall string is silent' ($arp.GetValue('UninstallString') -match '/uninstall /silent')
         Check 'A ARP blocks modify/repair' ($arp.GetValue('NoModify') -eq 1 -and $arp.GetValue('NoRepair') -eq 1)
         Check 'A ARP EstimatedSize > 0' ($arp.GetValue('EstimatedSize') -gt 0) ('KB=' + $arp.GetValue('EstimatedSize'))
     }
     $codeBase = Normalize-Uri (ClsidCodeBase)
     Check 'A COM registered for THIS folder' ($codeBase.StartsWith($dirA)) ('codebase=' + $codeBase)
-    Check 'A start-menu shortcut present' (Test-Path (Join-Path $StartMenuDir 'ExcelDiff.lnk'))
+    Check 'A start-menu shortcut present' (Test-Path (Join-Path $StartMenuDir 'ExcelDiffEDR.lnk'))
     Check 'A desktop shortcut present' (Test-Path $desktopLnk)
     $runAfterInstall = (Get-Item -LiteralPath $RunKey).GetValue($RunValue)
     Check 'A auto-start Run value points here' ($runAfterInstall -like ('"' + $dirA + '\ExcelDiffEDR.GUI.exe" --startup')) ('value=' + $runAfterInstall)
@@ -299,10 +331,12 @@ try {
     Check 'D baseline install exit 0' ($code -eq 0) ('exit=' + $code)
     $inner = Join-Path $dirD 'ExcelDiffSetup.exe'
     Check 'D inner copy exists' (Test-Path $inner)
-    $quoted = '"' + $inner + '"'
+    $beforeWrite = (Get-Item -LiteralPath (Join-Path $dirD 'ExcelDiffEDR.GUI.exe')).LastWriteTimeUtc
     $p = Start-Process -FilePath $inner -ArgumentList ('/silent /dir=' + $dirD + ' /components:none') -Wait -PassThru
     Check 'D reinstall from inside the folder succeeds' ($p.ExitCode -eq 0) ('exit=' + $p.ExitCode)
     Check 'D main exe still there' (Test-Path (Join-Path $dirD 'ExcelDiffEDR.GUI.exe'))
+    # Without this the case would also pass when the relaunch silently did nothing.
+    Check 'D payload actually rewritten' ((Get-Item -LiteralPath (Join-Path $dirD 'ExcelDiffEDR.GUI.exe')).LastWriteTimeUtc -gt $beforeWrite)
     # The old image is still loaded by the process we launched from inside the folder, so its parked
     # backup cannot be deleted yet; it must be swept by the next uninstall instead.
     $stale = @(Get-ChildItem -LiteralPath (Split-Path -Parent $dirD) -Directory -Filter '*.old-*' -ErrorAction SilentlyContinue)
@@ -333,18 +367,64 @@ try {
     CheckKey 'F foreign Run value preserved' (Get-Item -LiteralPath $RunKey).GetValue($RunValue) $foreign
     $null = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirF))
     CheckKey 'F uninstall left the foreign Run value alone' (Get-Item -LiteralPath $RunKey).GetValue($RunValue) $foreign
+
+    # ---- G: the shared user settings folder is cleared only on explicit request
+    '== G: /clearsettings governs the user settings folder =='
+    $dirG = Join-Path $work 'G\ExcelDiffEDRTool'
+    New-Item -ItemType Directory -Path $liveAppData -Force | Out-Null
+    $marker = Join-Path $liveAppData 'gate-marker.txt'
+    Set-Content -LiteralPath $marker -Value 'gate marker'
+    $code = RunSetup @('/silent', ('/dir=' + $dirG), '/components:none')
+    Check 'G first install exit 0' ($code -eq 0) ('exit=' + $code)
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirG))
+    Check 'G default uninstall exit 0' ($code -eq 0) ('exit=' + $code)
+    Check 'G default uninstall keeps user settings' (Test-Path $marker)
+    $code = RunSetup @('/silent', ('/dir=' + $dirG), '/components:none')
+    Check 'G second install exit 0' ($code -eq 0) ('exit=' + $code)
+    $code = RunSetup @('/uninstall', '/silent', '/clearsettings', ('/dir=' + $dirG))
+    Check 'G /clearsettings uninstall exit 0' ($code -eq 0) ('exit=' + $code)
+    Check 'G /clearsettings removes user settings' (-not (Test-Path $marker))
+
+    # ---- H: malformed switches must refuse, not fall through to the UI
+    '== H: bad command lines are refused =='
+    $code = RunSetup @('/silent=1', '/culture=de-DE', ('/dir=' + (Join-Path $work 'H\ExcelDiffEDRTool')))
+    CheckKey 'H bad switches exit 4' $code 4
+    Check 'H installed nothing' (-not (Test-Path (Join-Path $work 'H\ExcelDiffEDRTool')))
+    Check 'H left no registry record' (-not (Test-Path $ProductRegPath))
+    $code = RunSetup @('/dir=')
+    CheckKey 'H empty /dir is refused too' $code 4
+
+    # ---- I: an interactive /uninstall /clearsettings must not drop the request on the floor
+    '== I: switch validation stays out of the way of valid command lines =='
+    $dirI = Join-Path $work 'I\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirI), '/culture=en-US', '/components=all')
+    Check 'I well-formed command line accepted' ($code -eq 0) ('exit=' + $code)
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirI))
+    Check 'I uninstall exit 0' ($code -eq 0) ('exit=' + $code)
 }
 finally {
     # Repairs happen after every assertion above, so they cannot mask a product bug.
-    $leftover = @(Get-ChildItem -LiteralPath $env:ProgramData -Filter 'ExcelDiff.lnk' -Recurse -ErrorAction SilentlyContinue)
-    if ($leftover.Count -gt 0) { Skip 'no stray shortcuts' ($leftover.FullName -join ', ') }
+    $leftover = @(Get-ChildItem -LiteralPath $env:ProgramData -Filter 'ExcelDiff*.lnk' -Recurse -ErrorAction SilentlyContinue)
+    Check 'no stray shortcuts' ($leftover.Count -eq 0) ($leftover.FullName -join ', ')
     Remove-Item -LiteralPath $desktopLnk -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'ExcelDiff.lnk') -Force -ErrorAction SilentlyContinue
     if ($runBefore) { Set-ItemProperty -LiteralPath $RunKey -Name $RunValue -Value $runBefore }
     elseif ((Get-Item -LiteralPath $RunKey).GetValue($RunValue)) { (Get-Item -LiteralPath $RunKey).DeleteValue($RunValue) }
+    if ($marker) { Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue }
     if ((Test-Path $configBackupPath) -and (-not (Test-Path $liveAppData))) {
         Copy-Item -LiteralPath $configBackupPath -Destination $liveAppData -Recurse -Force
     }
     Check 'live settings restored after the gate' ((Hash-Dir $liveAppData) -eq $appDataBefore)
+
+    # A failed case can leave HKLM pointing into $work; the next run would then refuse at
+    # pre-flight and be unable to recover, because the manifest dies with $work.
+    if (Test-Path $ProductRegPath) {
+        $stuck = (Get-Item -LiteralPath $ProductRegPath).GetValue('InstallFolder')
+        if ($stuck) {
+            $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $stuck.TrimEnd('\')))
+            Check 'gate uninstalled its own leftovers' ($code -eq 0) ('exit=' + $code + ' dir=' + $stuck)
+        }
+    }
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 

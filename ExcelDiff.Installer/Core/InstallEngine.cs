@@ -35,6 +35,8 @@ namespace ExcelDiff.Setup
         public string InstallDir;
         public string Culture;
         public Components Components;
+        /// <summary>Owner ruling: settings are cleared only when the caller asked for it.</summary>
+        public bool ClearSettings;
 
         public string FailureReason { get; private set; }
         public bool RolledBack { get; private set; }
@@ -44,6 +46,7 @@ namespace ExcelDiff.Setup
             _options = options ?? new Options();
             Culture = Strings.Culture;
             Components = _options.Components;
+            ClearSettings = _options.ClearSettings;
         }
 
         public static ExistingInstall Detect()
@@ -167,6 +170,7 @@ namespace ExcelDiff.Setup
                     manifest.AddLink(startLink);
                     undo.Add(() => Shortcuts.Delete(startLink));
                 }
+                RemoveLegacyLinks();
 
                 if (Selected(Components.Desktop))
                 {
@@ -246,12 +250,12 @@ namespace ExcelDiff.Setup
         /// both run setup from inside the folder that is about to be moved aside - the moved path
         /// then cannot be copied or re-read. Re-launch a copy from %TEMP% and forward the result.
         /// </summary>
-        public static int? RelaunchOutsideInstallFolder()
+        public static int? RelaunchOutsideInstallFolder(Options options)
         {
-            var args = Environment.GetCommandLineArgs();
-            if (args.Any(a => string.Equals(a, "/setup-from-temp", StringComparison.OrdinalIgnoreCase)))
+            if (options != null && options.FromTemp)
                 return null;
 
+            var args = Environment.GetCommandLineArgs();
             var existing = Detect();
             if (existing == null)
                 return null;
@@ -268,17 +272,17 @@ namespace ExcelDiff.Setup
                 File.Copy(self, temp, true);
 
                 var tail = string.Join(" ", args.Skip(1).Select(QuoteArg).Append("/setup-from-temp"));
+                SetupLog.Info("relaunching setup outside the install folder: " + temp);
                 var startInfo = new ProcessStartInfo(temp, tail) { UseShellExecute = false };
                 using (var process = Process.Start(startInfo))
                 {
                     if (process == null)
                         return 1;
 
-                    process.WaitForExit(20 * 60 * 1000);
-                    var code = process.HasExited ? process.ExitCode : 1;
-                    if (!process.HasExited)
-                        process.Kill();
-                    return code;
+                    // No timeout: this wrapper also carries the interactive wizard, and killing it
+                    // mid-transaction would leave .old-* and a half-written HKLM behind.
+                    process.WaitForExit();
+                    return process.ExitCode;
                 }
             }
             catch (Exception ex)
@@ -316,8 +320,6 @@ namespace ExcelDiff.Setup
                 return false;
             }
 
-            var recordedDir = RegistryStore.ReadInstallFolder();
-
             try
             {
                 Report(Strings.T("log.uninstall.begin"));
@@ -331,6 +333,7 @@ namespace ExcelDiff.Setup
                     Shortcuts.Delete(link);
                 if (manifest.Links.Count == 0)
                     RemoveDefaultLinks();
+                RemoveLegacyLinks();
 
                 var manifestPath = InstallManifest.FilePathFor(dir);
                 var remaining = DeletePayloadFiles(manifest, manifestPath);
@@ -361,7 +364,7 @@ namespace ExcelDiff.Setup
 
                 RemoveAutoStart(dir);
                 ClearRegistry();
-                ClearUserSettings(dir, recordedDir);
+                ClearUserSettings();
 
                 Report(Strings.T("log.uninstall.done"));
                 return true;
@@ -431,6 +434,25 @@ namespace ExcelDiff.Setup
             var desktop = ProductInfo.DesktopDir;
             if (!string.IsNullOrEmpty(desktop))
                 Shortcuts.Delete(Path.Combine(desktop, ProductInfo.ProductName + ".lnk"));
+        }
+
+        /// <summary>
+        /// Shortcuts left by an install made before ProductName became ExcelDiffEDR. They point at
+        /// a folder the upgrade moves away, so leaving them produces a dead Start Menu entry.
+        /// </summary>
+        private static void RemoveLegacyLinks()
+        {
+            var legacyFolder = Path.Combine(Path.GetDirectoryName(ProductInfo.StartMenuDir) ?? string.Empty,
+                ProductInfo.LegacyProductName);
+            if (!string.IsNullOrEmpty(legacyFolder))
+            {
+                Shortcuts.Delete(Path.Combine(legacyFolder, ProductInfo.LegacyProductName + ".lnk"));
+                TryDeleteEmptyDir(legacyFolder);
+            }
+
+            var desktop = ProductInfo.DesktopDir;
+            if (!string.IsNullOrEmpty(desktop))
+                Shortcuts.Delete(Path.Combine(desktop, ProductInfo.LegacyProductName + ".lnk"));
         }
 
         private static void UnregisterShell(string dir)
@@ -526,21 +548,20 @@ namespace ExcelDiff.Setup
         }
 
         /// <summary>
-        /// The settings folder is keyed by assembly name, so every install of this variant shares
-        /// it. Clear it only when this really is the last install of the variant on the machine.
+        /// The settings folder is keyed by assembly name and shared by every install of this
+        /// variant, so it is cleared only on an explicit request (/clearsettings or the checkbox).
         /// </summary>
-        private void ClearUserSettings(string ourDir, string recordedDir)
+        private void ClearUserSettings()
         {
-            var other = OtherInstallOfVariant(ourDir, recordedDir);
-            if (other != null)
-            {
-                Report(Strings.F("log.settingskept", other));
-                return;
-            }
-
             var dir = ProductInfo.UserConfigDir;
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
                 return;
+
+            if (!ClearSettings)
+            {
+                Report(Strings.T("log.settingskept"));
+                return;
+            }
 
             try
             {
@@ -551,19 +572,6 @@ namespace ExcelDiff.Setup
             {
                 SetupLog.Warn("user settings not removed: " + ex.Message);
             }
-        }
-
-        private static string OtherInstallOfVariant(string ourDir, string recordedDir)
-        {
-            foreach (var candidate in new[] { recordedDir, ProductInfo.DefaultInstallDir })
-            {
-                if (string.IsNullOrEmpty(candidate) || PathsEqual(candidate, ourDir))
-                    continue;
-
-                if (File.Exists(Path.Combine(candidate, ProductInfo.MainExeName)))
-                    return candidate;
-            }
-            return null;
         }
 
         /// <summary>
@@ -728,17 +736,13 @@ namespace ExcelDiff.Setup
         {
             if (string.IsNullOrEmpty(arg))
                 return "\"\"";
-            if (!arg.Contains(" "))
+            if (arg.IndexOfAny(new[] { ' ', '\t', '"' }) < 0)
                 return arg;
-            return "\"" + arg.TrimEnd(Path.DirectorySeparatorChar) + "\"";
-        }
 
-        private static bool PathsEqual(string left, string right)
-        {
-            if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right))
-                return false;
-            return string.Equals(EnsureTrailingSeparator(left), EnsureTrailingSeparator(right),
-                StringComparison.OrdinalIgnoreCase);
+            // Trailing backslashes would escape the closing quote, and an embedded quote has to be
+            // escaped or the child's parser splits the token in half (which now means exit 4).
+            var trimmed = arg.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return "\"" + trimmed.Replace("\"", "\\\"") + "\"";
         }
 
         private static string EnsureTrailingSeparator(string path)

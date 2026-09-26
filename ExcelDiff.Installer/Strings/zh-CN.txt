@@ -12,7 +12,7 @@ step.uninstall=卸载
 language.prompt=请选择安装向导使用的语言。已按这台机器的显示语言为你预选。
 language.zh=中文
 language.en=English
-language.note=这个选择同时决定 ExcelDiff 首次启动时使用的语言；之后你可以在程序的"提取设置"里随时改。
+language.note=这个选择同时决定 ExcelDiffEDR 首次启动时使用的语言；之后你可以在程序的"提取设置"里随时改。
 
 location.prompt=安装到：
 location.browse=浏览…
@@ -34,13 +34,13 @@ confirm.off=关
 
 progress.prompt=正在安装…
 finish.prompt=安装完成。
-finish.howto=用法：在资源管理器里右键点击 .xls / .xlsx / .csv / .tsv 文件，选择 "ExcelDiff" 即可对比；也可以从开始菜单启动。
-finish.tray=ExcelDiff 会常驻右下角托盘；右键托盘图标可以退出。
+finish.howto=用法：在资源管理器里右键点击 .xls / .xlsx / .csv / .tsv 文件，选择 "ExcelDiffEDR" 即可对比；也可以从开始菜单启动。
+finish.tray=ExcelDiffEDR 会常驻右下角托盘；右键托盘图标可以退出。
 finish.log=日志：{0}
 finish.failed=安装失败。
 
-uninstall.prompt=准备卸载已安装的 ExcelDiff。
-uninstall.note=卸载会按安装清单删除文件、快捷方式与注册表项，并清理当前用户的设置目录；其它程序的配置不受影响。
+uninstall.prompt=准备卸载已安装的 ExcelDiffEDR。
+uninstall.note=卸载会按安装清单删除文件、快捷方式与注册表项。当前用户的设置目录只有在勾选下方复选框（或传 /clearsettings）时才会删除。
 uninstall.progress=正在卸载…
 uninstall.done=已卸载。
 
@@ -66,10 +66,15 @@ log.uninstall.begin=卸载开始
 log.uninstall.done=卸载完成
 log.fileslocked={0} 个文件被其它程序（通常是资源管理器）占用，没能删除。重启资源管理器或注销后再运行一次卸载即可清干净。
 
-err.locked=文件被占用：请先退出正在运行的 ExcelDiff（右键托盘图标 → 退出），并关闭打开它的程序后重试。
+err.locked=文件被占用：请先退出正在运行的 ExcelDiffEDR（右键托盘图标 → 退出），并关闭打开它的程序后重试。
 err.nopayload=这个安装包里没有找到程序载荷（payload）。\n请用 ExcelDiff.Installer\\Build-Setup.ps1 重新构建。
 err.title=安装失败
 err.badTarget=安装位置无效：请填写具体的文件夹，不能是磁盘根目录或相对路径。
 err.noUninstallTarget=找不到要卸载的安装：注册表里没有安装目录记录。请带上安装时的目录运行，例如 ExcelDiffSetup.exe /uninstall /dir=<安装时的目录>。
-err.driveRoot=不能直接安装在磁盘根目录，请指定一个子文件夹。
-log.settingskept=保留了用户设置目录，因为机器上还有另一处同版本安装：{0}
+err.unknownSwitch=无法识别的开关，已拒绝执行（不会退回交互界面）。
+err.missingValue=该开关缺少取值。
+err.booleanHasValue={0} 是开关，不接受取值（写成 /{0} 即可）。
+err.unknownCulture=不支持的语言 {0}，可选值只有 zh-CN 与 en-US。
+uninstall.clearsettings=同时删除当前用户的 ExcelDiffEDR 设置
+finish.noshell=本次未添加资源管理器右键菜单。需要的话，重新运行安装程序并勾选"添加资源管理器右键菜单"。
+log.settingskept=未要求清除，已保留当前用户的设置目录

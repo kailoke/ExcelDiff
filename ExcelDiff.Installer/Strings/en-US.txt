@@ -12,7 +12,7 @@ step.uninstall=Uninstall
 language.prompt=Choose the language for this setup. It is preselected from this machine's display language.
 language.zh=中文
 language.en=English
-language.note=This choice also sets the language ExcelDiff starts in the first time; you can change it later in the program's extraction settings.
+language.note=This choice also sets the language ExcelDiffEDR starts in the first time; you can change it later in the program's extraction settings.
 
 location.prompt=Install to:
 location.browse=Browse…
@@ -34,13 +34,13 @@ confirm.off=off
 
 progress.prompt=Installing…
 finish.prompt=Setup was completed.
-finish.howto=How to use it: right-click an .xls / .xlsx / .csv / .tsv file in Explorer and choose "ExcelDiff", or start it from the Start menu.
-finish.tray=ExcelDiff keeps running in the system tray; right-click the tray icon to exit.
+finish.howto=How to use it: right-click an .xls / .xlsx / .csv / .tsv file in Explorer and choose "ExcelDiffEDR", or start it from the Start menu.
+finish.tray=ExcelDiffEDR keeps running in the system tray; right-click the tray icon to exit.
 finish.log=Log: {0}
 finish.failed=Setup failed.
 
-uninstall.prompt=Ready to uninstall the installed ExcelDiff.
-uninstall.note=Uninstall removes the files, shortcuts and registry entries recorded in the install manifest, and clears the current user's settings folder. Other programs are untouched.
+uninstall.prompt=Ready to uninstall the installed ExcelDiffEDR.
+uninstall.note=Uninstall removes the files, shortcuts and registry entries recorded in the install manifest. The current user's settings folder is removed only if you tick the box below (or pass /clearsettings).
 uninstall.progress=Uninstalling…
 uninstall.done=Uninstalled.
 
@@ -66,10 +66,15 @@ log.uninstall.begin=Uninstall started
 log.uninstall.done=Uninstall complete
 log.fileslocked={0} file(s) are still held by another process (usually Explorer) and were not removed. Restart Explorer or sign out, then run uninstall once more.
 
-err.locked=A file is in use: exit the running ExcelDiff (right-click the tray icon, then Exit) and close any program holding these files, then try again.
+err.locked=A file is in use: exit the running ExcelDiffEDR (right-click the tray icon, then Exit) and close any program holding these files, then try again.
 err.nopayload=This setup package contains no application payload.\nRebuild it with ExcelDiff.Installer\\Build-Setup.ps1.
 err.title=Setup failed
 err.badTarget=Invalid install location: pick a concrete folder, not a drive root or a relative path.
 err.noUninstallTarget=No install found to remove: the registry has no recorded install folder. Run it with the folder you installed to, e.g. ExcelDiffSetup.exe /uninstall /dir=<install folder>.
-err.driveRoot=Installing straight into a drive root is not allowed; choose a subfolder instead.
-log.settingskept=Kept the user settings folder because another install of this variant is still on this machine: {0}
+err.unknownSwitch=Unrecognized switch; setup refused instead of falling back to the interactive UI.
+err.missingValue=This switch needs a value.
+err.booleanHasValue={0} is a switch and takes no value (write /{0} instead).
+err.unknownCulture=Unsupported language {0}; only zh-CN and en-US are available.
+uninstall.clearsettings=Also delete the current user's ExcelDiffEDR settings
+finish.noshell=The Explorer context menu was not added. To get it, run setup again and tick "Add the Explorer context menu".
+log.settingskept=Kept the current user settings folder; clearing it needs an explicit request.

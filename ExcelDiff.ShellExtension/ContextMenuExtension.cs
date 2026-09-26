@@ -26,7 +26,7 @@ namespace ExcelDiff.ShellExtension
 
             var item = new ToolStripMenuItem
             {
-                Text = "ExcelDiff",
+                Text = "ExcelDiffEDR",
                 Image = icon,
             };
 

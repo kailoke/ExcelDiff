@@ -41,7 +41,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDR 主版本 + NetDiff 单测 + lang↔resx 同步 + 安装器工程编译 + WIP 快照 |
-| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集；`-Install` 追加 6 个真实安装用例（含回滚与越界保护），机器上留有安装记录时拒绝运行 |
+| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集与占位符/新鲜度；`-Install` 追加 A–I 共 9 个真实安装用例（回滚、越界保护、清单缺失拒绝、从安装目录内运行、自启联动、`/clearsettings`、非法参数退出码），机器上留有安装记录时拒绝运行 |
 | `README.md` | 用户向使用说明（CLI 参数、快捷键、外部命令） |
 
 ## 3. 目录结构（解决方案 = `ExcelDiff.sln`）
@@ -134,18 +134,18 @@ MSI/WiX 路线已于 2026-09-25 **整体删除**（ADR-017）：`ExcelDiffEDR.In
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1              # 隔离构建 EDR+ShellExtension → 载荷 zip → Release\ExcelDiffSetup-<版本>.exe
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1 -SkipBuild   # 复用 obj\stage，只重打载荷与 setup exe
 powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1                   # 静态门禁：载荷内容/嵌入资源/版本一致/双语键集
-powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加真实安装·卸载·重装·回滚三用例（需管理员）
+powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加 A–I 九个真实安装/卸载/重装/回滚用例（需管理员）
 ```
 
 - **产物是单个 exe**：`ExcelDiffSetup.exe`（net472 WPF，`app.manifest` = `requireAdministrator`）。应用载荷由脚本打成 zip，再以 manifest resource `ExcelDiff.Setup.Payload.zip` 嵌入；`.csproj` 里该 `EmbeddedResource` 带 `Condition="Exists(...)"`，所以没有载荷时工程仍能编译、运行时给明确错误——打包链不污染 `verify.ps1`。
 - **向导五页**：① 语言（默认按 `CultureInfo.InstalledUICulture`，`zh*`→中文、其余英文；点选后整个向导立即换语言）② 安装位置 + 组件勾选 ③ 确认 ④ 进度（真实步骤日志，日志文件 `%TEMP%\ExcelDiff-Setup-<时间戳>.log`）⑤ 完成（用法提示）。**故意不放"立即运行"**：setup 是提权进程，它拉起的常驻是高完整性级别，桌面侧 difftool 连不上命名管道（见 §7.6 / §8.8）。
 - **文案在 `ExcelDiff.Installer\Strings\{zh-CN,en-US}.txt`**（`key=value`，UTF-8 无 BOM，读取端显式 `UTF8Encoding`）。两份键集必须一致，`verify-installer.ps1` 比对；PowerShell 侧读它们**必须 `-Encoding UTF8`**，否则 5.1 按 GBK 解码会把中文尾字节与后面的 ASCII 合成一行（实测假报 19 个键缺失）。
-- **注册表口径（业主裁定）**：产品键 `HKLM\SOFTWARE\ExcelDiffEDR`（`InstallFolder` / `InstallVersion` / `SetupCulture` / `SetupStartOnBoot` / `ShellExtRegistered`），ARP 键 `HKLM\...\Uninstall\ExcelDiffEDR`，用户可见名 `ExcelDiff`（`ExcelDiffEDR` 只作内部标识与键名）。`SetupCulture` / `SetupStartOnBoot` 是**给程序读的种子**：`ApplicationSetting.EnsureCulture()` 的解析顺序是「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」，`Load()` 仅在配置为空时 `SeedFromInstaller()`。必须这样改，因为程序原先每次启动都按 `startOnBoot = true` 重写 HKCU Run，安装器的勾选会被冲掉。
+- **注册表与命名口径（业主裁定）**：产品键 `HKLM\SOFTWARE\ExcelDiffEDR`（`InstallFolder` / `InstallVersion` / `SetupCulture` / `SetupStartOnBoot` / `ShellExtRegistered`），ARP 键 `HKLM\...\Uninstall\ExcelDiffEDR`。**用户可见名一律 `ExcelDiffEDR`**（2026-09-26 统一）：ARP `DisplayName`、开始菜单目录与快捷方式、资源管理器右键菜单文字（`ContextMenuExtension.cs`）、向导标题与文案、程序窗口标题与托盘提示。唯一保留 `ExcelDiff` 的是**用户自己写在 git 配置里的 difftool 标签**（`[difftool "ExcelDiff"]`，改它会破坏既有配置）以及 EDN 变体的历史名字。`SetupCulture` / `SetupStartOnBoot` 是**给程序读的种子**：`ApplicationSetting.EnsureCulture()` 的解析顺序是「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」，`Load()` 每次比对 `InstallerSeedApplied` 签名，只在签名变化时重新播种（安装器刚跑过）且此后用户的显式选择永久优先。必须这样改，因为程序原先每次启动都按 `startOnBoot = true` 重写 HKCU Run，安装器的勾选会被冲掉。`Build-Setup.ps1` 会断言两侧字面量逐字一致。
 - **COM 注册必须在子进程里做**：`ShellRegistrar.RunChild("register|unregister", dir)` 用 `/silent /shell-op:… /dir="…"` 重新拉起自己。实测教训：在 setup 进程内 `Assembly.LoadFrom` 扩展 DLL 会把它锁到进程退出，卸载时 3 个 DLL 删不掉、目录残留。另注意 `/dir="…\"` 这种**结尾反斜杠紧跟引号**会被 Windows 命令行解析成转义引号，拼参数前要去掉尾分隔符。
-- **删除一律清单驱动**：安装时写 `install-manifest.txt`（文件 / 快捷方式 / 注册表值与键 / 目录，且清单把自己也记进去），卸载按清单删、只删空目录，绝不递归删未知目录；清单缺失时只删已知文件名。文件被占用则保留清单并提示"重启资源管理器后再卸载一次"。
+- **删除一律清单驱动**：安装时写 `install-manifest.txt`（文件 / 快捷方式 / 注册表值与键 / 目录，且清单把自己也记进去），卸载按清单删、只删空目录，绝不递归删未知目录；**清单缺失就拒绝卸载**（早先"只删已知文件名"的回落会在 `/dir` 打错时删到别的东西）。文件被占用则保留清单与注册表、返回失败，提示"重启资源管理器后再卸载一次"。`ProductName` 改名前留下的快捷方式（`Programs\ExcelDiff\ExcelDiff.lnk`、桌面 `ExcelDiff.lnk`）由 `RemoveLegacyLinks()` 在安装与卸载时清掉。
 - **重装=先卸后装带回滚**：旧目录 `Directory.Move` 成 `<dir>.old-<时间戳>`（同卷），任一步失败按 undo 栈还原并把 HKLM 状态写回 `RegistryStore.Snapshot()` 的快照。实测：占住旧 `ExcelDiffEDR.GUI.exe` 再执行安装 → 安装报失败、旧安装仍可运行、无 `.old-*` 残留。
-- **静默参数**：`/silent|/quiet`、`/uninstall`、`/culture:zh-CN|en-US`、`/dir=<path>`（`:` 与 `=` 都接受，值保留原大小写）、`/components:shell,desktop,autostart|none|all`、`/log:<path>`、`/?`；退出码 0 成功。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。
-- **卸载会删除当前用户的 `%APPDATA%\ExcelDiffEDR.GUI`**（业主裁定"卸载时清理配置"）。因此任何自动化跑 `-Install` 都必须先备份该目录与 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的 `ExcelDiffEDR.GUI` 值再还原——`verify-installer.ps1` 已内置这层保护（注意 `Environment.GetFolderPath(ApplicationData)` 不认临时的 `$env:APPDATA` 覆盖）。
+- **静默参数**：`/silent|/quiet`、`/uninstall`、`/culture:zh-CN|en-US`、`/dir=<path>`（`:` 与 `=` 都接受，值保留原大小写）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<path>`、`/?`。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。**退出码**（`App.Main` 的返回值，脚本据此判成败，勿只看 0/非 0）：`0` 成功 / `1` 操作失败或异常 / `2` 显示了帮助 / `3` 载荷缺失（无 payload 的 setup exe）/ `4` 命令行参数非法（只写日志与退出码，绝不弹窗，否则卡住脚本）/ `130` 用户取消或关窗。非法参数在解析阶段就收集进 `Options.Errors`，`/silent=1` 这类"给布尔开关赋值"同样拒绝。
+- **卸载默认保留用户配置**（业主 2026-09-26 裁定"加开关，默认不清"）：只有传 `/clearsettings` 或向导上勾 `uninstall.clearsettings` 复选框时，`ClearUserSettings()` 才删除 `%APPDATA%\ExcelDiffEDR.GUI`；其余情况只删文件/快捷方式/注册表项并记日志 `log.settingskept`。因此**任何卸载都可能顺手删掉当前用户配置**这一风险已不复存在，但跑 `-Install` 门禁时仍备份 `%APPDATA%` 与 `HKCU\...\Run`（防回归，注意 `Environment.GetFolderPath(ApplicationData)` 不认临时的 `$env:APPDATA` 覆盖）。
 - 版本口径不变：setup exe 的 FileVersion 必须等于 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion（E8，脚本会校验），产品保持 2.0.0.0（业主裁定本轮不升）。NPOI 及其依赖仍必须随包（`ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍在用），`open_readme.vbs` 仍不打包。
 - 发布前必须外部 Authenticode 签名（E10）：setup exe 与它自己复制进安装目录的 `ExcelDiffSetup.exe` 同源，未签名会触发 SmartScreen。
 
@@ -185,7 +185,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 ## 7. 开发方法论
 
 1. **主版本 EDR**：任何 UI/读取/行为改动必须 EDR（`EdrRead=true`）编译通过。EDN（NPOI）代码保留作保底对照，**不在日常门禁中编译**（仅需对照验证时手工 build，见 §4）。
-2. **本地化流程**：字符串改动进 `Resources.resx`（en-US 中性）+ `Resources.zh-CN.resx`（仅 zh/en 两语言，默认 zh-CN）→ 运行 `GenerateLangJson.ps1` 重新生成 `lang\*.json`（UTF-8 BOM）。`{x:Static Resources.*}` 在窗口加载时固化 → 语言切换通过 `App.CloseMainWindowForLanguageChange()` 关窗，下次 diff 命令以新语言重建。
+2. **本地化流程**：字符串改动进 `Resources.resx`（en-US 中性）+ `Resources.zh-CN.resx`（仅 zh/en 两语言）→ 运行 `GenerateLangJson.ps1` 重新生成 `lang\*.json`（UTF-8 BOM，键取两份 resx 的**并集**，所以只在 zh 侧加键会让 en 侧出现空值——加键必须两边同时加）。**两份 resx 都只是编写源**：`ExcelDiff.GUI.csproj` 里 `EnableDefaultItems=false` 且只声明了 `Resources.resx` 为 `EmbeddedResource`，`Resources.zh-CN.resx` 不编译进程序、运行时不加载，真正的运行时文本是 `lang\*.json`（`Resources.Designer.cs` 的每个属性都走 `LocalizationManager.GetString`，外置 JSON 优先、缺失才回落 resx）。默认语言不再是写死的 zh-CN：解析顺序为「用户在程序里显式选过 > 安装器写入的 HKLM `SetupCulture` > 系统显示语言 > zh-CN」（`ApplicationSetting.EnsureCulture` / `ApplyInstallerSeed`）。`{x:Static Resources.*}` 在窗口加载时固化 → 语言切换通过 `App.CloseMainWindowForLanguageChange()` 关窗，下次 diff 命令以新语言重建。
 3. **测试**：NetDiff 算法改动用 `NetDiff.TestRunner`（31 用例，命令见 §4）。GUI 层回归用手工/脚本冒烟（见 ARCHITECTURE.md §9）。任何改动完成后跑 `AI_Script\verify.ps1` 一键门禁。
 4. **回归比对**：对比对象必须是**同一文件的两个版本**（git HEAD vs 工作区），严禁拿两个不同文件对比。测试数据源见 §7.7。
 5. **读取层定位**：**EDR=ExcelDataReader 主版本**（读取快约 72%）；**EDN=NPOI 保底对照**（NPOI 语义最全，代码保留、不日常构建）。EDR 读不到“仅样式无值”单元格 → 列对齐漂移 → 这正是 EDN 保底代码保留的意义，**不得移除 EDN 代码**。基准测试以 EDR 为准，EDN 代码仅作保底对照验证。

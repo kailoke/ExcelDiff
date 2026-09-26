@@ -52,6 +52,7 @@
             <StackPanel x:Name="ConfirmPanel" Visibility="Collapsed">
                 <TextBlock x:Name="ConfirmPrompt" TextWrapping="Wrap" Margin="0,0,0,12" />
                 <TextBlock x:Name="ConfirmSummary" TextWrapping="Wrap" FontFamily="Consolas, Microsoft YaHei UI" />
+                <CheckBox x:Name="ClearSettingsCheck" Margin="0,14,0,0" Visibility="Collapsed" />
                 <TextBlock x:Name="ConfirmNote" Margin="0,16,0,0" Foreground="#666666" TextWrapping="Wrap" />
             </StackPanel>
 
@@ -73,6 +74,8 @@
             <StackPanel x:Name="FinishPanel" Visibility="Collapsed">
                 <TextBlock x:Name="FinishPrompt" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
                 <TextBlock x:Name="FinishHowTo" Margin="0,14,0,0" TextWrapping="Wrap" />
+                <TextBlock x:Name="FinishNoShell" Margin="0,8,0,0" Foreground="#A34A00" TextWrapping="Wrap"
+                           Visibility="Collapsed" />
                 <TextBlock x:Name="FinishTray" Margin="0,8,0,0" TextWrapping="Wrap" />
                 <TextBlock x:Name="FinishLog" Margin="0,14,0,0" Foreground="#666666" TextWrapping="Wrap" />
                 <TextBlock x:Name="FinishError" Margin="0,14,0,0" Foreground="#B00000" TextWrapping="Wrap"

@@ -7,7 +7,7 @@
             if (option.MainCommand == CommandType.None || option.MainCommand == CommandType.Diff)
                 return new DiffCommand(option);
 
-            throw new Exceptions.ExcelDiffException(true, $"{option.MainCommand} is unknown command");
+            throw new Exceptions.ExcelDiffException(true, string.Format(Properties.Resources.Message_UnknownCommand, option.MainCommand));
         }
     }
 }

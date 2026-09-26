@@ -78,8 +78,9 @@ if (-not $SkipBuild) {
     OkStep 'Builds skipped (-SkipBuild)'
 }
 
-# --- 5. lang\*.json <-> .resx sync ---
+# --- 5. lang\*.json <-> .resx sync (both ways) and resx-to-resx key parity ---
 $resxDir = Join-Path $root 'ExcelDiff.GUI\Properties'
+$resxMaps = @{}
 foreach ($pair in @(@('en-US', 'Resources.resx'), @('zh-CN', 'Resources.zh-CN.resx'))) {
     $culture = $pair[0]
     $resxFile = Join-Path $resxDir $pair[1]
@@ -91,6 +92,7 @@ foreach ($pair in @(@('en-US', 'Resources.resx'), @('zh-CN', 'Resources.zh-CN.re
     [xml]$doc = [System.IO.File]::ReadAllText($resxFile)
     $map = @{}
     foreach ($n in $doc.root.data) { if ($n.name) { $map[$n.name] = $n.value } }
+    $resxMaps[$culture] = $map
     $json = [System.IO.File]::ReadAllText($jsonFile) | ConvertFrom-Json
     $diffs = @()
     foreach ($k in $map.Keys) {
@@ -98,8 +100,27 @@ foreach ($pair in @(@('en-US', 'Resources.resx'), @('zh-CN', 'Resources.zh-CN.re
         if (-not $v) { $diffs += "missing key: $k" }
         elseif ($v.Value -ne $map[$k]) { $diffs += "value differs: $k" }
     }
+    # The other direction matters: LocalizationManager prefers the json, so a key deleted from the
+    # resx keeps serving a stale translation forever unless this is caught.
+    foreach ($p in $json.PSObject.Properties) {
+        if (-not $map.ContainsKey($p.Name)) { $diffs += "stale json key: $($p.Name)" }
+    }
     if ($diffs.Count -eq 0) { OkStep "$culture lang\json in sync with resx" }
     else { FailStep "$culture lang\json out of sync: " + ($diffs -join '; ') }
+}
+
+# GenerateLangJson.ps1 takes the union of both resx and falls back to the neutral value, so a key
+# added to only one file silently ships English text into zh-CN with the check above still green.
+if ($resxMaps.ContainsKey('en-US') -and $resxMaps.ContainsKey('zh-CN')) {
+    $enKeys = @($resxMaps['en-US'].Keys)
+    $zhKeys = @($resxMaps['zh-CN'].Keys)
+    $onlyEn = @($enKeys | Where-Object { $zhKeys -notcontains $_ })
+    $onlyZh = @($zhKeys | Where-Object { $enKeys -notcontains $_ })
+    if ($onlyEn.Count -eq 0 -and $onlyZh.Count -eq 0) { OkStep 'both .resx files carry the same key set' }
+    else {
+        FailStep ('resx key sets diverge: only-en=' + ($onlyEn -join ',') +
+                  ' only-zh=' + ($onlyZh -join ','))
+    }
 }
 
 # --- 6. AGENTS 8.3 pitfall scan: no Start-Process -Wait on ExcelDiff ---
@@ -123,6 +144,42 @@ foreach ($psf in $psFiles) {
 }
 if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelDiff (AGENTS 8.3 pitfall)' }
 else { FailStep ('Start-Process -Wait on ExcelDiff found: ' + ($pitfall -join '; ')) }
+
+# --- 6b. INVARIANT D1 scan: no hardcoded CJK UI text in XAML ---
+# User-visible text must come from Resources.* so lang\*.json can translate it. This catches the
+# Chinese-literal direction (how NoDiffWindow's button stayed "OK" in English mode) in attributes
+# and element content; the English-in-zh direction is a value mismatch, not a literal, and is not
+# detectable this way. CJK ideographs, kana, and full-width punctuation only.
+$d1Class = '[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff01-\uff5e\uff61-\uff9f]'
+$d1AttrDouble = '(^|[\s<])(Text|Content|Header|ToolTip|Description|Title)="[^"]*' + $d1Class
+$d1AttrSingle = "(^|[\s<])(Text|Content|Header|ToolTip|Description|Title)='[^']*" + $d1Class
+$d1 = @()
+$xamlFiles = Get-ChildItem -Path $root -Filter '*.xaml' -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\backup_installed_|\\packages\\|\\\.git\\' }
+foreach ($xf in $xamlFiles) {
+    $lines = [System.IO.File]::ReadAllLines($xf.FullName)
+    $inComment = $false
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($inComment) {
+            if ($line.Contains('-->')) { $inComment = $false }
+            continue
+        }
+        if ($line.Contains('<!--') -and -not $line.Contains('-->')) { $inComment = $true; continue }
+        if ($line.TrimStart().StartsWith('<!--')) { continue }
+
+        $body = [regex]::Replace($line, '<!--.*?-->', '')
+        if ($body -match $d1AttrDouble -or $body -match $d1AttrSingle) {
+            $d1 += ($xf.FullName + ':' + ($i + 1))
+            continue
+        }
+        foreach ($text in [regex]::Matches($body, '>([^<>]+)<')) {
+            if ($text.Groups[1].Value -match $d1Class) { $d1 += ($xf.FullName + ':' + ($i + 1)); break }
+        }
+    }
+}
+if ($d1.Count -eq 0) { OkStep 'No hardcoded CJK UI text in XAML (INVARIANT D1)' }
+else { FailStep ('Hardcoded CJK UI text found: ' + ($d1 -join '; ')) }
 
 # --- 7. WIP snapshot ---
 Write-Host ''

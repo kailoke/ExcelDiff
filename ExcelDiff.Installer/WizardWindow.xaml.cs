@@ -24,6 +24,7 @@ namespace ExcelDiff.Setup
         private Step _step = Step.Language;
         private bool _suppressLanguageEvent;
         private bool _failed;
+        private bool _shellSelected;
 
         internal WizardWindow(Options options)
         {
@@ -44,6 +45,8 @@ namespace ExcelDiff.Setup
             ShellCheck.IsChecked = options.Has(Components.Shell);
             DesktopCheck.IsChecked = options.Has(Components.Desktop);
             AutoStartCheck.IsChecked = options.Has(Components.AutoStart);
+            // An interactive /uninstall /clearsettings must not be silently dropped on the floor.
+            ClearSettingsCheck.IsChecked = options.ClearSettings;
 
             _suppressLanguageEvent = true;
             ChineseOption.IsChecked = Strings.Culture == Strings.Zh;
@@ -83,6 +86,7 @@ namespace ExcelDiff.Setup
 
             ConfirmPrompt.Text = _uninstallMode ? Strings.T("uninstall.prompt") : Strings.T("confirm.prompt");
             ConfirmNote.Text = _uninstallMode ? Strings.T("uninstall.note") : Strings.T("confirm.note");
+            ClearSettingsCheck.Content = Strings.T("uninstall.clearsettings");
 
             ProgressPrompt.Text = _uninstallMode ? Strings.T("uninstall.progress") : Strings.T("progress.prompt");
 
@@ -90,6 +94,7 @@ namespace ExcelDiff.Setup
                 ? Strings.T("finish.failed")
                 : (_uninstallMode ? Strings.T("uninstall.done") : Strings.T("finish.prompt"));
             FinishHowTo.Text = _uninstallMode ? string.Empty : Strings.T("finish.howto");
+            FinishNoShell.Text = Strings.T("finish.noshell");
             FinishTray.Text = _uninstallMode ? string.Empty : Strings.T("finish.tray");
             FinishLog.Text = string.IsNullOrEmpty(SetupLog.Path) ? string.Empty : Strings.F("finish.log", SetupLog.Path);
             FinishError.Text = _failed ? (_engine.FailureReason ?? string.Empty) : string.Empty;
@@ -159,6 +164,7 @@ namespace ExcelDiff.Setup
                 case Step.Confirm:
                     StepText.Text = _uninstallMode ? Strings.T("step.uninstall") : Strings.T("step.confirm");
                     ConfirmSummary.Text = BuildSummary();
+                    ClearSettingsCheck.Visibility = _uninstallMode ? Visibility.Visible : Visibility.Collapsed;
                     NextButton.Content = _uninstallMode ? Strings.T("btn.uninstall") : Strings.T("btn.install");
                     break;
                 case Step.Progress:
@@ -169,6 +175,9 @@ namespace ExcelDiff.Setup
                     StepText.Text = _uninstallMode ? Strings.T("step.uninstall") : Strings.T("step.finish");
                     NextButton.Content = Strings.T("btn.close");
                     FinishError.Visibility = _failed ? Visibility.Visible : Visibility.Collapsed;
+                    FinishNoShell.Visibility = !_uninstallMode && !_shellSelected && !_failed
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
                     break;
             }
 
@@ -263,6 +272,8 @@ namespace ExcelDiff.Setup
         {
             _engine.InstallDir = DirBox.Text;
             _engine.Culture = Strings.Culture;
+            _shellSelected = ShellCheck.IsChecked == true;
+            _engine.ClearSettings = _uninstallMode && ClearSettingsCheck.IsChecked == true;
             _engine.Components = (ShellCheck.IsChecked == true ? Components.Shell : Components.None)
                                  | (DesktopCheck.IsChecked == true ? Components.Desktop : Components.None)
                                  | (AutoStartCheck.IsChecked == true ? Components.AutoStart : Components.None);

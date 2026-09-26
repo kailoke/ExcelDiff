@@ -238,7 +238,7 @@ namespace ExcelDiff.GUI
             if (command != null)
                 return command;
 
-            throw new Exceptions.ExcelDiffException(true, $"Invalid argument.\nargument:\n{string.Join(" ", args)}");
+            throw new Exceptions.ExcelDiffException(true, string.Format(GUI.Properties.Resources.Message_InvalidArgument, string.Join(" ", args)));
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -253,8 +253,8 @@ namespace ExcelDiff.GUI
 
                 if (showDialog)
                 {
-                    var message = $"Execute external command ? \n\n------------------------------------\n {exception.Message}\n{exception.StackTrace}";
-                    var result = MessageBox.Show(message, "An error occurred.", MessageBoxButton.YesNo);
+                    var message = string.Format(GUI.Properties.Resources.Message_UnhandledPrompt, exception.Message, exception.StackTrace);
+                    var result = MessageBox.Show(message, GUI.Properties.Resources.Message_ErrorCaption, MessageBoxButton.YesNo);
                     executeExternalCommand = result == MessageBoxResult.Yes;
                 }
 

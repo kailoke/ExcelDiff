@@ -124,7 +124,7 @@ namespace ExcelDiff.GUI.Commands
 
         private static Exceptions.ExcelDiffException InvalidArgument(string[] args)
         {
-            return new Exceptions.ExcelDiffException(true, $"Invalid argument.\nargument:\n{string.Join(" ", args)}");
+            return new Exceptions.ExcelDiffException(true, string.Format(Properties.Resources.Message_InvalidArgument, string.Join(" ", args)));
         }
     }
 }

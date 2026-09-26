@@ -1014,14 +1014,6 @@ namespace ExcelDiff.GUI.Properties {
             }
         }
         
-        /// <summary>
-        ///   Looks up a localized string similar to English.
-        /// </summary>
-        public static string Word_English {
-            get {
-                return LocalizationManager.GetString("Word_English", ResourceManager, resourceCulture);
-            }
-        }
         
         /// <summary>
         ///   Looks up a localized string similar to ExactMatch.
@@ -1059,14 +1051,6 @@ namespace ExcelDiff.GUI.Properties {
             }
         }
         
-        /// <summary>
-        ///   Looks up a localized string similar to Japanese.
-        /// </summary>
-        public static string Word_Japanese {
-            get {
-                return LocalizationManager.GetString("Word_Japanese", ResourceManager, resourceCulture);
-            }
-        }
         
         /// <summary>
         ///   Looks up a localized string similar to Launguage.
@@ -1271,5 +1255,59 @@ namespace ExcelDiff.GUI.Properties {
                 return LocalizationManager.GetString("Word_Close", ResourceManager, resourceCulture);
             }
         }
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid argument..
+        /// </summary>
+        public static string Message_InvalidArgument {
+            get {
+                return LocalizationManager.GetString("Message_InvalidArgument", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is unknown command.
+        /// </summary>
+        public static string Message_UnknownCommand {
+            get {
+                return LocalizationManager.GetString("Message_UnknownCommand", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Option is null.
+        /// </summary>
+        public static string Message_OptionIsNull {
+            get {
+                return LocalizationManager.GetString("Message_OptionIsNull", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Invalid extension..
+        /// </summary>
+        public static string Message_InvalidExtension {
+            get {
+                return LocalizationManager.GetString("Message_InvalidExtension", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to An error occurred..
+        /// </summary>
+        public static string Message_ErrorCaption {
+            get {
+                return LocalizationManager.GetString("Message_ErrorCaption", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Execute external command ?.
+        /// </summary>
+        public static string Message_UnhandledPrompt {
+            get {
+                return LocalizationManager.GetString("Message_UnhandledPrompt", ResourceManager, resourceCulture);
+            }
+        }
+        
     }
 }

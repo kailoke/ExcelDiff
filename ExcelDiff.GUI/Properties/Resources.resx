@@ -151,7 +151,7 @@
     <value>Recent File Sets</value>
   </data>
   <data name="Message_Reboot" xml:space="preserve">
-    <value>ExcelDiff will close to change the language.</value>
+    <value>ExcelDiffEDR will close to change the language.</value>
   </data>
   <data name="Title_ExternalCommandEditorWindow" xml:space="preserve">
     <value>Edit External Command</value>
@@ -192,17 +192,11 @@
   <data name="Word_Edit" xml:space="preserve">
     <value>Edit</value>
   </data>
-  <data name="Word_English" xml:space="preserve">
-    <value>English</value>
-  </data>
   <data name="Word_Executable" xml:space="preserve">
     <value>Executable</value>
   </data>
   <data name="Word_File" xml:space="preserve">
     <value>File</value>
-  </data>
-  <data name="Word_Japanese" xml:space="preserve">
-    <value>Japanese</value>
   </data>
   <data name="Word_Language" xml:space="preserve">
     <value>Language</value>
@@ -513,10 +507,10 @@ If you don't want to apply file settings, enable "Ignore File Setting".</value>
     <value>System</value>
   </data>
   <data name="Label_StartOnBoot" xml:space="preserve">
-    <value>Start ExcelDiff when Windows starts</value>
+    <value>Start ExcelDiffEDR when Windows starts</value>
   </data>
   <data name="Label_RunInBackground" xml:space="preserve">
-    <value>Keep ExcelDiff running in the background after closing the window</value>
+    <value>Keep ExcelDiffEDR running in the background after closing the window</value>
   </data>
   <data name="Word_Open" xml:space="preserve">
     <value>Open</value>
@@ -529,5 +523,29 @@ If you don't want to apply file settings, enable "Ignore File Setting".</value>
   </data>
   <data name="Word_Close" xml:space="preserve">
     <value>Close</value>
+  </data>
+  <data name="Message_InvalidArgument" xml:space="preserve">
+    <value>Invalid argument.
+argument:
+{0}</value>
+  </data>
+  <data name="Message_UnknownCommand" xml:space="preserve">
+    <value>{0} is unknown command</value>
+  </data>
+  <data name="Message_OptionIsNull" xml:space="preserve">
+    <value>Option is null</value>
+  </data>
+  <data name="Message_InvalidExtension" xml:space="preserve">
+    <value>Invalid extension.</value>
+  </data>
+  <data name="Message_ErrorCaption" xml:space="preserve">
+    <value>An error occurred.</value>
+  </data>
+  <data name="Message_UnhandledPrompt" xml:space="preserve">
+    <value>Execute external command ? 
+
+------------------------------------
+ {0}
+{1}</value>
   </data>
 </root>

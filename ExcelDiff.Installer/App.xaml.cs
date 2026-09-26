@@ -17,12 +17,16 @@ namespace ExcelDiff.Setup
         [STAThread]
         public static int Main()
         {
+            // Load a string table before parsing: Options.Parse renders its rejection messages
+            // through Strings, and with an empty table they came out as «err.unknownSwitch».
+            Strings.Set(Strings.MachineCulture());
             var options = Options.Parse(Environment.GetCommandLineArgs());
+            if (!string.IsNullOrEmpty(options.Culture))
+                Strings.Set(options.Culture);
 
             var app = new App();
             app.InitializeComponent();
 
-            Strings.Set(options.Culture ?? Strings.MachineCulture());
             SetupLog.Open(options.LogPath);
             SetupLog.Info("setup exe v" + ProductInfo.Version
                           + " | args=" + string.Join(" ", options.Raw)
@@ -30,32 +34,51 @@ namespace ExcelDiff.Setup
 
             try
             {
+                // Help first: it is the one screen that tells a caller with a typo what the
+                // correct spelling is, and in silent mode it must go to the log, not a modal.
+                if (options.ShowHelp)
+                {
+                    if (options.Silent)
+                        SetupLog.Info(Options.HelpText());
+                    else
+                        MessageBox.Show(Options.HelpText(), Strings.F("app.title", ProductInfo.ProductName),
+                                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return 2;
+                }
+
+                if (options.Errors.Count > 0)
+                {
+                    foreach (var error in options.Errors)
+                        SetupLog.Error("command line rejected: " + error);
+
+                    // Never a dialog here. The only signal that a caller is scripted is the very
+                    // switch that failed to parse (/silent=1), so trusting options.Silent let a
+                    // rejected command line pop a modal and hang the caller that asked to be silent.
+                    // The answer goes to the log and the exit code; /? documents both.
+                    return 4;
+                }
+
                 // Helper mode: the caller (this same exe) shells COM work out here so the parent
                 // process never keeps the extension DLL loaded and can still delete it.
                 if (!string.IsNullOrEmpty(options.ShellOp))
                     return RunShellOperation(options);
 
-                // Running from inside the installed folder cannot work (that folder is about to be
-                // moved aside), so hand the whole job to a copy in %TEMP% and forward its result.
-                var relayed = InstallEngine.RelaunchOutsideInstallFolder();
-                if (relayed.HasValue)
-                    return relayed.Value;
-
-                if (options.ShowHelp)
-                {
-                    MessageBox.Show(Options.HelpText(), Strings.F("app.title", ProductInfo.ProductName),
-                                    MessageBoxButton.OK, MessageBoxImage.Information);
-                    return 2;
-                }
-
+                // Checked before relaying: spawning a child just for it to fail here is pointless.
                 if (!Payload.IsEmbedded)
                 {
                     var message = Strings.T("err.nopayload");
                     SetupLog.Error(message);
-                    MessageBox.Show(message, Strings.F("app.title", ProductInfo.ProductName),
-                                    MessageBoxButton.OK, MessageBoxImage.Error);
+                    if (!options.Silent)
+                        MessageBox.Show(message, Strings.F("app.title", ProductInfo.ProductName),
+                                        MessageBoxButton.OK, MessageBoxImage.Error);
                     return 3;
                 }
+
+                // Running from inside the installed folder cannot work (that folder is about to be
+                // moved aside), so hand the whole job to a copy in %TEMP% and forward its result.
+                var relayed = InstallEngine.RelaunchOutsideInstallFolder(options);
+                if (relayed.HasValue)
+                    return relayed.Value;
 
                 if (options.Silent)
                     return RunHeadless(options);
@@ -65,8 +88,11 @@ namespace ExcelDiff.Setup
             }
             catch (Exception ex)
             {
+                // Same rule as the rejection path above: here options.Silent did parse, so it can be
+                // trusted - but a modal in a silent run would still block the caller forever.
                 SetupLog.Error(ex);
-                MessageBox.Show(ex.Message, Strings.T("err.title"), MessageBoxButton.OK, MessageBoxImage.Error);
+                if (!options.Silent)
+                    MessageBox.Show(ex.Message, Strings.T("err.title"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return 1;
             }
             finally

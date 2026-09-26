@@ -52,7 +52,7 @@ namespace ExcelDiff.GUI.Commands
         public void ValidateOption()
         {
             if (Option == null)
-                throw new Exceptions.ExcelDiffException(true, "Option is null");
+                throw new Exceptions.ExcelDiffException(true, Properties.Resources.Message_OptionIsNull);
 
             if (!string.IsNullOrEmpty(Option.SrcPath) && Path.GetFileName(Option.SrcPath) == Option.EmptyFileName)
                 Option.SrcPath = EnsureFile(Option.SrcPath);
@@ -65,7 +65,7 @@ namespace ExcelDiff.GUI.Commands
                 if (!string.IsNullOrEmpty(Option.SrcPath) && !DefaultEnabledExtensions.Contains(Path.GetExtension(Option.SrcPath)) ||
                     !string.IsNullOrEmpty(Option.DstPath) && !DefaultEnabledExtensions.Contains(Path.GetExtension(Option.DstPath)))
                 {
-                    throw new Exceptions.ExcelDiffException(!Option.ImmediatelyExecuteExternalCommand, "Invalid extension.");
+                    throw new Exceptions.ExcelDiffException(!Option.ImmediatelyExecuteExternalCommand, Properties.Resources.Message_InvalidExtension);
                 }
             }
         }

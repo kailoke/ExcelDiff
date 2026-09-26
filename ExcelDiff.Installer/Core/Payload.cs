@@ -26,17 +26,21 @@ namespace ExcelDiff.Setup
 
                 using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
                 {
-                    var total = archive.Entries.Count;
-                    var done = 0;
+                    // Byte-weighted progress: the payload is 56 files from 6 KB resources to a
+                    // 3.3 MB BouncyCastle, so counting entries made the bar run ahead of the work.
+                    var totalBytes = 0L;
+                    foreach (var entry in archive.Entries)
+                        if (!string.IsNullOrEmpty(entry.Name))
+                            totalBytes += entry.Length;
+                    if (totalBytes <= 0)
+                        totalBytes = 1;
+
+                    var written = 0L;
 
                     foreach (var entry in archive.Entries)
                     {
-                        done++;
                         if (string.IsNullOrEmpty(entry.Name))
-                        {
-                            // Directory entry: nothing to write, ExtractFile creates parents on demand.
-                            continue;
-                        }
+                            continue;   // directory entry; parents are created on demand
 
                         var target = ResolveInside(installDir, entry.FullName);
                         if (target == null)
@@ -56,8 +60,9 @@ namespace ExcelDiff.Setup
                             source.CopyTo(destination, 1 << 16);
                         }
 
+                        written += entry.Length;
                         if (progress != null)
-                            progress(done, total);
+                            progress((int)(written * 100 / totalBytes), 100);
                     }
                 }
             }

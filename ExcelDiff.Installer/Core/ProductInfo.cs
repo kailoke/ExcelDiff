@@ -8,11 +8,21 @@ namespace ExcelDiff.Setup
     /// <summary>Identity, well-known paths and resource names. Single source for the whole installer.</summary>
     internal static class ProductInfo
     {
-        /// <summary>User-facing product name (wizard title, ARP DisplayName, shortcut, start-menu folder). Owner ruling.</summary>
-        public const string ProductName = "ExcelDiff";
+        /// <summary>
+        /// User-facing product name (wizard title, ARP DisplayName, shortcut, start-menu folder).
+        /// Owner ruling 2026-09-25: one name everywhere the user can see it, so this equals the
+        /// internal identity token and the Explorer menu text in ContextMenuExtension.
+        /// </summary>
+        public const string ProductName = "ExcelDiffEDR";
 
-        /// <summary>Internal identity token used for registry keys; the build variant stays visible here.</summary>
+        /// <summary>Internal identity token used for registry keys.</summary>
         public const string IdentityName = "ExcelDiffEDR";
+
+        /// <summary>
+        /// Name used before the 2026-09-26 unification. Setup removes the shortcuts carrying it,
+        /// otherwise an upgrade over an older install leaves a dead Start Menu entry.
+        /// </summary>
+        public const string LegacyProductName = "ExcelDiff";
 
         public const string Publisher = "Kailoke";
         public const string HelpLink = "https://github.com/kailoke/ExcelDiff";

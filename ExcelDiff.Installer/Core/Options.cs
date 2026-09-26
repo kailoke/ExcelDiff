@@ -19,13 +19,21 @@ namespace ExcelDiff.Setup
         public bool Silent;
         public bool Uninstall;
         public bool ShowHelp;
+        /// <summary>Owner ruling: the per-user settings folder is cleared only when asked for.</summary>
+        public bool ClearSettings;
         public string Culture;
         public string InstallDir;
         public string LogPath;
         /// <summary>register|unregister - internal helper mode, see ShellRegistrar.RunChild.</summary>
         public string ShellOp;
+        /// <summary>Internal: set on the %TEMP% copy launched by RelaunchOutsideInstallFolder.</summary>
+        public bool FromTemp;
         public Components Components = Components.Desktop | Components.AutoStart;
         public List<string> Raw = new List<string>();
+        /// <summary>Malformed switches. Reported instead of being silently ignored.</summary>
+        public readonly List<string> Errors = new List<string>();
+
+        private static readonly string[] BooleanSwitches = { "silent", "quiet", "s", "q", "uninstall", "remove", "x", "u", "clearsettings", "setup-from-temp", "?", "h", "help" };
 
         public static Options Parse(string[] args)
         {
@@ -65,7 +73,30 @@ namespace ExcelDiff.Setup
                         case "u":
                             options.Uninstall = true;
                             continue;
+                        case "clearsettings":
+                            options.ClearSettings = true;
+                            continue;
+                        case "setup-from-temp":
+                            // Internal re-entrancy guard set by RelaunchOutsideInstallFolder.
+                            options.FromTemp = true;
+                            continue;
+                        case "dir":
+                        case "culture":
+                        case "components":
+                        case "log":
+                        case "shell-op":
+                            options.Errors.Add(arg + " -> " + Strings.T("err.missingValue"));
+                            continue;
                     }
+                    options.Errors.Add(arg + " -> " + Strings.T("err.unknownSwitch"));
+                    continue;
+                }
+
+                if (Array.IndexOf(BooleanSwitches, key) >= 0)
+                {
+                    // /silent=1 reads as accepted but used to fall through to the interactive UI,
+                    // hanging exactly the automation the caller wanted.
+                    options.Errors.Add(arg + " -> " + Strings.F("err.booleanHasValue", key));
                     continue;
                 }
 
@@ -77,19 +108,33 @@ namespace ExcelDiff.Setup
                             options.Culture = Strings.Zh;
                         else if (culture.Equals(Strings.En, StringComparison.OrdinalIgnoreCase))
                             options.Culture = Strings.En;
+                        else
+                            options.Errors.Add(arg + " -> " + Strings.F("err.unknownCulture", culture));
                         break;
                     case "dir":
                     case "targetdir":
-                        options.InstallDir = StripQuotes(value);
-                        break;
                     case "components":
-                        options.Components = ParseComponents(StripQuotes(value));
-                        break;
                     case "log":
-                        options.LogPath = StripQuotes(value);
-                        break;
                     case "shell-op":
-                        options.ShellOp = StripQuotes(value).Trim().ToLowerInvariant();
+                        // "/dir=" used to mean "not specified" and silently installed into
+                        // Program Files; an empty value is a caller mistake, not a default.
+                        if (string.IsNullOrEmpty(StripQuotes(value)))
+                        {
+                            options.Errors.Add(arg + " -> " + Strings.T("err.missingValue"));
+                            break;
+                        }
+
+                        if (key == "dir" || key == "targetdir")
+                            options.InstallDir = StripQuotes(value);
+                        else if (key == "components")
+                            options.Components = ParseComponents(StripQuotes(value));
+                        else if (key == "log")
+                            options.LogPath = StripQuotes(value);
+                        else
+                            options.ShellOp = StripQuotes(value).Trim().ToLowerInvariant();
+                        break;
+                    default:
+                        options.Errors.Add(arg + " -> " + Strings.T("err.unknownSwitch"));
                         break;
                 }
             }
@@ -156,6 +201,7 @@ namespace ExcelDiff.Setup
             text.AppendLine();
             text.AppendLine("/silent | /quiet            no UI (also for /uninstall) / 无界面");
             text.AppendLine("/uninstall                  remove the installed copy / 卸载");
+            text.AppendLine("/clearsettings              also delete the current user's settings / 一并删除用户设置");
             text.AppendLine("/culture:zh-CN|en-US        wizard language / 向导语言");
             text.AppendLine("/dir:\"<path>\"               install folder / 安装目录");
             text.AppendLine("/components:shell,desktop,autostart   (or \"none\"/\"all\") / 组件");

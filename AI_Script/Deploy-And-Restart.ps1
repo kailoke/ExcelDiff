@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Build EDR (main), deploy to Program Files, and restart the resident process.
 

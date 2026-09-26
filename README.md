@@ -108,7 +108,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <左文件> -d <右文件> [-c <工具>] [-i] [-w
 tool = ExcelDiff
 
 [difftool "ExcelDiff"]
-cmd = \"<安装目录>/ExcelDiff.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v
+cmd = \"<安装目录>/ExcelDiffEDR.GUI.exe\" diff -s \"$LOCAL\" -d \"$REMOTE\" -c WinMerge -i -w -v
 
 [alias]
 windiff = difftool -g -y -t ExcelDiff
@@ -135,7 +135,7 @@ Fork → Settings → External Diff Tools → Add：
 
 ```
 [merge-tools]
-exceldiff.executable = <安装目录>\ExcelDiff.GUI.exe
+exceldiff.executable = <安装目录>\ExcelDiffEDR.GUI.exe
 exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty
 
 [tortoisehg]

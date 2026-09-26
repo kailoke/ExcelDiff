@@ -43,7 +43,7 @@ namespace ExcelDiff.Setup
         }
 
         public static void WriteArpEntry(InstallManifest manifest, string installDir, string setupCopyPath,
-                                         string iconPath, long sizeKb)
+                                         string iconPath, long sizeBytes)
         {
             using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
             {
@@ -67,7 +67,7 @@ namespace ExcelDiff.Setup
                     if (!string.IsNullOrEmpty(iconPath) && File.Exists(iconPath))
                         SetAndRecord(manifest, key, "DisplayIcon", iconPath);
 
-                    SetNumberAndRecord(manifest, key, "EstimatedSize", (int)(sizeKb / 1024));
+                    SetNumberAndRecord(manifest, key, "EstimatedSize", (int)(sizeBytes / 1024));
                     // No in-place modify/repair: re-running setup is the documented way to change options.
                     SetNumberAndRecord(manifest, key, "NoModify", 1);
                     SetNumberAndRecord(manifest, key, "NoRepair", 1);

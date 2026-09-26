@@ -151,7 +151,7 @@
     <value>最近打开的文件对比</value>
   </data>
   <data name="Message_Reboot" xml:space="preserve">
-    <value>ExcelDiff将关闭以变更语言</value>
+    <value>ExcelDiffEDR将关闭以变更语言</value>
   </data>
   <data name="Title_ExternalCommandEditorWindow" xml:space="preserve">
     <value>编辑外部命令</value>
@@ -192,17 +192,11 @@
   <data name="Word_Edit" xml:space="preserve">
     <value>编辑</value>
   </data>
-  <data name="Word_English" xml:space="preserve">
-    <value>英语</value>
-  </data>
   <data name="Word_Executable" xml:space="preserve">
     <value>可执行文件</value>
   </data>
   <data name="Word_File" xml:space="preserve">
     <value>文件</value>
-  </data>
-  <data name="Word_Japanese" xml:space="preserve">
-    <value>日语</value>
   </data>
   <data name="Word_Language" xml:space="preserve">
     <value>语言</value>
@@ -509,14 +503,11 @@
   <data name="ContextMenu_CopyAsTsv" xml:space="preserve">
     <value>以TSV格式复制</value>
   </data>
-  <data name="Word_Chinese" xml:space="preserve">
-    <value>中文</value>
-  </data>
   <data name="Word_System" xml:space="preserve">
     <value>系统</value>
   </data>
   <data name="Label_StartOnBoot" xml:space="preserve">
-    <value>开机自动启动 ExcelDiff</value>
+    <value>开机自动启动 ExcelDiffEDR</value>
   </data>
   <data name="Label_RunInBackground" xml:space="preserve">
     <value>关闭窗口后继续在后台运行</value>
@@ -532,5 +523,29 @@
   </data>
   <data name="Word_Close" xml:space="preserve">
     <value>关闭</value>
+  </data>
+  <data name="Message_InvalidArgument" xml:space="preserve">
+    <value>参数无效。
+参数：
+{0}</value>
+  </data>
+  <data name="Message_UnknownCommand" xml:space="preserve">
+    <value>{0} 不是有效命令</value>
+  </data>
+  <data name="Message_OptionIsNull" xml:space="preserve">
+    <value>参数为空</value>
+  </data>
+  <data name="Message_InvalidExtension" xml:space="preserve">
+    <value>文件类型不受支持。</value>
+  </data>
+  <data name="Message_ErrorCaption" xml:space="preserve">
+    <value>发生错误。</value>
+  </data>
+  <data name="Message_UnhandledPrompt" xml:space="preserve">
+    <value>是否执行外部命令？ 
+
+------------------------------------
+ {0}
+{1}</value>
   </data>
 </root>
