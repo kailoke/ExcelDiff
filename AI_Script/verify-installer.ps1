@@ -7,7 +7,12 @@
       - the published setup exe exists and carries the payload + both string tables
       - the payload's own main exe FileVersion equals the setup exe FileVersion (E8)
       - the payload holds no symbols, no EDN exe and no helper tool (E7)
-      - zh-CN and en-US string tables have identical key sets
+      - zh-CN and en-US string tables have identical key sets, with the same {0} placeholders
+        per key (a drifting arity throws at runtime)
+      - the published exe is newer than every installer source (a green run on a stale binary
+        proves nothing)
+      - no hardcoded brand or CJK text in XAML - that rule is owned by INVARIANT D1 and is scanned
+        by AI_Script\verify.ps1 across the whole solution, so it is deliberately not duplicated here
 
     Pass -Install to run the real cases against a throwaway folder:
       A  install with every component -> assert files/registry/COM/shortcuts/auto-start -> uninstall
@@ -19,6 +24,10 @@
       G  /clearsettings governs the user settings folder (default keeps it, switch removes it)
       H  malformed command lines -> exit code 4, nothing installed, empty /dir= refused
       I  well-formed command lines are still accepted (switch validation has no false positives)
+      J  install folder without install-manifest.txt -> uninstall refuses, files and HKLM record
+         survive, and succeeds again once the manifest is put back (positive control)
+      K  bad target shapes (/dir=Q:\, /dir=Q:, /dir=Tools relative) are argument errors: exit 4,
+         nothing installed, and no folder created from a working-directory resolution
 
     Every assertion is taken BEFORE the finally-block repairs anything, so a product bug cannot be
     hidden by the gate's own cleanup. -Install writes HKLM keys, registers a COM server and touches
@@ -401,6 +410,42 @@ try {
     Check 'I well-formed command line accepted' ($code -eq 0) ('exit=' + $code)
     $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirI))
     Check 'I uninstall exit 0' ($code -eq 0) ('exit=' + $code)
+
+    # ---- J: no manifest means nothing to replay, so the uninstall must refuse
+    '== J: uninstall refuses when the install manifest is gone =='
+    $dirJ = Join-Path $work 'J\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirJ), '/components:none')
+    Check 'J install exit 0' ($code -eq 0) ('exit=' + $code)
+    $manifest = Join-Path $dirJ 'install-manifest.txt'
+    $manifestBackup = Join-Path $work 'J-manifest-backup.txt'
+    Copy-Item -LiteralPath $manifest -Destination $manifestBackup -Force
+    Remove-Item -LiteralPath $manifest -Force
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirJ))
+    CheckKey 'J uninstall without manifest fails' $code 1
+    Check 'J files survived the refusal' (Test-Path (Join-Path $dirJ 'ExcelDiffEDR.GUI.exe'))
+    Check 'J HKLM record survived the refusal' (Test-Path $ProductRegPath)
+    # Positive control: put the manifest back and the very same uninstall completes. Without this,
+    # the failure above could also mean "nothing was ever installed here".
+    Copy-Item -LiteralPath $manifestBackup -Destination $manifest -Force
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirJ))
+    CheckKey 'J uninstall succeeds once the manifest is back' $code 0
+    Check 'J folder gone after the restored uninstall' (-not (Test-Path $dirJ))
+
+    # ---- K: bad target shapes are argument errors, refused before anything runs
+    '== K: drive-root and relative install targets are refused =='
+    # Q: does not exist on this machine, so a regression cannot turn into files written somewhere
+    # real. The relative forms must fail as argument errors (4), not resolve against the process's
+    # working directory and install there - hence the folder check under $root as well.
+    $code = RunSetup @('/silent', '/dir=Q:\')
+    CheckKey 'K drive root refused with exit 4' $code 4
+    Check 'K left no registry record' (-not (Test-Path $ProductRegPath))
+    $code = RunSetup @('/silent', '/dir=Q:')
+    CheckKey 'K bare drive letter refused too' $code 4
+    $code = RunSetup @('/silent', '/dir=Tools')
+    CheckKey 'K relative target refused' $code 4
+    Check 'K relative target created no folder' (-not (Test-Path (Join-Path $root 'Tools')))
+    $code = RunSetup @('/silent', '/uninstall', '/dir=Tools')
+    CheckKey 'K relative target refused on uninstall too' $code 4
 }
 finally {
     # Repairs happen after every assertion above, so they cannot mask a product bug.

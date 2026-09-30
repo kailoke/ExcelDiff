@@ -1,0 +1,15 @@
+#!/bin/sh
+# 推送纪律（AI_Programmer/AGENTS.md 7.10）：业主没有当轮明确指令时，任何会话都不许推送远端。
+# 钩子是失败关闭的：确要推送的人用一次性豁免变量放行，作用域只有这一条命令。
+#   EXCELDIFF_ALLOW_PUSH=1 git push origin master
+if [ "$EXCELDIFF_ALLOW_PUSH" = "1" ]; then
+    echo "pre-push: EXCELDIFF_ALLOW_PUSH=1，放行本次推送。" >&2
+    exit 0
+fi
+
+echo "pre-push: 已拒绝推送。" >&2
+echo "pre-push:   推送需要业主在当轮给出明确指令（见 AI_Programmer/AGENTS.md 7.10），" >&2
+echo "pre-push:   本地提交不受此限制。确属本人要推，请自己执行其一：" >&2
+echo "pre-push:     PowerShell:  \$env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master" >&2
+echo "pre-push:     Git Bash  :  EXCELDIFF_ALLOW_PUSH=1 git push origin master" >&2
+exit 1

@@ -101,7 +101,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <左文件> -d <右文件> [-c <工具>] [-i] [-w
 
 ### Git difftool
 
-`.gitconfig`（`<安装目录>` = 实际安装位置：安装程序默认 `%ProgramFiles%\ExcelDiffEDRTool`，可在向导里改目录或用 `ExcelDiffSetup.exe /dir=<路径>` 指定；EDR 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，EDN 为 `ExcelDiff.GUI.exe`）
+`.gitconfig`（`<安装目录>` = 实际安装位置：安装程序默认 `%ProgramFiles%\ExcelDiffEDRTool`，可在向导里改目录或用 `ExcelDiffSetup.exe /dir=<绝对路径>` 指定；EDR 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，EDN 为 `ExcelDiff.GUI.exe`）
 
 ```
 [diff]

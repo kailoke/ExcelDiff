@@ -41,7 +41,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDR 主版本 + NetDiff 单测 + lang↔resx 同步 + 安装器工程编译 + WIP 快照 |
-| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集与占位符/新鲜度；`-Install` 追加 A–I 共 9 个真实安装用例（回滚、越界保护、清单缺失拒绝、从安装目录内运行、自启联动、`/clearsettings`、非法参数退出码），机器上留有安装记录时拒绝运行 |
+| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集与占位符/新鲜度；`-Install` 追加 A–K 共 11 个真实安装用例（失败回滚保住目录内无关文件、无目标/错路径/**清单被删**时拒绝卸载并保住文件与记录、从安装目录内运行、自启联动、`/clearsettings`、非法参数退出码 4、盘符根目标被拒），机器上留有安装记录或该 CLSID 已被占用时拒绝运行 |
 | `README.md` | 用户向使用说明（CLI 参数、快捷键、外部命令） |
 
 ## 3. 目录结构（解决方案 = `ExcelDiff.sln`）
@@ -81,7 +81,7 @@ packages\refs\                   # .NET Framework 参考程序集（构建必需
 backup_installed_*/              # 部署前快照，勿动
 Build\Release\                   # WriteableBitmapEx 产物（gitignore）
 AI_Script\                       # AI 工作流脚本（见 §2）：verify.ps1 验收门禁 / verify-installer.ps1 安装包门禁 / Deploy-And-Restart.ps1 部署重启 / Invoke-ExcelDiff.ps1 安全启动 / refresh_state.ps1 状态刷新 / refresh_codex.ps1 行号校准
-.githooks\                       # git 钩子（core.hooksPath=.githooks）：pre-commit 提交前刷新并并入本次提交 / post-checkout、post-merge 后刷新 + 条件校准 CODEX.md
+.githooks\                       # git 钩子（core.hooksPath=.githooks）：pre-commit 刷新状态+（仅本次提交含 C# 时）校准 CODEX.md 并 add 回提交 / post-checkout 刷新状态 / post-merge 刷新状态并校准 CODEX.md / pre-push 默认拒绝推送（§7.10）
 GenerateLangJson.ps1             # resx → lang\*.json 生成脚本
 ProjectPaths.ps1                 # 路径单一事实源（机器相关值 + 仓库派生路径），工作流脚本 dot-source 它
 README.md / README.en            # 用户文档（中/英）；media\ 截图；LICENSE（MIT，含 Kailoke 版权）
@@ -134,7 +134,7 @@ MSI/WiX 路线已于 2026-09-25 **整体删除**（ADR-017）：`ExcelDiffEDR.In
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1              # 隔离构建 EDR+ShellExtension → 载荷 zip → Release\ExcelDiffSetup-<版本>.exe
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1 -SkipBuild   # 复用 obj\stage，只重打载荷与 setup exe
 powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1                   # 静态门禁：载荷内容/嵌入资源/版本一致/双语键集
-powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加 A–I 九个真实安装/卸载/重装/回滚用例（需管理员）
+powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加 A–K 十一个真实安装/卸载/重装/回滚/拒绝用例（需管理员）
 ```
 
 - **产物是单个 exe**：`ExcelDiffSetup.exe`（net472 WPF，`app.manifest` = `requireAdministrator`）。应用载荷由脚本打成 zip，再以 manifest resource `ExcelDiff.Setup.Payload.zip` 嵌入；`.csproj` 里该 `EmbeddedResource` 带 `Condition="Exists(...)"`，所以没有载荷时工程仍能编译、运行时给明确错误——打包链不污染 `verify.ps1`。
@@ -142,10 +142,10 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install
 - **文案在 `ExcelDiff.Installer\Strings\{zh-CN,en-US}.txt`**（`key=value`，UTF-8 无 BOM，读取端显式 `UTF8Encoding`）。两份键集必须一致，`verify-installer.ps1` 比对；PowerShell 侧读它们**必须 `-Encoding UTF8`**，否则 5.1 按 GBK 解码会把中文尾字节与后面的 ASCII 合成一行（实测假报 19 个键缺失）。
 - **注册表与命名口径（业主裁定）**：产品键 `HKLM\SOFTWARE\ExcelDiffEDR`（`InstallFolder` / `InstallVersion` / `SetupCulture` / `SetupStartOnBoot` / `ShellExtRegistered`），ARP 键 `HKLM\...\Uninstall\ExcelDiffEDR`。**用户可见名一律 `ExcelDiffEDR`**（2026-09-26 统一）：ARP `DisplayName`、开始菜单目录与快捷方式、资源管理器右键菜单文字（`ContextMenuExtension.cs`）、向导标题与文案、程序窗口标题与托盘提示。唯一保留 `ExcelDiff` 的是**用户自己写在 git 配置里的 difftool 标签**（`[difftool "ExcelDiff"]`，改它会破坏既有配置）以及 EDN 变体的历史名字。`SetupCulture` / `SetupStartOnBoot` 是**给程序读的种子**：`ApplicationSetting.EnsureCulture()` 的解析顺序是「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」，`Load()` 每次比对 `InstallerSeedApplied` 签名，只在签名变化时重新播种（安装器刚跑过）且此后用户的显式选择永久优先。必须这样改，因为程序原先每次启动都按 `startOnBoot = true` 重写 HKCU Run，安装器的勾选会被冲掉。`Build-Setup.ps1` 会断言两侧字面量逐字一致。
 - **COM 注册必须在子进程里做**：`ShellRegistrar.RunChild("register|unregister", dir)` 用 `/silent /shell-op:… /dir="…"` 重新拉起自己。实测教训：在 setup 进程内 `Assembly.LoadFrom` 扩展 DLL 会把它锁到进程退出，卸载时 3 个 DLL 删不掉、目录残留。另注意 `/dir="…\"` 这种**结尾反斜杠紧跟引号**会被 Windows 命令行解析成转义引号，拼参数前要去掉尾分隔符。
-- **删除一律清单驱动**：安装时写 `install-manifest.txt`（文件 / 快捷方式 / 注册表值与键 / 目录，且清单把自己也记进去），卸载按清单删、只删空目录，绝不递归删未知目录；**清单缺失就拒绝卸载**（早先"只删已知文件名"的回落会在 `/dir` 打错时删到别的东西）。文件被占用则保留清单与注册表、返回失败，提示"重启资源管理器后再卸载一次"。`ProductName` 改名前留下的快捷方式（`Programs\ExcelDiff\ExcelDiff.lnk`、桌面 `ExcelDiff.lnk`）由 `RemoveLegacyLinks()` 在安装与卸载时清掉。
+- **删除一律清单驱动**：安装时写 `install-manifest.txt`（文件 / 快捷方式 / 注册表值与键 / 目录，且清单把自己也记进去），卸载按清单删、只删空目录，绝不递归删未知目录；**清单缺失就拒绝卸载**（早先"只删已知文件名"的回落会在 `/dir` 打错时删到别的东西）。实测由 `verify-installer.ps1` 的 J 用例覆盖：真装一份 → 删掉 `install-manifest.txt` → 卸载必须返回 1、文件与 HKLM 记录都还在；把清单放回去，同一条卸载返回 0（正向对照，证明那句"失败"不是"这里本来就什么都没装"）。文件被占用则保留清单与注册表、返回失败，提示"重启资源管理器后再卸载一次"。`ProductName` 改名前留下的快捷方式（`Programs\ExcelDiff\ExcelDiff.lnk`、桌面 `ExcelDiff.lnk`）由 `RemoveLegacyLinks()` 在安装与卸载时清掉。
 - **重装=先卸后装带回滚**：旧目录 `Directory.Move` 成 `<dir>.old-<时间戳>`（同卷），任一步失败按 undo 栈还原并把 HKLM 状态写回 `RegistryStore.Snapshot()` 的快照。实测：占住旧 `ExcelDiffEDR.GUI.exe` 再执行安装 → 安装报失败、旧安装仍可运行、无 `.old-*` 残留。
-- **静默参数**：`/silent|/quiet`、`/uninstall`、`/culture:zh-CN|en-US`、`/dir=<path>`（`:` 与 `=` 都接受，值保留原大小写）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<path>`、`/?`。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。**退出码**（`App.Main` 的返回值，脚本据此判成败，勿只看 0/非 0）：`0` 成功 / `1` 操作失败或异常 / `2` 显示了帮助 / `3` 载荷缺失（无 payload 的 setup exe）/ `4` 命令行参数非法（只写日志与退出码，绝不弹窗，否则卡住脚本）/ `130` 用户取消或关窗。非法参数在解析阶段就收集进 `Options.Errors`，`/silent=1` 这类"给布尔开关赋值"同样拒绝。
-- **卸载默认保留用户配置**（业主 2026-09-26 裁定"加开关，默认不清"）：只有传 `/clearsettings` 或向导上勾 `uninstall.clearsettings` 复选框时，`ClearUserSettings()` 才删除 `%APPDATA%\ExcelDiffEDR.GUI`；其余情况只删文件/快捷方式/注册表项并记日志 `log.settingskept`。因此**任何卸载都可能顺手删掉当前用户配置**这一风险已不复存在，但跑 `-Install` 门禁时仍备份 `%APPDATA%` 与 `HKCU\...\Run`（防回归，注意 `Environment.GetFolderPath(ApplicationData)` 不认临时的 `$env:APPDATA` 覆盖）。
+- **静默参数**：`/silent|/quiet`、`/uninstall`、`/culture:zh-CN|en-US`、`/dir=<绝对路径>`（`:` 与 `=` 都接受，值保留原大小写；必须是 `D:\…`、`D:/…` 或 UNC `\\server\share\…`，**相对路径与盘符根一律拒绝**，判定看调用方写下的原文、在 `GetFullPath` 之前 —— 先解析再判 `IsPathRooted` 等于永远为真）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<path>`、`/?`。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。**退出码**（`App.Main` 的返回值，脚本据此判成败，勿只看 0/非 0）：`0` 成功 / `1` 操作失败或异常 / `2` 显示了帮助（`/silent` 下只把帮助写进日志，同样返回 2） / `3` 载荷缺失（无 payload 的 setup exe）/ `4` 命令行参数非法（**含非法 `/dir` 形态：空值、相对路径、盘符根**；只写日志与退出码，绝不弹窗，否则卡住脚本）/ `130` 用户取消或关窗。非法参数在解析阶段就收集进 `Options.Errors`，`/silent=1` 这类"给布尔开关赋值"同样拒绝；目录形态也在 `Options.Parse` 这一层拒掉，所以坏 `/dir` 根本走不到碰机器的那一步（实测由 `verify-installer.ps1` 的 K 用例覆盖：`/dir=Q:\`、`/dir=Q:`、`/dir=Tools` 全部返回 4，且不留下解析出来的目录）。
+- **卸载默认保留用户配置**（业主 2026-09-26 裁定"加开关，默认不清"）：只有传 `/clearsettings` 或向导上勾 `uninstall.clearsettings` 复选框时，`ClearUserSettings()` 才删除 `%APPDATA%\ExcelDiffEDR.GUI`；其余情况只删文件/快捷方式/注册表项，并记日志 `log.settingskept`。实测由 `verify-installer.ps1` 的 G 用例覆盖（默认卸载后设置目录仍在；带 `/clearsettings` 才消失）。跑 `-Install` 时仍备份 `%APPDATA%` 与 `HKCU\...\Run`（防回归，注意 `Environment.GetFolderPath(ApplicationData)` 不认临时的 `$env:APPDATA` 覆盖）。
 - 版本口径不变：setup exe 的 FileVersion 必须等于 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion（E8，脚本会校验），产品保持 2.0.0.0（业主裁定本轮不升）。NPOI 及其依赖仍必须随包（`ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍在用），`open_readme.vbs` 仍不打包。
 - 发布前必须外部 Authenticode 签名（E10）：setup exe 与它自己复制进安装目录的 `ExcelDiffSetup.exe` 同源，未签名会触发 SmartScreen。
 
@@ -198,7 +198,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
    - **重启确认 MessageBox**：切换多语言后由 `App.UpdateResourceCulture` 弹出（`Message_Reboot`：en "ExcelDiff will close to change the language." / zh "ExcelDiff将关闭以变更语言"）。**处理 = 点"确定/OK"**；确认后应用关对比窗口，下次 diff 命令以新语言重建。
    - 两者均为强制模态，会阻断后续命令；脚本需先探测（窗口/文案特征）再处理，否则测试挂起。
 9. **headless diff harness（EDN/EDR 对照诊断工具，保留、非门禁必需）**：`DiffHarness\` 零第三方离线对比，直接调库层（`ExcelWorkbook.Create` → `ExcelSheet.Diff` → `CreateSummary`）输出确定性 diff 文本，以 EDR（主版本）为准、EDN（保底）作验证对照。`DiffHarness.csproj` 必须是 **SDK-style**：旧式工程拿不到 `ExcelDiff` 的 `PackageReference` 传递依赖，EDN 变体运行时会缺 `ICSharpCode.SharpZipLib`（NPOI 读 xlsx 必需）并报版本加载失败；手工构建前先 `dotnet restore DiffHarness/DiffHarness.csproj`，并用 `/p:FrameworkPathOverride=<repo>\packages\refs\.NETFramework\v4.7.2`（`run_diff_compare.ps1` 两者已内置）。用法：`powershell -ExecutionPolicy Bypass -File DiffHarness\run_diff_compare.ps1 -RelPath Artifact.xlsx`（`-RelPath` 相对 `$TestDataRepoPath` 所指目录；自动提取 HEAD → 构建/运行双变体 → 比对，忽略 READER 行）；可用 `-NoBuild` 跳过重编译。产出 `DiffHarness.exe`（NPOI）/ `DiffHarnessEDR.exe`（EDR），输出 UTF-8。**配置对齐**：harness 默认读取配置 = GUI 默认 `ApplicationSetting`（4 项 trim 均 false）；复现 GUI 场景必须传一致参数——`--skip-first-blank-rows/columns`、`--trim-last-blank-rows/columns`（对应 `Setting.SkipFirstBlankRows/...`）、`--src-header N`/`--dst-header N`（列头对齐）。注意 harness 只验证"两变体一致"，不验证"diff 绝对正确"（与 GUI 共用 `ExcelSheet.Diff` 引擎），真实结果用 `VerifyRead` 双读 + EDN 对照。
-10. **Git 提交准则（硬性）**：**AI 不可直接 commit**。改动完成后，说明本次改动的 **Commit subject / description**，并从版本控制角度给出提交建议；实际提交由用户决定，且用户需先审查 subject/description 再提交。
+10. **Git 提交与推送准则（硬性）**：**AI 不可直接 commit**。改动完成后，说明本次改动的 **Commit subject / description**，并从版本控制角度给出提交建议；实际提交由用户决定，且用户需先审查 subject/description 再提交。**推送（`git push` 及任何写远端的操作：`push --force`、`tag` 推送、改 PR 分支等）在用户没有当轮明确指令的前提下永远不执行**（2026-09-26 业主定的全域纪律）；"提交"只授权到本地提交为止，二者不是同一件事，需分别取得指令。
 
 ## 8. 已知陷阱（务必遵守）
 
@@ -220,7 +220,11 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 
 - **版本定位**：EDR=ExcelDataReader 主版本（读取快约 72%）；EDN=NPOI 保底代码保留、不日常构建（见 §7.5 / ADR-012）。
 - **部署目录**（EDR 主版本）= `ProjectPaths.ps1` 的 `$EdrDeployPath`（= `$ProgramFilesBasePath` + `$EdrInstallDirName`，可用 `EXCELDIFF_PROGRAM_FILES` / `EXCELDIFF_DEPLOY_DIR` 或 `-Dst` 覆盖）。实际值用 `powershell -File ProjectPaths.ps1 -Print` 查，文档/脚本不写死盘符。
-- **自动刷新**：git 钩子（`.githooks\` + `core.hooksPath=.githooks`）：`pre-commit` 提交前刷新 `PROJECT_STATE.md`（本次提交触及 C# 源码时并校准 `CODEX.md`）并 `git add` 回本次提交；`post-checkout` / `post-merge` 在操作后刷新。一次性启用：`git config core.hooksPath .githooks`。
+- **自动刷新**：git 钩子（`.githooks\` + `core.hooksPath=.githooks`）：`pre-commit` 提交前刷新 `PROJECT_STATE.md`（本次提交触及 C# 源码时**才**校准 `CODEX.md`）并 `git add` 回本次提交；`post-checkout` 只刷新状态；`post-merge` 刷新状态并**无条件**校准 `CODEX.md`。一次性启用：`git config core.hooksPath .githooks`。
+- **`pre-push` 是推送闸门（失败关闭）**：任何 `git push` 都会被拒绝，除非执行者自己确认过授权并带上一次性豁免变量。PowerShell 里是两条语句（`VAR=value cmd` 那种内联写法只有 POSIX shell 认）：
+  - PowerShell / cmd：`$env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master`（cmd 用 `set EXCELDIFF_ALLOW_PUSH=1 && git push origin master`）
+  - Git Bash：`EXCELDIFF_ALLOW_PUSH=1 git push origin master`
+  这条钩子是 §7.10 的机械防线 —— **AI 会话不得设置该变量、也不得用 `--no-verify` 绕过它**，绕过等于替业主决定。三点诚实的限制：① `core.hooksPath` 不随克隆传播，所以闸门只在这台机器/已执行过一次性配置（`git config core.hooksPath .githooks`）的克隆上有效；② `--no-verify` 照样能绕过，它是摩擦不是保证；③ 本仓库 `core.fileMode=false`，Windows 上 git 用自己的 sh 拉起钩子所以能跑，POSIX 克隆需要索引里有可执行位 —— 2026-09-26 已把四个钩子全部置为 `100755`（`git ls-files -s .githooks` 实测；此前都是 `100644`，也就是 Mac/Linux 克隆上四个都不生效）。
 - 改动前先 `git status` / `git log --oneline -3` 确认；任何改动完成后跑 `AI_Script\verify.ps1`；动 IPC/生命周期/读取层先核对 `INVARIANTS.md`。
 
 ## 10. 编码规范（沿用既有代码）
@@ -239,5 +243,5 @@ AI 会话以资深主程序视角工作，对整体工程质量负责：
 2. **代码性能**：改动后评估性能影响（diff 管道、渲染、事件、持久化）；触及 `#if` 双版本/读取层/网格渲染等热路径先核对 INVARIANTS F 区与性能项清单。
 3. **测试纪律**：任何功能改动跑完整测试（`AI_Script\verify.ps1` + DiffHarness 双文件回归），见 §0 开工清单 / §4 门禁；动 IPC/生命周期/读取层先核对 INVARIANTS。
 4. **指导其他会话**：本文件 + ARCHITECTURE/CODEX/INVARIANTS/ADR 即权威上下文；其他会话直接读本文件（§0 开工清单）；发现文档与代码不一致时修正文档。
-5. **质量门**：不擅自提交 git（§7.10）；改动给出 commit subject/description 供审查；高危区（diff 算法、读取层、生命周期）改动需在提交说明中注明测试证据。
+5. **质量门**：不擅自提交 git、**永不擅自推送远端**（§7.10，推送需当轮明确指令）；改动给出 commit subject/description 供审查；高危区（diff 算法、读取层、生命周期）改动需在提交说明中注明测试证据。
 6. **证据纪律（不迎合）**：结论只能来自实测输出或代码本身。不得为了让回答贴合提问口径（"能不能用""是不是 X"）而调整判断，也不得在既定使用场景之外附带个人偏好推荐；与提问者预设冲突时，先把冲突点和反例摆出来交其裁决。未取证的事实一律标注"未实测"，不得写进结论；自己的报告文字同受本条约束。

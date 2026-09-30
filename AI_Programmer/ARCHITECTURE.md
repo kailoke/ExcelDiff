@@ -135,10 +135,11 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ```
 
 - `<ProgramFilesBase>` / 目录名都出自根目录 `ProjectPaths.ps1`：`$ProgramFilesBasePath` + `$EdrInstallDirName` = `$EdrDeployPath`（`Deploy-And-Restart.ps1` 的 `-Dst` 默认值）。自查：`powershell -File ProjectPaths.ps1 -Print`。文档不写盘符。
-- **setup 的默认目录 = 本机 `%ProgramFiles%\ExcelDiffEDRTool`**（`Environment.SpecialFolder.ProgramFiles` + `ProductInfo.InstallDirName`），只有目录名与 `ProjectPaths.ps1` 同源；`$ProgramFilesBasePath`（本机可能是别的盘）不进分发包，否则会把开发机的盘符写进客户机器。若本机 Program Files ≠ `$ProgramFilesBasePath`，覆盖式部署与 setup 会落到两个目录 → 设 `EXCELDIFF_PROGRAM_FILES` 对齐，或部署时显式传 `-Dst`。
+- **setup 的默认目录 = 本机 `%ProgramFiles%\ExcelDiffEDRTool`**（`Environment.SpecialFolder.ProgramFiles` + `ProductInfo.InstallDirName`），只有目录名与 `ProjectPaths.ps1` 同源；`$ProgramFilesBasePath`（本机可能是别的盘）不进分发包，否则会把开发机的盘符写进客户机器。
+- **两条链路各自决定自己的目录，不需要对齐**（业主 2026-09-26 裁定：安装器的配置由安装器本身决定，本地部署不管安装器的逻辑）。所以本机 Program Files ≠ `$ProgramFilesBasePath` 时，`Deploy-And-Restart.ps1` 与 setup 落在两个目录是**预期行为**，不是缺陷，也不要为此改 `ProjectPaths.ps1`；`EXCELDIFF_PROGRAM_FILES` / `-Dst` 只用来改**本地部署**的目标，与 setup 无关。想让 setup 装到别处，就在向导里改目录或传 `/dir=`。
 
 - EDR 发布包由 `ExcelDiff.Installer\Build-Setup.ps1` 构建：GUI/ShellExtension 先进入 `ExcelDiff.Installer\obj\stage`（隔离输入，E7），载荷打成 zip 后以 manifest resource 内嵌进 `ExcelDiffSetup.exe`。setup 的 FileVersion 必须等于主 EXE FileVersion（E8），ARP `DisplayVersion` 同源。ShellExtension 的 COM 注册/注销走自己拉起的子进程（`/shell-op:`），因为进程内 `LoadFrom` 会锁住扩展 DLL 让卸载删不掉文件（E9）。发布门禁是 `AI_Script\verify-installer.ps1 -Install`（静态检查 + 安装/卸载/重装/回滚真实用例，E10）。
-- setup 默认装到 `%ProgramFiles%\ExcelDiffEDRTool`，路径写入 `HKLM\SOFTWARE\ExcelDiffEDR\InstallFolder` 并在下次安装时沿用；命令行 `/dir=` 优先。卸载按 `install-manifest.txt` 逐项删除；当前用户的 `%APPDATA%\ExcelDiffEDR.GUI` **默认保留**，仅 `/clearsettings`（或向导上勾"同时删除设置"）时才清理（业主 2026-09-26 裁定）。退出码：0 成功 / 1 失败 / 2 帮助 / 3 无载荷 / 4 参数非法 / 130 取消。正式对外分发前需在发布流水线完成 Authenticode 签名。
+- setup 默认装到 `%ProgramFiles%\ExcelDiffEDRTool`，路径写入 `HKLM\SOFTWARE\ExcelDiffEDR\InstallFolder` 并在下次安装时沿用；命令行 `/dir=<绝对路径>` 优先（相对路径与盘符根在参数层就拒，退出码 4；见 §8 静默参数与 AGENTS §4）。卸载按 `install-manifest.txt` 逐项删除；当前用户的 `%APPDATA%\ExcelDiffEDR.GUI` **默认保留**，仅 `/clearsettings`（或向导上勾"同时删除设置"）时才清理（业主 2026-09-26 裁定）。退出码：0 成功 / 1 失败 / 2 帮助 / 3 无载荷 / 4 参数非法 / 130 取消。正式对外分发前需在发布流水线完成 Authenticode 签名。
 - 向导第一页是语言选择，默认值取 `CultureInfo.InstalledUICulture`（`zh*`→中文，其余英文），选择结果同时写入 `HKLM\...\SetupCulture` 供程序首启动读取；程序侧解析顺序为「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」（`ApplicationSetting.EnsureCulture` / `ApplyInstallerSeed`，`Load()` 比对 `InstallerSeedApplied` 签名，只在签名变化时重新播种）。许可/EULA 页、修复入口、自定义美术均**明确不做**（ADR-017）。
 - NGEN 已对 EDR exe 预编译。
 - Git difftool：`difftool.ExcelDiffEDR`（EDR，主）；`difftool.ExcelDiff`（EDN，历史，仍可用）。

@@ -101,7 +101,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <left file> -d <right file> [-c <tool>] [-i] [-w]
 
 ### Git difftool
 
-`.gitconfig` (`<install dir>` = where the app is actually installed: the setup wizard defaults to `%ProgramFiles%\ExcelDiffEDRTool`, changeable in the wizard or via `ExcelDiffSetup.exe /dir=<path>`; the EDR main build ships `ExcelDiffEDR.GUI.exe`, the EDN build ships `ExcelDiff.GUI.exe`)
+`.gitconfig` (`<install dir>` = where the app is actually installed: the setup wizard defaults to `%ProgramFiles%\ExcelDiffEDRTool`, changeable in the wizard or via `ExcelDiffSetup.exe /dir=<absolute path>`; the EDR main build ships `ExcelDiffEDR.GUI.exe`, the EDN build ships `ExcelDiff.GUI.exe`)
 
 ```
 [diff]

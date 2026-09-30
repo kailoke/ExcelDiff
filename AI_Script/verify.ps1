@@ -145,14 +145,23 @@ foreach ($psf in $psFiles) {
 if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelDiff (AGENTS 8.3 pitfall)' }
 else { FailStep ('Start-Process -Wait on ExcelDiff found: ' + ($pitfall -join '; ')) }
 
-# --- 6b. INVARIANT D1 scan: no hardcoded CJK UI text in XAML ---
-# User-visible text must come from Resources.* so lang\*.json can translate it. This catches the
-# Chinese-literal direction (how NoDiffWindow's button stayed "OK" in English mode) in attributes
-# and element content; the English-in-zh direction is a value mismatch, not a literal, and is not
-# detectable this way. CJK ideographs, kana, and full-width punctuation only.
+# --- 6b. INVARIANT D1 scan: no hardcoded UI text in XAML ---
+# Visible text must come from the string tables (GUI: Resources.* -> lang\*.json; installer:
+# Strings\*.txt, filled by key in WizardWindow.ApplyTexts), because a literal baked into XAML
+# cannot be translated. Two literal kinds are caught, in the six UI attributes and in element
+# text that shares a line with its tags:
+#   - CJK / kana / full-width: NoDiffWindow shipped a hardcoded button label, so it read Chinese
+#     in ENGLISH mode (fixed to {x:Static Resources.Word_OK} in 4b71c9a);
+#   - the brand literal (ExcelDiff*): the name's owning layer is ProductInfo + the tables, so a
+#     copy in XAML silently survives a rename. No violation exists today - this alternative is
+#     prevention, not a regression test for a measured bug.
+# Known blind spots (do not claim more than this): Style/Setter Value="...", attached or
+# qualified properties such as TextBlock.ToolTip=", a value spanning lines, and element text
+# spread over several lines. Language-neutral symbols are deliberately outside the class below
+# (DiffView.xaml labels shortcut buttons with arrow glyphs). A wrong *translation* in the tables
+# is a value mismatch, not a literal, and no scan here detects it.
 $d1Class = '[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff01-\uff5e\uff61-\uff9f]'
-$d1AttrDouble = '(^|[\s<])(Text|Content|Header|ToolTip|Description|Title)="[^"]*' + $d1Class
-$d1AttrSingle = "(^|[\s<])(Text|Content|Header|ToolTip|Description|Title)='[^']*" + $d1Class
+$d1UiAttrs = 'Text|Content|Header|ToolTip|Description|Title'
 $d1 = @()
 $xamlFiles = Get-ChildItem -Path $root -Filter '*.xaml' -Recurse -File -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\backup_installed_|\\packages\\|\\\.git\\' }
@@ -169,17 +178,26 @@ foreach ($xf in $xamlFiles) {
         if ($line.TrimStart().StartsWith('<!--')) { continue }
 
         $body = [regex]::Replace($line, '<!--.*?-->', '')
-        if ($body -match $d1AttrDouble -or $body -match $d1AttrSingle) {
-            $d1 += ($xf.FullName + ':' + ($i + 1))
-            continue
+        $hit = $false
+        foreach ($q in @('"', "'")) {
+            $pattern = '(^|[\s<])(' + $d1UiAttrs + ')=' + $q + '[^' + $q + ']*' + $q
+            foreach ($m in [regex]::Matches($body, $pattern)) {
+                $value = $m.Value.Substring($m.Value.IndexOf($q) + 1).TrimEnd($q)
+                if ($value.StartsWith('{')) { continue }      # bound to a resource, not a literal
+                if ($value -match $d1Class -or $value -match 'ExcelDiff') { $hit = $true }
+            }
         }
-        foreach ($text in [regex]::Matches($body, '>([^<>]+)<')) {
-            if ($text.Groups[1].Value -match $d1Class) { $d1 += ($xf.FullName + ':' + ($i + 1)); break }
+        if (-not $hit) {
+            foreach ($text in [regex]::Matches($body, '>([^<>]+)<')) {
+                $value = $text.Groups[1].Value
+                if ($value -match $d1Class -or $value -match 'ExcelDiff') { $hit = $true; break }
+            }
         }
+        if ($hit) { $d1 += ($xf.FullName + ':' + ($i + 1)) }
     }
 }
-if ($d1.Count -eq 0) { OkStep 'No hardcoded CJK UI text in XAML (INVARIANT D1)' }
-else { FailStep ('Hardcoded CJK UI text found: ' + ($d1 -join '; ')) }
+if ($d1.Count -eq 0) { OkStep 'No hardcoded UI text (CJK or brand literal) in XAML (INVARIANT D1)' }
+else { FailStep ('Hardcoded UI text in XAML: ' + ($d1 -join '; ')) }
 
 # --- 7. WIP snapshot ---
 Write-Host ''

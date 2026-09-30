@@ -66,10 +66,16 @@ namespace ExcelDiff.Setup
         /// <summary>
         /// Rejects drive roots and relative paths for every entry point, silent included - the
         /// wizard used to be the only guard, which left /dir= able to target "C:\".
+        /// The caller's own text is judged before Path.GetFullPath: resolving first turns "Tools"
+        /// into whatever folder the process happened to start in, and "C:Tools" into the current
+        /// directory of drive C, so an installer would silently pick a folder nobody typed.
         /// </summary>
         public static string ValidateTargetDir(string dir)
         {
             if (string.IsNullOrWhiteSpace(dir))
+                return null;
+
+            if (!IsAbsoluteFolder(dir.Trim()))
                 return null;
 
             string full;
@@ -83,13 +89,29 @@ namespace ExcelDiff.Setup
                 return null;
             }
 
-            if (!Path.IsPathRooted(full))
+            var root = Path.GetPathRoot(full);
+            if (string.IsNullOrEmpty(root))
                 return null;
-            if (Path.GetPathRoot(full) == full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar
-                || Path.GetPathRoot(full) == full)
+            if (root == full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar
+                || root == full)
                 return null;
 
             return EnsureTrailingSeparator(full);
+        }
+
+        /// <summary>
+        /// True when the text is already anchored to a location: a drive with its separator
+        /// ("D:\Tools", "D:/Tools") or a UNC path ("\\server\share\Tools"). A bare "D:" or "D:Tools"
+        /// is drive-relative and does not qualify, even though Path.IsPathRooted calls it rooted.
+        /// </summary>
+        private static bool IsAbsoluteFolder(string dir)
+        {
+            if (dir.Length < 3)
+                return false;
+            if (dir.StartsWith(@"\\"))
+                return true;
+            return char.IsLetter(dir[0]) && dir[1] == ':'
+                   && (dir[2] == Path.DirectorySeparatorChar || dir[2] == Path.AltDirectorySeparatorChar);
         }
 
         public string ResolveInstallDir()

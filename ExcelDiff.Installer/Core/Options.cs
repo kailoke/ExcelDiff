@@ -124,6 +124,16 @@ namespace ExcelDiff.Setup
                             break;
                         }
 
+                        // Shape of the target is argument validation, not a machine question:
+                        // rejecting here means a typo'd /dir never reaches the installer at all,
+                        // so it fails as "bad command line" (exit 4) instead of installing into a
+                        // folder resolved from the process's working directory.
+                        if ((key == "dir" || key == "targetdir") && InstallEngine.ValidateTargetDir(StripQuotes(value)) == null)
+                        {
+                            options.Errors.Add(arg + " -> " + Strings.T("err.badTarget"));
+                            break;
+                        }
+
                         if (key == "dir" || key == "targetdir")
                             options.InstallDir = StripQuotes(value);
                         else if (key == "components")
@@ -203,7 +213,7 @@ namespace ExcelDiff.Setup
             text.AppendLine("/uninstall                  remove the installed copy / 卸载");
             text.AppendLine("/clearsettings              also delete the current user's settings / 一并删除用户设置");
             text.AppendLine("/culture:zh-CN|en-US        wizard language / 向导语言");
-            text.AppendLine("/dir:\"<path>\"               install folder / 安装目录");
+            text.AppendLine("/dir:\"D:\\Tools\"             absolute install folder (relative paths and drive roots refused) / 安装目录");
             text.AppendLine("/components:shell,desktop,autostart   (or \"none\"/\"all\") / 组件");
             text.AppendLine("/log:<path>                 write the log here / 日志路径");
             return text.ToString();

@@ -28,7 +28,7 @@
 
 ## D. 本地化
 
-- [ ] **D1 字符串唯一来源**：UI 文本一律 `Resources.*`（经 `LocalizationManager` 桥接），禁止硬编码。（AGENTS §10）
+- [ ] **D1 字符串唯一来源**：可见文本一律走字符串表（GUI：`Resources.*` 经 `LocalizationManager` 桥接；安装器：`Strings\*.txt` 由 `WizardWindow.ApplyTexts` 按 key 填），XAML 里不得写死。实测教训的方向要说对：`NoDiffWindow.xaml` 曾写死 `Text="确定"`，于是**英文态显示中文**（`4b71c9a` 改为 `{x:Static Resources.Word_OK}`，en=`OK`/zh=`确定`）。机械扫描在 `AI_Script\verify.ps1` 6b，扫整个 solution 的 `*.xaml`，抓两类字面量：**CJK/假名/全角**，以及**品牌名 `ExcelDiff*`**（名字的归属层是 `ProductInfo` 与字符串表，XAML 里复制一份会静默躲过改名；目前实测命中 0 处，这条是预防，不是已复现事故的回归测试）。扫描的已知盲区（别宣称更多）：`Style`/`Setter Value="…"`、附加或限定属性（如 `TextBlock.ToolTip=`）、跨行的属性值与跨行的元素文本；语言无关符号（`DiffView.xaml` 用箭头字形标快捷键按钮）有意不纳入。两表之间的**值**不一致（把英文写进 zh 表）不是字面量，现有门禁不查，只能靠 `verify-installer.ps1` 的键集/占位符比对与人工验收。（AGENTS §10 / §4 / §7.2）
 - [ ] **D2 resx→json 再生成**：改 `Resources*.resx` 后必须跑 `GenerateLangJson.ps1` 再生成 `lang\*.json`，二者保持同步（构建期 `CopyLangFiles` 自动部署，但生成是人工/脚本步骤）。（AGENTS §7.2）
 - [ ] **D3 非 ASCII 编码**：改写含中文/日文的 YAML/JSON/resx 用文件写入工具（UTF-8 无 BOM）或 `[System.IO.File]::WriteAllText` + 显式 UTF8；PowerShell 5.1 `Set-Content -Encoding UTF8` 会按 ANSI 破坏。（AGENTS §8.1）
 - [ ] **D4 语言切换**：`{x:Static}` 在 XAML 加载时固化 → 语言变更通过"关窗+下次命令重建"生效，不要试图热替换已加载窗口的静态资源。（App.xaml.cs:327-332）
@@ -44,8 +44,8 @@
 - [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（`<repo>`=仓库根，实际值取 `ProjectPaths.ps1` 的 `$RefAssemblyPath`；.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
 - [ ] **E7 安装输入隔离**：setup 载荷只能来自 `ExcelDiff.Installer\obj\stage` 的专用构建（禁止扫描共享 `bin\Release`），且不得含 `.pdb`、EDN 三件套（`ExcelDiff.GUI.exe/.config/.pdb`）与任何辅助注册工具；打包不依赖外部安装器工具链。（AGENTS §4 / ADR-017）
 - [ ] **E8 安装身份一致**：`ExcelDiffSetup.exe` 的 FileVersion 必须等于 staged 主 EXE `ExcelDiffEDR.GUI.exe` 的 FileVersion，ARP `DisplayVersion` 取同一值；同版本重装必须复用同一注册表键与目录，不得产生第二份"应用和功能"条目。（`Build-Setup.ps1` 校验 / ADR-017）
-- [ ] **E9 安装事务完整**：ShellExtension 的 COM 注册/注销必须成对且**在子进程里执行**（进程内 `LoadFrom` 会锁住扩展 DLL 导致卸载删不掉）；重装必须先 `Directory.Move` 旧目录并保留 undo 栈，任一步失败要还原旧目录、恢复 HKLM 状态快照；文件删除只能按 `install-manifest.txt` 逐项执行，**清单缺失一律拒绝卸载**（不做"按已知文件名删"的回落，那会在 `/dir` 打错时删到别一份安装），绝不递归删未知目录——目标目录安装前已存在时，回滚只按清单删自己放下去的东西；卸载有文件删不掉时**必须返回失败且不清注册表/ARP/用户配置**，禁止"提示再卸载一次"却报成功。（ADR-017）
-- [ ] **E10 安装发布门禁**：正式分发前必须 `AI_Script\verify-installer.ps1 -Install` 全绿（静态检查 + A–I 九个真实安装/卸载/重装/回滚/参数拒绝用例），并在发布流水线完成 Authenticode 签名；未签名产物不得对外。（AGENTS §4 / ADR-017）
+- [ ] **E9 安装事务完整**：ShellExtension 的 COM 注册/注销必须成对且**在子进程里执行**（进程内 `LoadFrom` 会锁住扩展 DLL 导致卸载删不掉）；重装必须先 `Directory.Move` 旧目录并保留 undo 栈，任一步失败要还原旧目录、恢复 HKLM 状态快照；文件删除只能按 `install-manifest.txt` 逐项执行，**清单缺失一律拒绝卸载**（不做"按已知文件名删"的回落，那会在 `/dir` 打错时删到别一份安装；实测：删掉清单后卸载返回 1、文件与 HKLM 记录俱在，放回清单才返回 0），绝不递归删未知目录——目标目录安装前已存在时，回滚只按清单删自己放下去的东西；卸载有文件删不掉时**必须返回失败且不清注册表/ARP/用户配置**，禁止"提示再卸载一次"却报成功；安装与卸载的目标目录必须在**参数层**判定为绝对路径且非盘符根（判定要看过 `Path.GetFullPath` 之前的原文 —— 解析之后再问 `IsPathRooted` 永远为真，相对值会静默落到进程的工作目录），坏形态返回退出码 4 而不是 1，这样根本不触碰机器。（ADR-017）
+- [ ] **E10 安装发布门禁**：正式分发前必须 `AI_Script\verify-installer.ps1 -Install` 全绿（静态检查 + A–K 十一个真实安装/卸载/重装/回滚/参数与目标拒绝用例），并在发布流水线完成 Authenticode 签名；未签名产物不得对外。（AGENTS §4 / ADR-017）
 - [ ] **E11 路径不写死**：脚本/文档不得出现机器相关绝对路径（盘符）。Program Files 基目录、安装目录名/部署目录、外部测试数据仓一律经根目录 `ProjectPaths.ps1`（可用其标注的环境变量或脚本参数覆盖）。（AGENTS §0.2 / §9）
 - [ ] **E12 版本口径**：只有**产品自有且被部署/安装链路消费**的程序集跟随产品版本 —— `ExcelDiff.GUI`（主 EXE，setup 版本源）、`ExcelDiff`、`ExcelDiff.ShellExtension`，以及 `ExcelDiff.Installer`（setup exe 自身，按 E8 与主 EXE 对齐）。vendored 上游库（`FastWpfGrid` / `NetDiff` / `NetDiff.Test` / `WriteableBitmapEx.Wpf`）与对外包清单（`NetDiff.nuspec` 的 `Diff4Net`）保持自身版本，**不得随产品升版**。（ADR-014 / ADR-017）
 
