@@ -11,7 +11,7 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 - **EDR**（主版本，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 EDN 的 28%，提升约 72%），日常构建 / 部署 / 门禁均以 EDR 为准。
 - **EDN**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，代码保留作为 EDR 盲区兜底与验证对照，不参与日常构建 / 部署。
 
-两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面默认简体中文，支持中/英切换。
+两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面语言支持中/英：默认取安装向导里选的语言（写入注册表供程序读取），没选过则按系统显示语言判定，之后在设置里手动切换优先。
 
 ![Demo](media/demo.gif)
 
@@ -30,8 +30,35 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 ## 系统要求
 
-- Windows 7 或更高版本
-- .NET Framework 4.6.2
+- Windows 7 SP1 或更高版本
+- .NET Framework 4.7.2
+
+## 安装与卸载
+
+### 安装
+
+运行发布出去的 `ExcelDiffSetup-<版本>.exe`（需要管理员权限），向导共 5 页：**语言**（默认按系统显示语言；点选后整个向导立即换语言）→ **位置与组件** → 确认 → 进度 → 完成。
+
+- 默认安装目录 `%ProgramFiles%\ExcelDiffEDRTool`，可改；下次安装会沿用上次的位置。
+- 组件默认勾选：桌面快捷方式 ✓ / 开机自启 ✓ / **资源管理器右键菜单 ✗**（要用请在这一页勾上）。
+- 静默安装：`ExcelDiffSetup-<版本>.exe /silent /dir="D:\Tools\ExcelDiffEDRTool" /components:shell,desktop,autostart /culture:zh-CN`。
+  开关：`/silent|/quiet`、`/uninstall`、`/install`、`/culture:zh-CN|en-US`、`/dir=<绝对路径>`（相对路径与盘符根会被拒绝）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<路径>`、`/?`。
+  退出码：`0` 成功 / `1` 失败 / `2` 显示帮助 / `3` 载荷缺失 / `4` 命令行非法 / `130` 用户取消。**唯一例外**：从安装目录内的 `Uninstall.exe` 发起的卸载返回 0 只代表"已移交"（真正执行的是它复制到临时目录的那份），成不成看目录与"应用和功能"里的条目是否消失。
+
+安装完成后，安装目录里会留下一份与安装包同内容的 **`Uninstall.exe`**。
+
+### 卸载
+
+任选其一：
+
+1. **设置 → 应用 → ExcelDiffEDR → 卸载**（或控制面板"程序和功能"）——会打开卸载向导：先选语言，再确认，可以选择是否同时删除当前用户的设置。
+2. **双击安装目录里的 `Uninstall.exe`** —— 同样打开卸载向导（默认动作就是卸载，不是重装）。
+3. **命令行**：`Uninstall.exe /uninstall /silent`（静默；加 `/clearsettings` 才连当前用户的设置目录一起删）。
+
+- **用户配置默认保留**：`%APPDATA%\ExcelDiffEDR.GUI\` 只有在向导里勾上"同时删除…"或传 `/clearsettings` 时才会被删除。
+- 卸载按安装时写下的 `install-manifest.txt` 逐项删除，只删自己放下去的文件与空目录；**清单缺失时直接拒绝卸载**，不会去猜目录内容。
+- 若提示有文件被占用（通常是资源管理器持着右键菜单扩展）：重启资源管理器或注销后再卸一次即可清干净。
+- 想改组件（例如补上右键菜单）：重新下载安装包运行并勾选对应项（重装=先卸后装，带失败回滚）。安装目录里的那份副本默认动作是卸载，要拿它重装得显式加 `/install`。
 
 ## 支持的文件类型
 
@@ -67,7 +94,9 @@ dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:Ed
 powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-全绿 = EDR 主版本编译通过 + NetDiff 31 用例通过 + lang↔resx 同步。
+全绿 = EDR 主版本编译通过 + 安装器工程编译通过 + NetDiff 31 用例通过 + `lang\*.json ↔ resx` 双向同步 + 两份 resx 键集一致 + 坑扫描（禁止对转发进程 `Start-Process -Wait`、XAML 内禁止硬编码可见文本）。
+
+安装包另有发布门禁：`powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install`（静态检查载荷/资源/版本/双语键集，外加 A–M 十三个**真实**安装·卸载·重装·回滚·拒绝用例；需要管理员，机器上已有安装记录时会拒绝运行，跑完自动还原 `HKCU Run` 与用户设置目录）。
 
 ## 使用方式
 
@@ -101,7 +130,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <左文件> -d <右文件> [-c <工具>] [-i] [-w
 
 ### Git difftool
 
-`.gitconfig`（`<安装目录>` = 实际安装位置：安装程序默认 `%ProgramFiles%\ExcelDiffEDRTool`，可在向导里改目录或用 `ExcelDiffSetup.exe /dir=<绝对路径>` 指定；EDR 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，EDN 为 `ExcelDiff.GUI.exe`）
+`.gitconfig`（`<安装目录>` = 实际安装位置：安装程序默认 `%ProgramFiles%\ExcelDiffEDRTool`，可在向导里改目录，或用**下载的安装包**（`ExcelDiffSetup-<版本>.exe`）加 `/dir=<绝对路径>` 指定 —— 安装目录里那份 `Uninstall.exe` 只用于卸载；EDR 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，EDN 为 `ExcelDiff.GUI.exe`）
 
 ```
 [diff]
@@ -146,7 +175,7 @@ vdiff = exceldiff
 
 ### 资源管理器右键菜单
 
-安装 `ExcelDiff.ShellExtension`（COM 外壳扩展）后，从资源管理器右键菜单直接对比。
+`ExcelDiff.ShellExtension` 是 COM 外壳扩展：**安装向导第 2 页默认不勾**，要资源管理器里右键单个文件 → `ExcelDiffEDR` 就在该页勾上"添加资源管理器右键菜单"（勾了之后无需重启资源管理器，安装过程会通知外壳刷新；若在卸载/重装过程中注册失败，则重启资源管理器一次）。已装好后再补：重新下载安装包运行并勾上该项（勾选框按**本次命令行**的 `/components:` 预填，没给开关时才是出厂默认 桌面 ✓ / 自启 ✓ / 右键菜单 ✗；两种情况都**不**按当前注册状态预填，所以只勾你要加的那一项）。
 
 ![context menu](media/context.png)
 
@@ -221,7 +250,8 @@ vdiff = exceldiff
 
 ## 回归验证
 
-- `AI_Script\verify.ps1`：一键门禁（EDR 主版本编译 + NetDiff 31 用例 + lang↔resx 同步）。
+- `AI_Script\verify.ps1`：一键门禁（EDR 主版本编译 + 安装器工程编译 + NetDiff 31 用例 + lang↔resx 双向同步 + 两份 resx 键集一致 + 坑扫描）。
+- `AI_Script\verify-installer.ps1`：安装包发布门禁（静态检查；`-Install` 追加 A–M 十三个真实安装/卸载/重装/回滚/拒绝用例，需管理员）。
 - `DiffHarness\`：headless diff 对比（EDN/EDR 输出确定性 diff 文本）。
 - `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 

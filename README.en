@@ -11,7 +11,7 @@ Two products are built from the same source (EDR is the main build; EDN is retai
 - **EDR** (main build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of EDN's time, ~72% faster); daily build / deploy / gate all target EDR.
 - **EDN** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; code is retained as the fallback for EDR blind spots and as a validation reference, but is not built / deployed in the daily flow.
 
-The two builds are fully isolated (process / assembly / config / display name). The UI defaults to Simplified Chinese and supports Chinese/English switching.
+The two builds are fully isolated (process / assembly / config / display name). UI language supports Chinese and English: the default is the language chosen in the setup wizard (recorded in the registry for the app to read), falling back to the system display language; a manual choice in Settings always wins.
 
 ![Demo](media/demo.gif)
 
@@ -30,8 +30,35 @@ The two builds are fully isolated (process / assembly / config / display name). 
 
 ## System Requirements
 
-- Windows 7 or later
-- .NET Framework 4.6.2
+- Windows 7 SP1 or later
+- .NET Framework 4.7.2
+
+## Installing and uninstalling
+
+### Install
+
+Run the released `ExcelDiffSetup-<version>.exe` (administrator rights required). The wizard has 5 pages: **language** (defaults to the system display language; clicking a language re-languages the whole wizard immediately) → **location and components** → confirm → progress → finish.
+
+- Default folder `%ProgramFiles%\ExcelDiffEDRTool`, changeable; the next install reuses the last location.
+- Component defaults: desktop shortcut ✓ / start on boot ✓ / **Explorer context menu ✗** (tick it on that page if you want it).
+- Silent install: `ExcelDiffSetup-<version>.exe /silent /dir="D:\Tools\ExcelDiffEDRTool" /components:shell,desktop,autostart /culture:en-US`.
+  Switches: `/silent|/quiet`, `/uninstall`, `/install`, `/culture:zh-CN|en-US`, `/dir=<absolute path>` (relative paths and drive roots are refused), `/components:shell,desktop,autostart|none|all`, `/clearsettings`, `/log:<path>`, `/?`.
+  Exit codes: `0` success / `1` failure / `2` help shown / `3` no payload / `4` invalid command line / `130` cancelled. **One exception**: an uninstall started from `Uninstall.exe` inside the install folder returns 0 to mean "handed over" (the copy it made in the temp folder does the work), so judge the result by whether the folder and the entry in "Apps & features" are gone.
+
+After a successful install the install folder keeps a copy of the installer named **`Uninstall.exe`**.
+
+### Uninstall
+
+Any of these:
+
+1. **Settings → Apps → ExcelDiffEDR → Uninstall** (or Control Panel → Programs and Features) — opens the uninstall wizard: language first, then a confirmation page, where you can also decide whether to delete the current user's settings.
+2. **Double-click `Uninstall.exe` in the install folder** — same wizard; its default action is to uninstall, not to reinstall.
+3. **Command line**: `Uninstall.exe /uninstall /silent` (silent; add `/clearsettings` to remove the user settings folder as well).
+
+- **User settings are kept by default**: `%APPDATA%\ExcelDiffEDR.GUI\` is deleted only if you tick the box in the wizard or pass `/clearsettings`.
+- Uninstall replays the `install-manifest.txt` written at install time: it removes only the files it placed there and empty folders, and **refuses outright when the manifest is missing** rather than guessing what a folder contains.
+- If files are reported as in use (usually Explorer holding the shell extension), restart Explorer or sign out once, then run the uninstall again.
+- To change components (e.g. add the context menu): download and run the installer again and tick the item (reinstall = uninstall then install, with rollback on failure). The component checkboxes are prefilled from **this run's** `/components:` switch, and fall back to the shipped defaults (desktop ✓ / start on boot ✓ / context menu ✗) when no switch was given; either way they are not prefilled from the current registration, so just tick what you want to add. The copy in the install folder uninstalls by default; pass `/install` explicitly to use it for a reinstall.
 
 ## Supported File Types
 
@@ -67,7 +94,9 @@ Reason: the resident process starts from the deployed directory and locks the ex
 powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-All green = EDR main build compiles + 31 NetDiff tests pass + lang↔resx in sync.
+All green = EDR main build compiles + installer project compiles + 31 NetDiff tests pass + `lang\*.json ↔ resx` in sync (both directions) + the two resx files carry the same key set + pitfall scans (no `Start-Process -Wait` on the forwarder, no hardcoded visible text in XAML).
+
+The installer has its own release gate: `powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install` (static checks on payload / embedded resources / version / bilingual key sets, plus A–M thirteen **real** install · uninstall · reinstall · rollback · refusal cases; needs admin, refuses to run when the machine already has an install record, and restores `HKCU Run` and the user settings folder afterwards).
 
 ## Usage
 
@@ -101,7 +130,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <left file> -d <right file> [-c <tool>] [-i] [-w]
 
 ### Git difftool
 
-`.gitconfig` (`<install dir>` = where the app is actually installed: the setup wizard defaults to `%ProgramFiles%\ExcelDiffEDRTool`, changeable in the wizard or via `ExcelDiffSetup.exe /dir=<absolute path>`; the EDR main build ships `ExcelDiffEDR.GUI.exe`, the EDN build ships `ExcelDiff.GUI.exe`)
+`.gitconfig` (`<install dir>` = where the app is actually installed: the setup wizard defaults to `%ProgramFiles%\ExcelDiffEDRTool`, changeable in the wizard or by adding `/dir=<absolute path>` to **the setup package you downloaded** (`ExcelDiffSetup-<version>.exe`) - the `Uninstall.exe` inside the install folder only uninstalls; the EDR main build ships `ExcelDiffEDR.GUI.exe`, the EDN build ships `ExcelDiff.GUI.exe`)
 
 ```
 [diff]
@@ -146,7 +175,7 @@ vdiff = exceldiff
 
 ### Explorer context menu
 
-After installing `ExcelDiff.ShellExtension` (COM shell extension), compare directly from the Explorer right-click menu.
+`ExcelDiff.ShellExtension` is a COM shell extension and is **not ticked by default on page 2 of the setup wizard**. To get "ExcelDiffEDR" when you right-click a single file in Explorer, tick "Add the Explorer context menu" there (no Explorer restart is needed - setup notifies the shell; if registration fails during an uninstall/reinstall, restart Explorer once). To add it later, download and run the installer again with that box ticked (the component checkboxes are prefilled from this run's `/components:` switch, otherwise from the shipped defaults - desktop ✓ / start on boot ✓ / context menu ✗ - and never from the current registration, so tick only what you want to add).
 
 ![context menu](media/context.png)
 
@@ -221,7 +250,8 @@ Settings are saved as YAML at:
 
 ## Regression Verification
 
-- `AI_Script\verify.ps1`: one-command gate (EDR main build compiles + 31 NetDiff tests + lang↔resx sync).
+- `AI_Script\verify.ps1`: one-command gate (EDR main build + installer project compile + 31 NetDiff tests + `lang ↔ resx` sync both directions + matching resx key sets + pitfall scans).
+- `AI_Script\verify-installer.ps1`: installer release gate (static checks; `-Install` adds A–M thirteen real install/uninstall/reinstall/rollback/refusal cases, needs admin).
 - `DiffHarness\`: headless diff comparison (deterministic diff text of EDN/EDR outputs).
 - `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
 

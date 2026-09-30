@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace ExcelDiff.Setup
@@ -33,11 +34,17 @@ namespace ExcelDiff.Setup
         /// <summary>Malformed switches. Reported instead of being silently ignored.</summary>
         public readonly List<string> Errors = new List<string>();
 
-        private static readonly string[] BooleanSwitches = { "silent", "quiet", "s", "q", "uninstall", "remove", "x", "u", "clearsettings", "setup-from-temp", "?", "h", "help" };
+        /// <summary>File name this artifact was run as: it carries the role and heads the help text.</summary>
+        public string InvokedName = string.Empty;
+
+        private static readonly string[] BooleanSwitches = { "silent", "quiet", "s", "q", "uninstall", "remove", "x", "u", "install", "clearsettings", "setup-from-temp", "?", "h", "help" };
 
         public static Options Parse(string[] args)
         {
             var options = new Options();
+            options.InvokedName = args.Length > 0 ? Path.GetFileName(args[0]) : string.Empty;
+            var sawUninstall = false;
+            var sawInstall = false;
 
             for (var i = 1; i < args.Length; i++)
             {
@@ -72,6 +79,10 @@ namespace ExcelDiff.Setup
                         case "x":
                         case "u":
                             options.Uninstall = true;
+                            sawUninstall = true;
+                            continue;
+                        case "install":
+                            sawInstall = true;
                             continue;
                         case "clearsettings":
                             options.ClearSettings = true;
@@ -149,7 +160,41 @@ namespace ExcelDiff.Setup
                 }
             }
 
+            ResolveRole(options, sawInstall, sawUninstall);
             return options;
+        }
+
+        /// <summary>
+        /// What the process is here to do: explicit /uninstall, then explicit /install, then the
+        /// name of the artifact that was run - the install folder holds Uninstall.exe, so double
+        /// clicking it must uninstall, not move the user's own folder aside and reinstall.
+        /// The inference is skipped for the shell-op child and for the %TEMP% relay: the relay
+        /// renames the image (ExcelDiffSetup-&lt;guid&gt;.exe), so it carries the role as a switch.
+        /// </summary>
+        private static void ResolveRole(Options options, bool sawInstall, bool sawUninstall)
+        {
+            if (sawInstall && sawUninstall)
+            {
+                options.Errors.Add("/install + /uninstall -> " + Strings.T("err.conflictingRole"));
+                return;
+            }
+            if (sawInstall)
+            {
+                options.Uninstall = false;
+                return;
+            }
+            if (sawUninstall || options.ShellOp != null || options.FromTemp)
+                return;
+
+            var leaf = options.InvokedName;
+            // The 8.3 form is accepted too: Explorer/cmd can hand us UNINST~1.EXE, and silently
+            // falling back to "install" there would move the user's own folder aside on what was
+            // meant as a double-click to uninstall. The published setup (ExcelDiffSetup*.exe) never
+            // starts with UNINST, so the two cannot be confused.
+            if (string.Equals(leaf, ProductInfo.UninstallerName, StringComparison.OrdinalIgnoreCase)
+                || (leaf.StartsWith("UNINST", StringComparison.OrdinalIgnoreCase)
+                    && leaf.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
+                options.Uninstall = true;
         }
 
         /// <summary>Accepts both ':' and '=' as the switch separator; the value keeps its original case.</summary>
@@ -204,13 +249,18 @@ namespace ExcelDiff.Setup
             return value;
         }
 
-        public static string HelpText()
+        public static string HelpText(string invokedName)
         {
             var text = new StringBuilder();
-            text.AppendLine("ExcelDiffSetup.exe [options]");
+            // Named from argv[0]: these bytes answer both as the downloaded package and as the install
+            // folder's Uninstall.exe, so a hard-coded "ExcelDiffSetup.exe" would name a file that is
+            // not in the folder the user is standing in.
+            text.AppendLine((string.IsNullOrEmpty(invokedName) ? ProductInfo.UninstallerName : invokedName) + " [options]");
             text.AppendLine();
             text.AppendLine("/silent | /quiet            no UI (also for /uninstall) / 无界面");
             text.AppendLine("/uninstall                  remove the installed copy / 卸载");
+            text.AppendLine("/install                    force install role (the folder's Uninstall.exe"
+                            + " uninstalls by default) / 强制安装角色");
             text.AppendLine("/clearsettings              also delete the current user's settings / 一并删除用户设置");
             text.AppendLine("/culture:zh-CN|en-US        wizard language / 向导语言");
             text.AppendLine("/dir:\"D:\\Tools\"             absolute install folder (relative paths and drive roots refused) / 安装目录");

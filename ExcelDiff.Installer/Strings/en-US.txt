@@ -2,6 +2,7 @@
 # Format: key=value  (\\n = newline, lines starting with # are comments)
 
 app.title={0} Setup
+app.uninstallTitle={0} Uninstall
 step.language=Step 1 of 5: Choose a language
 step.location=Step 2 of 5: Location and components
 step.confirm=Step 3 of 5: Confirm install
@@ -10,6 +11,7 @@ step.finish=Step 5 of 5: Finished
 step.uninstall=Uninstall
 
 language.prompt=Choose the language for this setup. It is preselected from this machine's display language.
+language.promptU=Choose the language for this uninstaller. It is preselected from this machine's display language.
 language.zh=中文
 language.en=English
 language.note=This choice also sets the language ExcelDiffEDR starts in the first time; you can change it later in the program's extraction settings.
@@ -35,14 +37,17 @@ confirm.off=off
 progress.prompt=Installing…
 finish.prompt=Setup was completed.
 finish.howto=How to use it: right-click an .xls / .xlsx / .csv / .tsv file in Explorer and choose "ExcelDiffEDR", or start it from the Start menu.
-finish.tray=ExcelDiffEDR keeps running in the system tray; right-click the tray icon to exit.
+finish.tray=Once started, ExcelDiffEDR keeps running in the system tray and you can exit it from the tray icon (setup does not start the program for you).
 finish.log=Log: {0}
 finish.failed=Setup failed.
 
 uninstall.prompt=Ready to uninstall the installed ExcelDiffEDR.
-uninstall.note=Uninstall removes the files, shortcuts and registry entries recorded in the install manifest. The current user's settings folder is removed only if you tick the box below (or pass /clearsettings).
+uninstall.note=Uninstall removes the files, shortcuts and registry entries recorded in the install manifest. The current user's settings folder is removed only if you tick the box above (or pass /clearsettings).
 uninstall.progress=Uninstalling…
 uninstall.done=Uninstalled.
+uninstall.done.kept=The current user's settings folder was not removed.
+uninstall.done.cleared=The current user's settings folder was removed as well.
+uninstall.noTarget=(the registry has no recorded install folder; uninstall will refuse)
 
 btn.back=Back
 btn.next=Next
@@ -70,11 +75,13 @@ err.locked=A file is in use: exit the running ExcelDiffEDR (right-click the tray
 err.nopayload=This setup package contains no application payload.\nRebuild it with ExcelDiff.Installer\\Build-Setup.ps1.
 err.title=Setup failed
 err.badTarget=Invalid install location: pick a concrete folder, not a drive root or a relative path.
-err.noUninstallTarget=No install found to remove: the registry has no recorded install folder. Run it with the folder you installed to, e.g. ExcelDiffSetup.exe /uninstall /dir=<install folder>.
+err.noUninstallTarget=No install found to remove: the registry has no recorded install folder, and setup will not guess the default one. Use the setup package you downloaded and name the folder, e.g. "<downloaded package> /uninstall /dir=<install folder>". The Uninstall.exe inside the folder cannot help here - it lives in the folder it would have to delete, so it can never remove its own running file.
+err.noManifest=This install folder has no install-manifest.txt, so there is nothing to replay the removal from; setup refused and left the files and the registry exactly as they were. Re-install into the same folder with the downloaded package first, then uninstall.
+err.conflictingRole=/install and /uninstall cannot be used together.
 err.unknownSwitch=Unrecognized switch; setup refused instead of falling back to the interactive UI.
 err.missingValue=This switch needs a value.
 err.booleanHasValue={0} is a switch and takes no value (write /{0} instead).
 err.unknownCulture=Unsupported language {0}; only zh-CN and en-US are available.
 uninstall.clearsettings=Also delete the current user's ExcelDiffEDR settings
-finish.noshell=The Explorer context menu was not added. To get it, run setup again and tick "Add the Explorer context menu".
+finish.noshell=The Explorer context menu was not added. To get it, download and run the setup package again and tick "Add the Explorer context menu" (the Uninstall.exe in the install folder only uninstalls).
 log.settingskept=Kept the current user settings folder; clearing it needs an explicit request.

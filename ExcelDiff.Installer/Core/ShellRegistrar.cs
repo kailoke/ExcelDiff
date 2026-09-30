@@ -27,7 +27,7 @@ namespace ExcelDiff.Setup
             if (string.IsNullOrEmpty(exe))
             {
                 var args = Environment.GetCommandLineArgs();
-                exe = args.Length > 0 ? args[0] : ProductInfo.SetupCopyName;
+                exe = args.Length > 0 ? args[0] : ProductInfo.UninstallerName;
             }
 
             // A trailing backslash before a closing quote would be read as an escaped quote by the
@@ -48,9 +48,6 @@ namespace ExcelDiff.Setup
 
             using (var process = Process.Start(startInfo))
             {
-                if (process == null)
-                    throw new InvalidOperationException("could not start the shell helper process");
-
                 if (!process.WaitForExit(120000))
                 {
                     try { process.Kill(); }

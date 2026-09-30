@@ -39,9 +39,10 @@ namespace ExcelDiff.Setup
                 if (options.ShowHelp)
                 {
                     if (options.Silent)
-                        SetupLog.Info(Options.HelpText());
+                        SetupLog.Info(Options.HelpText(options.InvokedName));
                     else
-                        MessageBox.Show(Options.HelpText(), Strings.F("app.title", ProductInfo.ProductName),
+                        MessageBox.Show(Options.HelpText(options.InvokedName),
+                                        Strings.F("app.title", ProductInfo.ProductName),
                                         MessageBoxButton.OK, MessageBoxImage.Information);
                     return 2;
                 }
@@ -75,7 +76,9 @@ namespace ExcelDiff.Setup
                 }
 
                 // Running from inside the installed folder cannot work (that folder is about to be
-                // moved aside), so hand the whole job to a copy in %TEMP% and forward its result.
+                // moved aside or deleted), so hand the job to a copy in %TEMP%: an install forwards
+                // its result, an uninstall is handed over - the parent is the image the child has to
+                // delete, so waiting would lock it.
                 var relayed = InstallEngine.RelaunchOutsideInstallFolder(options);
                 if (relayed.HasValue)
                     return relayed.Value;
@@ -97,6 +100,13 @@ namespace ExcelDiff.Setup
             }
             finally
             {
+                // Only the handed-over uninstall leaves its own image behind on purpose (the parent
+                // that was waiting would otherwise keep the file locked); the install relay's temp
+                // copy is deleted by its parent right after it exits, so don't queue a second removal.
+                // Logged before Close(), otherwise the outcome of the registration is unobservable.
+                if (options.FromTemp && options.Uninstall)
+                    InstallEngine.ScheduleSelfDelete();
+
                 SetupLog.Close();
             }
         }

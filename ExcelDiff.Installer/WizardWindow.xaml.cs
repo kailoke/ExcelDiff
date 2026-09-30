@@ -42,6 +42,8 @@ namespace ExcelDiff.Setup
 
             _existing = InstallEngine.Detect();
             DirBox.Text = _engine.ResolveInstallDir();
+            // Prefilled from the command line, not from what is registered: /components:shell is how
+            // a script (or the gate) expresses an intent the user can still edit on this page.
             ShellCheck.IsChecked = options.Has(Components.Shell);
             DesktopCheck.IsChecked = options.Has(Components.Desktop);
             AutoStartCheck.IsChecked = options.Has(Components.AutoStart);
@@ -53,9 +55,9 @@ namespace ExcelDiff.Setup
             EnglishOption.IsChecked = Strings.Culture == Strings.En;
             _suppressLanguageEvent = false;
 
-            if (_uninstallMode)
-                _step = Step.Confirm;
-
+            // Uninstall starts on the language page too: double-clicking Uninstall.exe is now the
+            // main way to remove the product, and forcing a re-download with /culture: just to read
+            // the confirmation is not acceptable. Location is skipped in OnNext instead.
             ApplyTexts();
             Goto(_step);
         }
@@ -64,10 +66,10 @@ namespace ExcelDiff.Setup
 
         private void ApplyTexts()
         {
-            Title = Strings.F("app.title", ProductInfo.ProductName);
+            Title = Strings.F(_uninstallMode ? "app.uninstallTitle" : "app.title", ProductInfo.ProductName);
             TitleText.Text = ProductInfo.ProductName;
 
-            LanguagePrompt.Text = Strings.T("language.prompt");
+            LanguagePrompt.Text = Strings.T(_uninstallMode ? "language.promptU" : "language.prompt");
             ChineseOption.Content = Strings.T("language.zh");
             EnglishOption.Content = Strings.T("language.en");
             LanguageNote.Text = Strings.T("language.note");
@@ -95,7 +97,11 @@ namespace ExcelDiff.Setup
                 : (_uninstallMode ? Strings.T("uninstall.done") : Strings.T("finish.prompt"));
             FinishHowTo.Text = _uninstallMode ? string.Empty : Strings.T("finish.howto");
             FinishNoShell.Text = Strings.T("finish.noshell");
-            FinishTray.Text = _uninstallMode ? string.Empty : Strings.T("finish.tray");
+            // What actually happened to the settings folder, not what was asked for: a locked file
+            // makes ClearUserSettings warn and carry on, and then "removed" would be a false claim.
+            FinishTray.Text = _uninstallMode
+                ? Strings.T(_engine.SettingsCleared ? "uninstall.done.cleared" : "uninstall.done.kept")
+                : Strings.T("finish.tray");
             FinishLog.Text = string.IsNullOrEmpty(SetupLog.Path) ? string.Empty : Strings.F("finish.log", SetupLog.Path);
             FinishError.Text = _failed ? (_engine.FailureReason ?? string.Empty) : string.Empty;
 
@@ -109,6 +115,24 @@ namespace ExcelDiff.Setup
         private string BuildSummary()
         {
             var text = new StringBuilder();
+
+            if (_uninstallMode)
+            {
+                // The component checkboxes describe what an install would create; listing them here
+                // would be a lie about what the uninstaller is about to remove.
+                // With no install record there is no target to name, and DirBox would be holding the
+                // default folder the user never installed into - say so instead of printing a guess.
+                var target = _existing == null ? null : _existing.Dir;
+                if (string.IsNullOrEmpty(target))
+                    target = Strings.T("uninstall.noTarget");
+                text.AppendLine(Strings.F("confirm.version", ProductInfo.Version));
+                text.AppendLine(Strings.F("confirm.dir", target));
+                text.AppendLine(Strings.F("confirm.language", Strings.Culture));
+                text.AppendLine(Strings.F("confirm.component", Strings.T("uninstall.clearsettings"),
+                                          State(ClearSettingsCheck.IsChecked)));
+                return text.ToString();
+            }
+
             text.AppendLine(Strings.F("confirm.version", ProductInfo.Version));
             text.AppendLine(Strings.F("confirm.dir", DirBox.Text));
             text.AppendLine(Strings.F("confirm.language", Strings.Culture));
@@ -118,8 +142,6 @@ namespace ExcelDiff.Setup
                                      State(DesktopCheck.IsChecked)));
             text.AppendLine(Strings.F("confirm.component", Strings.T("components.autostart"),
                                      State(AutoStartCheck.IsChecked)));
-            if (_uninstallMode)
-                text.AppendLine(Strings.F("confirm.dir", _existing == null ? DirBox.Text : _existing.Dir));
             return text.ToString();
         }
 
@@ -140,7 +162,7 @@ namespace ExcelDiff.Setup
             ProgressPanel.Visibility = VisibilityOf(step == Step.Progress);
             FinishPanel.Visibility = VisibilityOf(step == Step.Finish);
 
-            BackButton.Visibility = step == Step.Language || step == Step.Progress || step == Step.Finish || _uninstallMode
+            BackButton.Visibility = step == Step.Language || step == Step.Progress || step == Step.Finish
                 ? Visibility.Hidden
                 : Visibility.Visible;
             NextButton.IsEnabled = step != Step.Progress;
@@ -154,7 +176,8 @@ namespace ExcelDiff.Setup
             switch (step)
             {
                 case Step.Language:
-                    StepText.Text = Strings.T("step.language");
+                    // "Step 1 of 5" would be false in uninstall mode, which skips Location.
+                    StepText.Text = _uninstallMode ? Strings.T("step.uninstall") : Strings.T("step.language");
                     NextButton.Content = Strings.T("btn.next");
                     break;
                 case Step.Location:
@@ -163,7 +186,6 @@ namespace ExcelDiff.Setup
                     break;
                 case Step.Confirm:
                     StepText.Text = _uninstallMode ? Strings.T("step.uninstall") : Strings.T("step.confirm");
-                    ConfirmSummary.Text = BuildSummary();
                     ClearSettingsCheck.Visibility = _uninstallMode ? Visibility.Visible : Visibility.Collapsed;
                     NextButton.Content = _uninstallMode ? Strings.T("btn.uninstall") : Strings.T("btn.install");
                     break;
@@ -174,10 +196,13 @@ namespace ExcelDiff.Setup
                 case Step.Finish:
                     StepText.Text = _uninstallMode ? Strings.T("step.uninstall") : Strings.T("step.finish");
                     NextButton.Content = Strings.T("btn.close");
-                    FinishError.Visibility = _failed ? Visibility.Visible : Visibility.Collapsed;
-                    FinishNoShell.Visibility = !_uninstallMode && !_shellSelected && !_failed
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
+                    // Every line below claims something about what this run created, so none of them may
+                    // print when the run failed: a failed uninstall that promised "settings removed"
+                    // would leave the user looking in the wrong place.
+                    FinishError.Visibility = VisibilityOf(_failed);
+                    FinishHowTo.Visibility = VisibilityOf(!_failed && !_uninstallMode && _shellSelected);
+                    FinishNoShell.Visibility = VisibilityOf(!_failed && !_uninstallMode && !_shellSelected);
+                    FinishTray.Visibility = VisibilityOf(!_failed);
                     break;
             }
 
@@ -214,13 +239,12 @@ namespace ExcelDiff.Setup
 
         private void OnBack(object sender, RoutedEventArgs e)
         {
-            if (_uninstallMode)
-                return;
-
             switch (_step)
             {
                 case Step.Location: Goto(Step.Language); break;
-                case Step.Confirm: Goto(Step.Location); break;
+                // Uninstall has no location page: its folder comes from the install record, so the
+                // step before Confirm is the language page.
+                case Step.Confirm: Goto(_uninstallMode ? Step.Language : Step.Location); break;
             }
         }
 
@@ -229,7 +253,7 @@ namespace ExcelDiff.Setup
             switch (_step)
             {
                 case Step.Language:
-                    Goto(Step.Location);
+                    Goto(_uninstallMode ? Step.Confirm : Step.Location);
                     break;
                 case Step.Location:
                     if (!IsDirUsable(DirBox.Text))
@@ -270,7 +294,12 @@ namespace ExcelDiff.Setup
 
         private void StartWork()
         {
-            _engine.InstallDir = DirBox.Text;
+            // ResolveInstallDir() falls back to the default folder when the registry has no record,
+            // and a folder typed/named by a fallback must never become an uninstall target: leave it
+            // empty and let Uninstall() read the recorded folder, which is what it refuses without.
+            _engine.InstallDir = _uninstallMode
+                ? (_existing == null ? null : _existing.Dir)
+                : DirBox.Text;
             _engine.Culture = Strings.Culture;
             _shellSelected = ShellCheck.IsChecked == true;
             _engine.ClearSettings = _uninstallMode && ClearSettingsCheck.IsChecked == true;
@@ -279,7 +308,6 @@ namespace ExcelDiff.Setup
                                  | (AutoStartCheck.IsChecked == true ? Components.AutoStart : Components.None);
 
             Goto(Step.Progress);
-            NextButton.IsEnabled = false;
 
             var install = !_uninstallMode;
             Task.Run(() =>

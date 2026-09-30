@@ -28,6 +28,10 @@
          survive, and succeeds again once the manifest is put back (positive control)
       K  bad target shapes (/dir=Q:\, /dir=Q:, /dir=Tools relative) are argument errors: exit 4,
          nothing installed, and no folder created from a working-directory resolution
+      L  the in-folder Uninstall.exe uninstalls on its name alone (no /uninstall), which also proves
+         the %TEMP% relay carries the role as an explicit switch
+      M  the ARP QuietUninstallString itself performs the uninstall - the only coverage of the
+         recorded-folder branch of ResolveUninstallDir, because that string carries no /dir
 
     Every assertion is taken BEFORE the finally-block repairs anything, so a product bug cannot be
     hidden by the gate's own cleanup. -Install writes HKLM keys, registers a COM server and touches
@@ -80,6 +84,35 @@ function CheckKey([string]$name, $actual, $expected) {
     Check $name ($actual -eq $expected) ('got=' + $actual)
 }
 
+# Artifact names come from the source, never from a literal in this gate: a rename must not be able
+# to green-light itself. Same pattern Build-Setup.ps1 uses for InstallDirName.
+$ProductInfoSource = [System.IO.File]::ReadAllText((Join-Path $root 'ExcelDiff.Installer\Core\ProductInfo.cs'))
+$UninstallerMatch = [regex]::Match($ProductInfoSource, 'UninstallerName\s*=\s*"([^"]+)"')
+Check 'ProductInfo declares UninstallerName' ($UninstallerMatch.Success) ''
+$UninstallerName = if ($UninstallerMatch.Success) { $UninstallerMatch.Groups[1].Value } else { 'Uninstall.exe' }
+$MainExeName = [regex]::Match($ProductInfoSource, 'MainExeName\s*=\s*"([^"]+)"').Groups[1].Value
+# The role is decided by this filename, so a value that is not a bare .exe - or that collides with
+# the app's own exe - would make double-clicking the program mean two different things.
+Check 'uninstaller name is a bare .exe and not the app exe' `
+    ($UninstallerName -notmatch '[\\/]' -and $UninstallerName -like '*.exe' -and $UninstallerName -ne $MainExeName) `
+    ('name=' + $UninstallerName + ' app=' + $MainExeName)
+$ZhText = [System.IO.File]::ReadAllText((Join-Path $StringsDir 'zh-CN.txt'))
+$EnText = [System.IO.File]::ReadAllText((Join-Path $StringsDir 'en-US.txt'))
+$StringTables = $ZhText + $EnText
+Check 'user-facing strings do not promise a setup-named file' (-not ($StringTables -match 'ExcelDiffSetup\.exe')) `
+    'the install folder holds Uninstall.exe; err.noUninstallTarget and finish.noshell must match that'
+# finish.noshell is how the user learns where the uninstall entry lives, so it must name the artifact
+# the engine actually writes; a rename that leaves it behind is the drift this gate exists to catch
+# (E13). The refusal strings are deliberately not listed here: err.noUninstallTarget now warns that
+# the in-folder artifact cannot help in that state, which is the opposite of pointing at it.
+foreach ($key in @('finish.noshell')) {
+    $hits = @(foreach ($text in @($ZhText, $EnText)) {
+        $value = [regex]::Match($text, ('(?m)^' + [regex]::Escape($key) + '=(.*)$')).Groups[1].Value
+        if ($value.Contains($UninstallerName)) { $text }
+    }).Count
+    Check "$key names the in-folder artifact in both languages" ($hits -eq 2) ('hits=' + $hits + '/2')
+}
+
 function KeySet([string]$path) {
     # Explicit UTF-8: PS 5.1 would otherwise decode these BOM-less files as GBK and a
     # double-byte trail byte can swallow the following ASCII character, merging lines.
@@ -107,7 +140,7 @@ if (-not $SetupExe) {
     }
     $SetupExe = $candidate.FullName
 }
-Check 'setup exe published' $true $SetupExe
+Check 'setup exe published' (Test-Path -LiteralPath $SetupExe) $SetupExe
 
 $assembly = [System.Reflection.Assembly]::LoadFile([System.IO.Path]::GetFullPath($SetupExe))
 $resources = @($assembly.GetManifestResourceNames())
@@ -197,8 +230,23 @@ if (-not $Install) {
 # ---------------------------------------------------------------- live cases
 
 function RunSetup([string[]]$argList) {
+    # Pinned working directory: case K asserts a relative /dir does not create <root>\Tools, which
+    # is only a meaningful claim while the caller's working directory is the repository root.
+    return RunExe $SetupExe $argList $root
+}
+
+# RunSetup with an explicit image: the in-folder Uninstall.exe and the command string stored in the
+# registry both have to be exercised as the user would run them, not as $SetupExe.
+# $workingDirectory is load-bearing, not cosmetic: Explorer double-clicks with the working directory
+# set to the folder holding the exe, and a live process's own current directory cannot be deleted.
+# Launching from anywhere else hides that failure mode (measured: every file gone, folder left).
+function RunExe([string]$exe, [string[]]$argList, [string]$workingDirectory) {
     $quoted = @($argList | ForEach-Object { if ($_.Contains(' ')) { '"' + $_ + '"' } else { $_ } })
-    $p = Start-Process -FilePath $SetupExe -ArgumentList $quoted -PassThru
+    if ($workingDirectory) {
+        $p = Start-Process -FilePath $exe -ArgumentList $quoted -WorkingDirectory $workingDirectory -PassThru
+    } else {
+        $p = Start-Process -FilePath $exe -ArgumentList $quoted -PassThru
+    }
     # A wizard or modal left on screen would otherwise block the gate forever; a timeout turns that
     # into a failure that names the command line that produced it.
     if (-not $p.WaitForExit(180000)) {
@@ -207,6 +255,45 @@ function RunSetup([string[]]$argList) {
         return -99
     }
     return $p.ExitCode
+}
+
+# Executes an ARP uninstall string exactly as Control Panel / Settings would.
+function RunCommandString([string]$command) {
+    $exe = $command
+    $rest = @()
+    if ($command.StartsWith('"')) {
+        $end = $command.IndexOf('"', 1)
+        $exe = $command.Substring(1, $end - 1)
+        $rest = @($command.Substring($end + 1).Trim() -split '\s+' | Where-Object { $_ })
+    }
+    else {
+        $parts = @($command -split '\s+' | Where-Object { $_ })
+        $exe = $parts[0]
+        $rest = @($parts | Select-Object -Skip 1)
+    }
+    # Control Panel / Settings launch the stored string with the exe's own folder as the working
+    # directory, so reproduce that - it is the shape that can lock the folder against deletion.
+    return RunExe $exe $rest (Split-Path -Parent $exe)
+}
+
+# A handed-over uninstall finishes in its own time, so its outcome is polled, not assumed. Without
+# this the assertion would race the child and a slow disk could turn a working uninstall red.
+function WaitForGone([string]$path, [int]$seconds) {
+    $until = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $until) {
+        if (-not (Test-Path -LiteralPath $path)) { return $true }
+        Start-Sleep -Milliseconds 500
+    }
+    return -not (Test-Path -LiteralPath $path)
+}
+
+function WaitForGoneKey([string]$path, [int]$seconds) {
+    $until = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $until) {
+        if (-not (Test-Path $path)) { return $true }
+        Start-Sleep -Milliseconds 500
+    }
+    return -not (Test-Path $path)
 }
 
 function ClsidCodeBase {
@@ -255,7 +342,8 @@ try {
     $code = RunSetup @('/silent', ('/dir=' + $dirA), '/culture=zh-CN', '/components:shell,desktop,autostart')
     Check 'A install exit 0' ($code -eq 0) ('exit=' + $code)
     Check 'A main exe installed' (Test-Path (Join-Path $dirA 'ExcelDiffEDR.GUI.exe'))
-    Check 'A uninstall entry copied' (Test-Path (Join-Path $dirA 'ExcelDiffSetup.exe'))
+    Check 'A uninstaller artifact copied' (Test-Path (Join-Path $dirA $UninstallerName)) ('name=' + $UninstallerName)
+    Check 'A no setup-named copy left in the folder' (-not (Test-Path (Join-Path $dirA 'ExcelDiffSetup.exe')))
     Check 'A manifest written' (Test-Path (Join-Path $dirA 'install-manifest.txt'))
     $prod = Get-Item -LiteralPath $ProductRegPath -ErrorAction SilentlyContinue
     Check 'A HKLM product key present' ($null -ne $prod)
@@ -269,7 +357,13 @@ try {
     Check 'A ARP entry present' ($null -ne $arp)
     if ($arp) {
         CheckKey 'A ARP DisplayName' $arp.GetValue('DisplayName') 'ExcelDiffEDR'
-        Check 'A ARP uninstall string is silent' ($arp.GetValue('UninstallString') -match '/uninstall /silent')
+        # Control Panel gets the wizard (it must confirm, and only its checkbox can clear settings);
+        # the silent form stays available for scripts. Same target, different switches.
+        $unstr = [string]$arp.GetValue('UninstallString')
+        $qstr = [string]$arp.GetValue('QuietUninstallString')
+        Check 'A ARP UninstallString targets the artifact' ($unstr.Contains('"' + (Join-Path $dirA $UninstallerName) + '"') -and $unstr -match '/uninstall') ('string=' + $unstr)
+        Check 'A ARP UninstallString is interactive' (-not ($unstr -match '/silent')) ('string=' + $unstr)
+        Check 'A ARP QuietUninstallString is silent' ($qstr -match '/uninstall' -and $qstr -match '/silent') ('string=' + $qstr)
         Check 'A ARP blocks modify/repair' ($arp.GetValue('NoModify') -eq 1 -and $arp.GetValue('NoRepair') -eq 1)
         Check 'A ARP EstimatedSize > 0' ($arp.GetValue('EstimatedSize') -gt 0) ('KB=' + $arp.GetValue('EstimatedSize'))
     }
@@ -302,7 +396,9 @@ try {
         [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
     try {
         $code = RunSetup @('/silent', ('/dir=' + $dirB), '/components:none')
-        Check 'B install reports failure' ($code -ne 0) ('exit=' + $code)
+        # Exact code, not "-ne 0": a 180s timeout also returns non-zero (-99) and would otherwise be
+        # scored as "the install failed as expected".
+        Check 'B install fails with 1' ($code -eq 1) ('exit=' + $code)
     }
     finally {
         $handle.Dispose()
@@ -317,7 +413,7 @@ try {
     '== C: uninstall without a target must refuse =='
     $defaultDir = Join-Path $env:ProgramFiles $EdrInstallDirName
     $code = RunSetup @('/uninstall', '/silent')
-    Check 'C uninstall without target fails' ($code -ne 0) ('exit=' + $code)
+    Check 'C uninstall without target fails with 1' ($code -eq 1) ('exit=' + $code)
     Check 'C default folder untouched' (-not (Test-Path $defaultDir))
 
     # A wrong path must not be allowed to clear the record of the real install. This reproduces a
@@ -326,30 +422,38 @@ try {
     $null = RunSetup @('/silent', ('/dir=' + $dirC), '/components:none')
     $wrong = Join-Path $work 'C\Typo'
     $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $wrong))
-    Check 'C wrong-path uninstall fails' ($code -ne 0) ('exit=' + $code)
+    Check 'C wrong-path uninstall fails with 1' ($code -eq 1) ('exit=' + $code)
     $prod = Get-Item -LiteralPath $ProductRegPath -ErrorAction SilentlyContinue
     Check 'C real install record survives' ($null -ne $prod -and $prod.GetValue('InstallFolder') -eq ((Resolve-Path $dirC).Path + '\'))
     Check 'C real install files survive' (Test-Path (Join-Path $dirC 'ExcelDiffEDR.GUI.exe'))
     $null = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirC))
     Check 'C correct uninstall then succeeds' (-not (Test-Path $dirC))
 
-    # ---- D: run the setup from inside the installed folder (the ARP shape)
-    '== D: setup launched from inside the install folder =='
+    # ---- D: run the artifact from inside the installed folder (the ARP shape)
+    '== D: artifact launched from inside the install folder =='
     $dirD = Join-Path $work 'D\ExcelDiffEDRTool'
     $code = RunSetup @('/silent', ('/dir=' + $dirD), '/components:none')
     Check 'D baseline install exit 0' ($code -eq 0) ('exit=' + $code)
-    $inner = Join-Path $dirD 'ExcelDiffSetup.exe'
-    Check 'D inner copy exists' (Test-Path $inner)
+    $inner = Join-Path $dirD $UninstallerName
+    Check 'D in-folder artifact exists' (Test-Path $inner)
     $beforeWrite = (Get-Item -LiteralPath (Join-Path $dirD 'ExcelDiffEDR.GUI.exe')).LastWriteTimeUtc
-    $p = Start-Process -FilePath $inner -ArgumentList ('/silent /dir=' + $dirD + ' /components:none') -Wait -PassThru
-    Check 'D reinstall from inside the folder succeeds' ($p.ExitCode -eq 0) ('exit=' + $p.ExitCode)
+    $relayBefore = @(Get-ChildItem -LiteralPath $env:TEMP -Filter '*.relay.log' -File -ErrorAction SilentlyContinue).Name
+    # /install is what keeps a reinstall possible now that the folder artifact uninstalls by default.
+    $code = RunExe $inner @('/install', '/silent', ('/dir=' + $dirD), '/components:none') $dirD
+    Check 'D explicit /install reinstall succeeds' ($code -eq 0) ('exit=' + $code)
     Check 'D main exe still there' (Test-Path (Join-Path $dirD 'ExcelDiffEDR.GUI.exe'))
     # Without this the case would also pass when the relaunch silently did nothing.
     Check 'D payload actually rewritten' ((Get-Item -LiteralPath (Join-Path $dirD 'ExcelDiffEDR.GUI.exe')).LastWriteTimeUtc -gt $beforeWrite)
+    # Only the %TEMP% relay ever creates a *.relay.log, so a new one is proof the child ran from
+    # outside the folder instead of installing over the image it was launched from.
+    $relayNew = @(Get-ChildItem -LiteralPath $env:TEMP -Filter '*.relay.log' -File -ErrorAction SilentlyContinue).Name |
+        Where-Object { $relayBefore -notcontains $_ }
+    Check 'D went through the %TEMP% relay' (@($relayNew).Count -gt 0) ('new=' + ($relayNew -join ','))
     # The old image is still loaded by the process we launched from inside the folder, so its parked
-    # backup cannot be deleted yet; it must be swept by the next uninstall instead.
+    # backup cannot be deleted yet; it must be swept by the next uninstall instead. Exactly one: zero
+    # would mean the folder was never moved aside, i.e. the relay did nothing.
     $stale = @(Get-ChildItem -LiteralPath (Split-Path -Parent $dirD) -Directory -Filter '*.old-*' -ErrorAction SilentlyContinue)
-    Check 'D at most one parked backup' ($stale.Count -le 1) ('found=' + ($stale.Name -join ','))
+    Check 'D one parked backup' ($stale.Count -eq 1) ('found=' + ($stale.Name -join ','))
     $null = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirD))
     Check 'D uninstall swept the backup' (@(Get-ChildItem -LiteralPath (Split-Path -Parent $dirD) -Directory -Filter '*.old-*' -ErrorAction SilentlyContinue).Count -eq 0)
     Check 'D folder gone' (-not (Test-Path $dirD))
@@ -357,9 +461,18 @@ try {
     # ---- E: reinstall over an existing install reuses the folder
     '== E: reinstall reuses the folder =='
     $dirE = Join-Path $work 'E\ExcelDiffEDRTool'
-    $null = RunSetup @('/silent', ('/dir=' + $dirE), '/culture=en-US', '/components:shell')
-    $null = RunSetup @('/silent', ('/dir=' + $dirE), '/culture=en-US', '/components:shell')
-    Check 'E still installed' (Test-Path (Join-Path $dirE 'ExcelDiffEDR.GUI.exe'))
+    $code = RunSetup @('/silent', ('/dir=' + $dirE), '/culture=en-US', '/components:shell')
+    Check 'E first install exit 0' ($code -eq 0) ('exit=' + $code)
+    $eBefore = (Get-Item -LiteralPath (Join-Path $dirE 'ExcelDiffEDR.GUI.exe')).LastWriteTimeUtc
+    $code = RunSetup @('/silent', ('/dir=' + $dirE), '/culture=en-US', '/components:shell')
+    # Discarding this exit code made the whole case pass on a failed reinstall: rollback puts the old
+    # folder and the old HKLM record back, so "still installed" and "folder still remembered" were
+    # both true without the second install ever completing. The timestamp pin proves it ran.
+    Check 'E reinstall exit 0' ($code -eq 0) ('exit=' + $code)
+    Check 'E reinstalled into the same folder' (Test-Path (Join-Path $dirE 'ExcelDiffEDR.GUI.exe'))
+    Check 'E reinstall actually rewrote the files' `
+        ((Get-Item -LiteralPath (Join-Path $dirE 'ExcelDiffEDR.GUI.exe')).LastWriteTimeUtc -gt $eBefore) `
+        ('before=' + $eBefore)
     $prod = Get-Item -LiteralPath $ProductRegPath -ErrorAction SilentlyContinue
     CheckKey 'E folder still remembered' $prod.GetValue('InstallFolder') ((Resolve-Path $dirE).Path + '\')
     CheckKey 'E culture seed is en-US' $prod.GetValue('SetupCulture') 'en-US'
@@ -444,8 +557,60 @@ try {
     $code = RunSetup @('/silent', '/dir=Tools')
     CheckKey 'K relative target refused' $code 4
     Check 'K relative target created no folder' (-not (Test-Path (Join-Path $root 'Tools')))
+    # A UNC share root is the other shape Path.GetFullPath leaves without a trailing separator, so
+    # only the "root == full" half of ValidateTargetDir rejects it. It gets its own case because that
+    # half looks redundant beside the first one and is easy to delete as "dead code". server\share
+    # does not exist here, so the pair below cannot write anywhere real: the accepted form fails later
+    # when the folder cannot be created (exit 1, before any registry write), not as a bad argument.
+    $code = RunSetup @('/silent', '/dir=\\server\share')
+    CheckKey 'K UNC share root refused with exit 4' $code 4
+    $code = RunSetup @('/silent', '/dir=\\server\share\ExcelDiffEDRTool')
+    Check 'K UNC path under a share is not refused as a bad shape' ($code -ne 4) ('exit=' + $code) 0
     $code = RunSetup @('/silent', '/uninstall', '/dir=Tools')
     CheckKey 'K relative target refused on uninstall too' $code 4
+
+    # ---- L: the in-folder artifact uninstalls on its name alone (double-click shape)
+    '== L: in-folder Uninstall.exe uninstalls without /uninstall =='
+    $dirL = Join-Path $work 'L\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirL), '/components:none')
+    Check 'L install exit 0' ($code -eq 0) ('exit=' + $code)
+    # Everything below polls for absence, which is trivially true when it was never there: pin the
+    # effects of the install first so the polls measure a uninstall and not a no-op.
+    Check 'L folder, ARP and product key present before the uninstall' `
+        ((Test-Path $dirL) -and (Test-Path $ArpRegPath) -and (Test-Path $ProductRegPath)) `
+        ('dir=' + (Test-Path $dirL) + ' arp=' + (Test-Path $ArpRegPath) + ' hklm=' + (Test-Path $ProductRegPath))
+    # No /uninstall anywhere: the role comes from the file name, and it has to survive the %TEMP%
+    # relay (which renames the image to ExcelDiffSetup-<guid>.exe). Without the synthesis the child
+    # resolves to the install role and the folder would still be there when we stop waiting.
+    # Uninstall from inside the folder is a handover, so the exit code only says "delegated":
+    # assert the effects, exactly like the user reads them off Control Panel.
+    # Working directory = the install folder, exactly like an Explorer double-click.
+    $code = RunExe (Join-Path $dirL $UninstallerName) @('/silent') $dirL
+    CheckKey 'L handover exits 0' $code 0
+    Check 'L folder removed' (WaitForGone $dirL 90) $(if (Test-Path $dirL) { 'still there after 90s' } else { '' })
+    Check 'L ARP entry removed' (WaitForGoneKey $ArpRegPath 30) $(if (Test-Path $ArpRegPath) { 'still registered after 30s' } else { '' })
+    Check 'L product key removed' (WaitForGoneKey $ProductRegPath 30) $(if (Test-Path $ProductRegPath) { 'still registered after 30s' } else { '' })
+
+    # ---- M: run the command string the registry actually holds
+    '== M: ARP QuietUninstallString performs the uninstall =='
+    $dirM = Join-Path $work 'M\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirM), '/components:none')
+    Check 'M install exit 0' ($code -eq 0) ('exit=' + $code)
+    $arp = Get-Item -LiteralPath $ArpRegPath -ErrorAction SilentlyContinue
+    $qstr = if ($arp) { [string]$arp.GetValue('QuietUninstallString') } else { '' }
+    Check 'M ARP quiet string is present' ($qstr.Length -gt 0) ('string=' + $qstr)
+    # This is the only coverage of ResolveUninstallDir() reading the recorded folder: the ARP string
+    # carries no /dir, exactly like the Control Panel click.
+    Check 'M ARP quiet string carries no /dir' (-not ($qstr -match '/dir')) ('string=' + $qstr)
+    Check 'M folder, key and start menu present before the uninstall' `
+        ((Test-Path $dirM) -and (Test-Path $ProductRegPath) -and (Test-Path $StartMenuDir)) `
+        ('dir=' + (Test-Path $dirM) + ' hklm=' + (Test-Path $ProductRegPath) + ' start=' + (Test-Path $StartMenuDir))
+    $code = RunCommandString $qstr
+    CheckKey 'M uninstall via ARP string hands over' $code 0
+    Check 'M folder gone' (WaitForGone $dirM 90) $(if (Test-Path $dirM) { 'still there after 90s' } else { '' })
+    Check 'M ARP entry removed' (WaitForGoneKey $ArpRegPath 30) $(if (Test-Path $ArpRegPath) { 'still registered after 30s' } else { '' })
+    Check 'M product key removed' (WaitForGoneKey $ProductRegPath 30) $(if (Test-Path $ProductRegPath) { 'still registered after 30s' } else { '' })
+    Check 'M start-menu folder removed' (WaitForGone $StartMenuDir 30) $(if (Test-Path $StartMenuDir) { 'still there after 30s' } else { '' })
 }
 finally {
     # Repairs happen after every assertion above, so they cannot mask a product bug.

@@ -21,7 +21,7 @@
 ## 1. 项目一句话
 
 ExcelDiff：Windows 桌面 GUI 差异对比工具（xls/xlsx/csv/tsv），可作 Git/Mercurial difftool。
-WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock。
+WPF (.NET Framework 4.7.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock。
 同一份源码可编译出**两套产品**，其中 **EDR（ExcelDataReader 读取，读取效率约 +72%）** 为**主版本**——唯一的构建 / 部署 / 门禁目标；**EDN（NPOI 读取）** 代码保留作保底对照（语义最全、EDR 盲区兜底），但**退出日常门禁 / 构建 / 部署 / 重启流程**。进程/程序集/配置/显示名全隔离。
 
 ## 2. 必读文档
@@ -41,7 +41,7 @@ WPF (.NET Framework 4.6.2) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock�
 | `AI_Script\refresh_state.ps1` | 刷新 `PROJECT_STATE.md` 的脚本 |
 | `AI_Script\refresh_codex.ps1` | 校准 `CODEX.md` 关键符号行号的脚本 |
 | `AI_Script\verify.ps1` | 一键验证门禁：构建 EDR 主版本 + NetDiff 单测 + lang↔resx 同步 + 安装器工程编译 + WIP 快照 |
-| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集与占位符/新鲜度；`-Install` 追加 A–K 共 11 个真实安装用例（失败回滚保住目录内无关文件、无目标/错路径/**清单被删**时拒绝卸载并保住文件与记录、从安装目录内运行、自启联动、`/clearsettings`、非法参数退出码 4、盘符根目标被拒），机器上留有安装记录或该 CLSID 已被占用时拒绝运行 |
+| `AI_Script\verify-installer.ps1` | 安装包发布门禁（E10）：静态检查载荷/资源/版本/双语键集与占位符/新鲜度/产物名取自源码；`-Install` 追加 A–M 共 13 个真实用例（失败回滚保住目录内无关文件、无目标/错路径/**清单被删**时拒绝卸载、从安装目录内运行、**文件名隐含卸载角色**、**执行 ARP 里那条静默串**（交互式 `UninstallString` 只有形状断言，向导要点，留给人工验收）、自启联动、`/clearsettings`、非法参数与坏目录形态退出码 4），机器上留有安装记录或该 CLSID 已被占用时拒绝运行 |
 | `README.md` | 用户向使用说明（CLI 参数、快捷键、外部命令） |
 
 ## 3. 目录结构（解决方案 = `ExcelDiff.sln`）
@@ -133,21 +133,25 @@ MSI/WiX 路线已于 2026-09-25 **整体删除**（ADR-017）：`ExcelDiffEDR.In
 ```
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1              # 隔离构建 EDR+ShellExtension → 载荷 zip → Release\ExcelDiffSetup-<版本>.exe
 powershell -ExecutionPolicy Bypass -File ExcelDiff.Installer\Build-Setup.ps1 -SkipBuild   # 复用 obj\stage，只重打载荷与 setup exe
-powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1                   # 静态门禁：载荷内容/嵌入资源/版本一致/双语键集
-powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加 A–K 十一个真实安装/卸载/重装/回滚/拒绝用例（需管理员）
+powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1                   # 静态门禁：载荷内容/嵌入资源/版本一致/双语键集与占位符/卸载器名同源且被文案提到
+powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install          # 追加 A–M 十三个真实安装/卸载/重装/回滚/拒绝用例（需管理员）
 ```
 
-- **产物是单个 exe**：`ExcelDiffSetup.exe`（net472 WPF，`app.manifest` = `requireAdministrator`）。应用载荷由脚本打成 zip，再以 manifest resource `ExcelDiff.Setup.Payload.zip` 嵌入；`.csproj` 里该 `EmbeddedResource` 带 `Condition="Exists(...)"`，所以没有载荷时工程仍能编译、运行时给明确错误——打包链不污染 `verify.ps1`。
-- **向导五页**：① 语言（默认按 `CultureInfo.InstalledUICulture`，`zh*`→中文、其余英文；点选后整个向导立即换语言）② 安装位置 + 组件勾选 ③ 确认 ④ 进度（真实步骤日志，日志文件 `%TEMP%\ExcelDiff-Setup-<时间戳>.log`）⑤ 完成（用法提示）。**故意不放"立即运行"**：setup 是提权进程，它拉起的常驻是高完整性级别，桌面侧 difftool 连不上命名管道（见 §7.6 / §8.8）。
+- **产物是单个 exe**：`ExcelDiffSetup.exe`（net472 WPF，`app.manifest` = `requireAdministrator`）。应用载荷由脚本打成 zip，再以 manifest resource `ExcelDiff.Setup.Payload.zip` 嵌入；`.csproj` 里该 `EmbeddedResource` 带 `Condition="Exists(...)"`，所以没有载荷时工程仍能编译、运行时给明确错误——打包链不污染 `verify.ps1`。**安装目录里的副本不叫这个名字**：`ProductInfo.UninstallerName = "Uninstall.exe"`（业主 2026-09-30 裁定"目录里只留一个卸载器命名的副本"）；文件名不受"用户可见名一律 `ExcelDiffEDR`"那条约束，别去"改回去"。
+- **角色判定看文件名，但必须在 `%TEMP%` 转发时改成显式开关**：`Options.ResolveRole` 的优先级是 显式 `/uninstall` > 显式 `/install` > **argv[0] 的文件名等于 `Uninstall.exe`** > 默认安装；`/shell-op:` 子进程与 `FromTemp` 不做名字推断。转发时镜像被改名成 `ExcelDiffSetup-<guid>.exe`，所以 `RelaunchOutsideInstallFolder` 必须把 `/uninstall` 补进参数里（实测：不补则子进程按安装角色走，用例 L 当场红）。`/install` 与 `/uninstall` 同时给 → 退出码 4。
+- **卸载是"移交"而不是"等待"**（实测教训）：安装目录内的 `Uninstall.exe` 正是被子进程要删的那个文件，父进程一旦 `WaitForExit` 就把它锁住 —— 表现为"主 exe 删掉了、目录和注册表还在、退出码 1"。所以卸载分支 `Process.Start` 后立刻返回 0（含义是"已移交"，不是"已卸完"），成败看目录与 ARP 是否消失；临时副本自身用 `MoveFileEx(..., DELAY_UNTIL_REBOOT)` 登记删除。**写自动化用例时不要拿这个退出码当成功判据**，`verify-installer.ps1` 的 L/M 用例是轮询效果（`WaitForGone`/`WaitForGoneKey`）。而且**轮询效果还不够**：本轮实测到转发漏了 `/log:` 前缀 → 子进程按"未知开关"返回 4 → 目录与注册表原地不动，而父进程照样返回 0（移交即成功）。所以走转发的用例必须同时断言"转明确实发生了"（D 用例查只有转发才会新建的 `*.relay.log` 文件 + 恰好一个 `.old-*` 备份），否则分不清"没转发"与"转发后子进程失败"。还有一条同源的坑：**转发前必须把父进程的 CWD 挪出安装目录（`Directory.SetCurrentDirectory(%TEMP%)`）并给子进程显式 `WorkingDirectory`** —— 双击 exe 时 Explorer 把进程 CWD 设成它所在文件夹，`UseShellExecute=false` 的子进程默认继承它，而活动进程的当前目录删不掉也 `Move` 不走（两条各自实测），原症状是"文件全删、Program Files 里留下空目录、仍返回 0"；门禁从仓库根 `Start-Process` 时 CWD 从来不是安装目录，所以要把工作目录也当被测形状传进去（L/M/D 现在都传）。
+- **ARP 两条串现在不同**：`UninstallString` = `"<目录>\Uninstall.exe" /uninstall`（**不带 `/silent`** → 控制面板/设置里走交互向导：语言页 → 确认页 → 进度/完成页，勾选框才是要不要删用户配置的唯一切换点）；`QuietUninstallString` 才加 `/silent`（2026-09-30 裁定；本机对照：带 exe 型 `UninstallString` 的 125 个 ARP 条目里只有 28 个提供静默串，**可复现口径写在 ADR-018**，换机器数字会变）。`DisplayIcon` 仍指主 EXE，`NoModify`/`NoRepair` 保持 1。
+- **改名带出的回滚缺口已堵**：ARP 写在**所有可失败写操作之后、`manifest.Save()` 之前**（`WriteInstallState` → `WriteAutoStart` → `WriteArpEntry` → 清单落盘），并新增 `RegistryStore.SnapshotArp()/RestoreArp()`（保留值类型，`EstimatedSize` 等是 DWORD；三态：`null`=原来没有该条目 → 删掉我们写的；空字典=读不出来 → 不动它）。原因：旧版只快照产品键，升级失败回滚后 ARP 会指向旧目录里根本不存在的 `Uninstall.exe` → 控制面板按钮死掉。**恢复动作刻意不在 undo 栈里**：栈里那条 `ClearRegistry()` 会把整棵 ARP 删掉（LIFO 会先把刚恢复的又清掉），而且条目只有在旧目录搬回来之后才有意义，所以它排在回滚之后、且只在 `RolledBack` 为真时执行。
+- **向导五页**：① 语言（默认按 `CultureInfo.InstalledUICulture`，`zh*`→中文、其余英文；点选后整个向导立即换语言）② 安装位置 + 组件勾选 ③ 确认 ④ 进度（真实步骤日志，日志文件 `%TEMP%\ExcelDiff-Setup-<时间戳>.log`）⑤ 完成（用法提示）。**卸载模式也走语言页**（2026-09-30 裁定：双击 `Uninstall.exe` 是主入口，不能要求用户为了看懂界面去重下安装包加 `/culture:`），只是跳过②：`OnNext` 里 `Step.Language → Step.Confirm`，确认页的 Back 回语言页；标题换 `app.uninstallTitle`，确认页摘要只列版本/目录/语言/是否清设置（不再谎报组件清单），完成页说明设置目录留还是删。**故意不放"立即运行"**：setup 是提权进程，它拉起的常驻是高完整性级别，桌面侧 difftool 连不上命名管道（见 §7.6 / §8.8）。卸载**永远有确认页**，取消/关窗 = 130。
 - **文案在 `ExcelDiff.Installer\Strings\{zh-CN,en-US}.txt`**（`key=value`，UTF-8 无 BOM，读取端显式 `UTF8Encoding`）。两份键集必须一致，`verify-installer.ps1` 比对；PowerShell 侧读它们**必须 `-Encoding UTF8`**，否则 5.1 按 GBK 解码会把中文尾字节与后面的 ASCII 合成一行（实测假报 19 个键缺失）。
 - **注册表与命名口径（业主裁定）**：产品键 `HKLM\SOFTWARE\ExcelDiffEDR`（`InstallFolder` / `InstallVersion` / `SetupCulture` / `SetupStartOnBoot` / `ShellExtRegistered`），ARP 键 `HKLM\...\Uninstall\ExcelDiffEDR`。**用户可见名一律 `ExcelDiffEDR`**（2026-09-26 统一）：ARP `DisplayName`、开始菜单目录与快捷方式、资源管理器右键菜单文字（`ContextMenuExtension.cs`）、向导标题与文案、程序窗口标题与托盘提示。唯一保留 `ExcelDiff` 的是**用户自己写在 git 配置里的 difftool 标签**（`[difftool "ExcelDiff"]`，改它会破坏既有配置）以及 EDN 变体的历史名字。`SetupCulture` / `SetupStartOnBoot` 是**给程序读的种子**：`ApplicationSetting.EnsureCulture()` 的解析顺序是「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」，`Load()` 每次比对 `InstallerSeedApplied` 签名，只在签名变化时重新播种（安装器刚跑过）且此后用户的显式选择永久优先。必须这样改，因为程序原先每次启动都按 `startOnBoot = true` 重写 HKCU Run，安装器的勾选会被冲掉。`Build-Setup.ps1` 会断言两侧字面量逐字一致。
 - **COM 注册必须在子进程里做**：`ShellRegistrar.RunChild("register|unregister", dir)` 用 `/silent /shell-op:… /dir="…"` 重新拉起自己。实测教训：在 setup 进程内 `Assembly.LoadFrom` 扩展 DLL 会把它锁到进程退出，卸载时 3 个 DLL 删不掉、目录残留。另注意 `/dir="…\"` 这种**结尾反斜杠紧跟引号**会被 Windows 命令行解析成转义引号，拼参数前要去掉尾分隔符。
 - **删除一律清单驱动**：安装时写 `install-manifest.txt`（文件 / 快捷方式 / 注册表值与键 / 目录，且清单把自己也记进去），卸载按清单删、只删空目录，绝不递归删未知目录；**清单缺失就拒绝卸载**（早先"只删已知文件名"的回落会在 `/dir` 打错时删到别的东西）。实测由 `verify-installer.ps1` 的 J 用例覆盖：真装一份 → 删掉 `install-manifest.txt` → 卸载必须返回 1、文件与 HKLM 记录都还在；把清单放回去，同一条卸载返回 0（正向对照，证明那句"失败"不是"这里本来就什么都没装"）。文件被占用则保留清单与注册表、返回失败，提示"重启资源管理器后再卸载一次"。`ProductName` 改名前留下的快捷方式（`Programs\ExcelDiff\ExcelDiff.lnk`、桌面 `ExcelDiff.lnk`）由 `RemoveLegacyLinks()` 在安装与卸载时清掉。
-- **重装=先卸后装带回滚**：旧目录 `Directory.Move` 成 `<dir>.old-<时间戳>`（同卷），任一步失败按 undo 栈还原并把 HKLM 状态写回 `RegistryStore.Snapshot()` 的快照。实测：占住旧 `ExcelDiffEDR.GUI.exe` 再执行安装 → 安装报失败、旧安装仍可运行、无 `.old-*` 残留。
-- **静默参数**：`/silent|/quiet`、`/uninstall`、`/culture:zh-CN|en-US`、`/dir=<绝对路径>`（`:` 与 `=` 都接受，值保留原大小写；必须是 `D:\…`、`D:/…` 或 UNC `\\server\share\…`，**相对路径与盘符根一律拒绝**，判定看调用方写下的原文、在 `GetFullPath` 之前 —— 先解析再判 `IsPathRooted` 等于永远为真）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<path>`、`/?`。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。**退出码**（`App.Main` 的返回值，脚本据此判成败，勿只看 0/非 0）：`0` 成功 / `1` 操作失败或异常 / `2` 显示了帮助（`/silent` 下只把帮助写进日志，同样返回 2） / `3` 载荷缺失（无 payload 的 setup exe）/ `4` 命令行参数非法（**含非法 `/dir` 形态：空值、相对路径、盘符根**；只写日志与退出码，绝不弹窗，否则卡住脚本）/ `130` 用户取消或关窗。非法参数在解析阶段就收集进 `Options.Errors`，`/silent=1` 这类"给布尔开关赋值"同样拒绝；目录形态也在 `Options.Parse` 这一层拒掉，所以坏 `/dir` 根本走不到碰机器的那一步（实测由 `verify-installer.ps1` 的 K 用例覆盖：`/dir=Q:\`、`/dir=Q:`、`/dir=Tools` 全部返回 4，且不留下解析出来的目录）。
+- **重装=先卸后装带回滚**：旧目录 `Directory.Move` 成 `<dir>.old-<时间戳>`（同卷），任一步失败按 undo 栈还原并把 HKLM 状态写回 `RegistryStore.Snapshot()` 的快照；ARP 条目另有 `SnapshotArp()/RestoreArp()` 一对（改名后不回滚就会留下指向不存在文件的 Uninstall 按钮）。实测：占住旧 `ExcelDiffEDR.GUI.exe` 再执行安装 → 安装报失败、旧安装仍可运行、无 `.old-*` 残留。**重装入口**：目录里的副本现在默认卸载，所以脚本要重装必须显式带 `/install`（实测用例 D 覆盖），或者重新下载安装包。
+- **静默参数**：`/silent|/quiet`、`/uninstall`、`/install`（覆盖"目录内副本默认卸载"的名字判定）、`/culture:zh-CN|en-US`、`/dir=<绝对路径>`（`:` 与 `=` 都接受，值保留原大小写；必须是 `D:\…`、`D:/…` 或 UNC `\\server\share\…`，**相对路径与盘符根一律拒绝**，判定看调用方写下的原文、在 `GetFullPath` 之前 —— 先解析再判 `IsPathRooted` 等于永远为真）、**UNC 分享根 `\\server\share` 也算盘符根**（`ValidateTargetDir` 里那两个判据不重叠，实测：`C:\` 由"补分隔符"那半抓住，UNC 分享根因为 `GetFullPath` 不给它加分隔符，只有 `root == full` 那半能拒 —— 看着冗余、被审查判成死分支，所以门禁 K 有专门一条 `/dir=\\server\share` 返回 4）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<path>`、`/?`。默认勾选：桌面 ✓ / 自启 ✓ / 右键菜单 ✗（业主裁定）。**退出码**（`App.Main` 的返回值，脚本据此判成败，勿只看 0/非 0）：`0` 成功 / `1` 操作失败或异常 / `2` 显示了帮助（`/silent` 下只把帮助写进日志，同样返回 2） / `3` 载荷缺失（无 payload 的 setup exe）/ `4` 命令行参数非法（**含非法 `/dir` 形态：空值、相对路径、盘符根，以及 `/install` + `/uninstall` 同时给**；只写日志与退出码，绝不弹窗，否则卡住脚本）/ `130` 用户取消或关窗。唯一的例外要记住：**从安装目录内发起的卸载返回 0 只代表"已移交"**（真正的卸载由 `%TEMP%` 副本完成，见上面的移交条目），判成败要看目录与注册表键是否消失。非法参数在解析阶段就收集进 `Options.Errors`，`/silent=1` 这类"给布尔开关赋值"同样拒绝；目录形态也在 `Options.Parse` 这一层拒掉，所以坏 `/dir` 根本走不到碰机器的那一步（实测由 `verify-installer.ps1` 的 K 用例覆盖：`/dir=Q:\`、`/dir=Q:`、`/dir=Tools` 全部返回 4，且不留下解析出来的目录）。
 - **卸载默认保留用户配置**（业主 2026-09-26 裁定"加开关，默认不清"）：只有传 `/clearsettings` 或向导上勾 `uninstall.clearsettings` 复选框时，`ClearUserSettings()` 才删除 `%APPDATA%\ExcelDiffEDR.GUI`；其余情况只删文件/快捷方式/注册表项，并记日志 `log.settingskept`。实测由 `verify-installer.ps1` 的 G 用例覆盖（默认卸载后设置目录仍在；带 `/clearsettings` 才消失）。跑 `-Install` 时仍备份 `%APPDATA%` 与 `HKCU\...\Run`（防回归，注意 `Environment.GetFolderPath(ApplicationData)` 不认临时的 `$env:APPDATA` 覆盖）。
 - 版本口径不变：setup exe 的 FileVersion 必须等于 staged `ExcelDiffEDR.GUI.exe` 的 FileVersion（E8，脚本会校验），产品保持 2.0.0.0（业主裁定本轮不升）。NPOI 及其依赖仍必须随包（`ExcelUtility.CreateWorkbook/GetWorkbookTypeStrict` 仍在用），`open_readme.vbs` 仍不打包。
-- 发布前必须外部 Authenticode 签名（E10）：setup exe 与它自己复制进安装目录的 `ExcelDiffSetup.exe` 同源，未签名会触发 SmartScreen。
+- 发布前必须外部 Authenticode 签名（E10）：setup exe 与它复制进安装目录的那份 `Uninstall.exe` 字节相同，一次签名同时覆盖两者（签名发生在打包前/产物上，不要签完再复制）；未签名会触发 SmartScreen。
 
 ### 一键验证门禁
 
@@ -229,7 +233,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 -SkipBuild   # 只
 
 ## 10. 编码规范（沿用既有代码）
 
-- .NET Framework 4.6.2，C# 老式写法（无 nullable reference、无 target-typed new、无文件级 namespace；`using` 顶部、`{}` 内部成对）。
+- .NET Framework 4.7.2（`net472`），C# 老式写法（无 nullable reference、无 target-typed new、无文件级 namespace；`using` 顶部、`{}` 内部成对）。
 - 命名空间 = 目录名（`ExcelDiff.GUI.ViewModels`、`ExcelDiff.GUI.Settings` 等）。
 - ViewModel 继承 Prism `BindableBase`；设置类走 `Setting<T>`（继承 `SerializableBindableBase`）+ `IgnoreEqualAttribute`。
 - 条件编译用 `#if NPOI_READ / EDR_READ / PERF_TIMING`，不引入新第三方依赖（除非有充分理由并在 `ExcelDiff.GUI.csproj`/`ExcelDiff.csproj`/`ExcelDiff.ShellExtension.csproj` 的 `PackageReference` 中同步；原 `packages.config` 已弃用）。

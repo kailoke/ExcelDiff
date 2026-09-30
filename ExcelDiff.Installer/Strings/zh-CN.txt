@@ -2,6 +2,7 @@
 # Format: key=value  (\\n = newline, lines starting with # are comments)
 
 app.title={0} 安装向导
+app.uninstallTitle={0} 卸载程序
 step.language=第 1 步，共 5 步：选择语言
 step.location=第 2 步，共 5 步：安装位置与组件
 step.confirm=第 3 步，共 5 步：确认安装
@@ -10,6 +11,7 @@ step.finish=第 5 步，共 5 步：安装完成
 step.uninstall=卸载
 
 language.prompt=请选择安装向导使用的语言。已按这台机器的显示语言为你预选。
+language.promptU=请选择卸载向导使用的语言。已按这台机器的显示语言为你预选。
 language.zh=中文
 language.en=English
 language.note=这个选择同时决定 ExcelDiffEDR 首次启动时使用的语言；之后你可以在程序的"提取设置"里随时改。
@@ -35,14 +37,17 @@ confirm.off=关
 progress.prompt=正在安装…
 finish.prompt=安装完成。
 finish.howto=用法：在资源管理器里右键点击 .xls / .xlsx / .csv / .tsv 文件，选择 "ExcelDiffEDR" 即可对比；也可以从开始菜单启动。
-finish.tray=ExcelDiffEDR 会常驻右下角托盘；右键托盘图标可以退出。
+finish.tray=ExcelDiffEDR 启动后会常驻右下角托盘，右键托盘图标可以退出（安装器不会替你启动程序）。
 finish.log=日志：{0}
 finish.failed=安装失败。
 
 uninstall.prompt=准备卸载已安装的 ExcelDiffEDR。
-uninstall.note=卸载会按安装清单删除文件、快捷方式与注册表项。当前用户的设置目录只有在勾选下方复选框（或传 /clearsettings）时才会删除。
+uninstall.note=卸载会按安装清单删除文件、快捷方式与注册表项。当前用户的设置目录只有在勾选上方复选框（或传 /clearsettings）时才会删除。
 uninstall.progress=正在卸载…
 uninstall.done=已卸载。
+uninstall.done.kept=当前用户的设置目录未被删除。
+uninstall.done.cleared=已同时删除当前用户的设置目录。
+uninstall.noTarget=（注册表没有安装目录记录，卸载将拒绝执行）
 
 btn.back=上一步
 btn.next=下一步
@@ -70,11 +75,13 @@ err.locked=文件被占用：请先退出正在运行的 ExcelDiffEDR（右键�
 err.nopayload=这个安装包里没有找到程序载荷（payload）。\n请用 ExcelDiff.Installer\\Build-Setup.ps1 重新构建。
 err.title=安装失败
 err.badTarget=安装位置无效：请填写具体的文件夹，不能是磁盘根目录或相对路径。
-err.noUninstallTarget=找不到要卸载的安装：注册表里没有安装目录记录。请带上安装时的目录运行，例如 ExcelDiffSetup.exe /uninstall /dir=<安装时的目录>。
+err.noUninstallTarget=找不到要卸载的安装：注册表里没有安装目录记录，也不会拿默认目录去猜。请改用下载的安装包并带上安装时的目录，例如 "<下载的安装包> /uninstall /dir=<安装时的目录>"。安装目录里那份 Uninstall.exe 在这种情况下帮不上忙：它自己就在那个目录里，删不掉自己正运行着的文件。
+err.noManifest=这个安装目录里没有 install-manifest.txt，逐项删除没有依据，已拒绝卸载（文件与注册表都保持原样，怕的正是删到别的东西）。请先用下载的安装包重装到同一目录，再执行卸载。
+err.conflictingRole=/install 与 /uninstall 不能同时给。
 err.unknownSwitch=无法识别的开关，已拒绝执行（不会退回交互界面）。
 err.missingValue=该开关缺少取值。
 err.booleanHasValue={0} 是开关，不接受取值（写成 /{0} 即可）。
 err.unknownCulture=不支持的语言 {0}，可选值只有 zh-CN 与 en-US。
 uninstall.clearsettings=同时删除当前用户的 ExcelDiffEDR 设置
-finish.noshell=本次未添加资源管理器右键菜单。需要的话，重新运行安装程序并勾选"添加资源管理器右键菜单"。
+finish.noshell=本次未添加资源管理器右键菜单。需要的话，重新下载安装包运行并勾选"添加资源管理器右键菜单"（安装目录里的 Uninstall.exe 只用于卸载）。
 log.settingskept=未要求清除，已保留当前用户的设置目录

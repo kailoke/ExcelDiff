@@ -36,8 +36,13 @@ namespace ExcelDiff.Setup
         public const string SharpShellDllName = "SharpShell.dll";
         public const string ResourcesExtensionsDllName = "System.Resources.Extensions.dll";
 
-        /// <summary>Copy of this setup exe kept in the install folder; ARP UninstallString points at it.</summary>
-        public const string SetupCopyName = "ExcelDiffSetup.exe";
+        /// <summary>
+        /// The copy of this setup exe kept in the install folder. It is named as what a user goes
+        /// looking for, and running it with no switch uninstalls (Options resolves the role from the
+        /// file name). Owner ruling 2026-09-30: one artifact in the folder, named Uninstall.exe -
+        /// artifact file names are exempt from the "user-visible name is ExcelDiffEDR" rule.
+        /// </summary>
+        public const string UninstallerName = "Uninstall.exe";
 
         public const string ManifestFileName = "install-manifest.txt";
 

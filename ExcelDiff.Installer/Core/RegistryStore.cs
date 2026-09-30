@@ -42,7 +42,7 @@ namespace ExcelDiff.Setup
             }
         }
 
-        public static void WriteArpEntry(InstallManifest manifest, string installDir, string setupCopyPath,
+        public static void WriteArpEntry(InstallManifest manifest, string installDir, string uninstallerPath,
                                          string iconPath, long sizeBytes)
         {
             using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
@@ -53,14 +53,20 @@ namespace ExcelDiff.Setup
                     if (key == null)
                         return;
 
-                    var uninstall = "\"" + setupCopyPath + "\" /uninstall /silent";
+                    // Control Panel gets the interactive wizard (it must confirm, and only its
+                    // checkbox can clear the settings folder); the silent form stays available for
+                    // scripts. Both target the Uninstall.exe copy in the folder, which uninstalls by
+                    // default, so an explicit /uninstall is there to be unambiguous across the
+                    // %TEMP% relay rather than to select the role.
+                    var interactive = "\"" + uninstallerPath + "\" /uninstall";
+                    var silent = interactive + " /silent";
 
                     SetAndRecord(manifest, key, "DisplayName", ProductInfo.ProductName);
                     SetAndRecord(manifest, key, "DisplayVersion", ProductInfo.Version);
                     SetAndRecord(manifest, key, "Publisher", ProductInfo.Publisher);
                     SetAndRecord(manifest, key, "InstallLocation", installDir);
-                    SetAndRecord(manifest, key, "UninstallString", uninstall);
-                    SetAndRecord(manifest, key, "QuietUninstallString", uninstall);
+                    SetAndRecord(manifest, key, "UninstallString", interactive);
+                    SetAndRecord(manifest, key, "QuietUninstallString", silent);
                     SetAndRecord(manifest, key, "HelpLink", ProductInfo.HelpLink);
                     SetAndRecord(manifest, key, "URLInfoAbout", ProductInfo.HelpLink);
                     SetAndRecord(manifest, key, "Comments", "Excel / CSV / TSV diff tool");
@@ -136,6 +142,86 @@ namespace ExcelDiff.Setup
             }
         }
 
+        /// <summary>
+        /// ARP values as they were before this run rewrote them. Needed because the product key is
+        /// snapshotted but the ARP entry is not: after the in-folder artifact stopped being named
+        /// ExcelDiffSetup.exe, a rolled-back upgrade used to leave ARP pointing at an Uninstall.exe
+        /// that the restored old folder does not contain - a dead Uninstall button.
+        /// Three states: null = there was no entry (rollback must delete ours); an empty dictionary
+        /// = it could not be read (rollback must not touch it, wiping a readable entry on a failure
+        /// to read would be worse than leaving ours); otherwise the values to write back. An entry
+        /// we install always carries DisplayName and friends, so "exists but empty" cannot be confused
+        /// with "unreadable" in practice.
+        /// </summary>
+        public static System.Collections.Generic.Dictionary<string, object> SnapshotArp()
+        {
+            var values = new System.Collections.Generic.Dictionary<string, object>(StringComparer.Ordinal);
+            RegistryKey key = null;
+            try
+            {
+                key = OpenArpKey();
+                if (key == null)
+                    return null;
+
+                foreach (var name in key.GetValueNames())
+                    values[name] = key.GetValue(name);
+            }
+            catch (Exception ex)
+            {
+                SetupLog.Warn("ARP snapshot failed, rollback will not touch the entry: " + ex.Message);
+                return new System.Collections.Generic.Dictionary<string, object>(StringComparer.Ordinal);
+            }
+            finally
+            {
+                if (key != null)
+                    key.Dispose();
+            }
+            return values;
+        }
+
+        public static void RestoreArp(System.Collections.Generic.Dictionary<string, object> values)
+        {
+            try
+            {
+                if (values != null && values.Count == 0)
+                {
+                    SetupLog.Warn("previous ARP state unreadable, entry left as this run wrote it");
+                    return;
+                }
+
+                using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                {
+                    if (values == null)
+                    {
+                        baseKey.DeleteSubKeyTree(ProductInfo.ArpRegKey, false);
+                        SetupLog.Info("ARP entry written by the aborted install removed");
+                        return;
+                    }
+
+                    using (var key = baseKey.OpenSubKey(ProductInfo.ArpRegKey, true))
+                    {
+                        if (key == null)
+                            return;
+
+                        var foreign = new System.Collections.Generic.List<string>();
+                        foreach (var name in key.GetValueNames())
+                            if (!values.ContainsKey(name))
+                                foreign.Add(name);
+                        foreach (var name in foreign)
+                            key.DeleteValue(name, false);
+
+                        foreach (var pair in values)
+                            key.SetValue(pair.Key, pair.Value ?? string.Empty);
+                    }
+                }
+                SetupLog.Info("previous ARP entry restored");
+            }
+            catch (Exception ex)
+            {
+                SetupLog.Warn("previous ARP entry not restored: " + ex.Message);
+            }
+        }
+
         private static string ReadProductString(string valueName)
         {
             try
@@ -157,6 +243,13 @@ namespace ExcelDiff.Setup
                     ? baseKey.CreateSubKey(ProductInfo.ProductRegKey)
                     : baseKey.OpenSubKey(ProductInfo.ProductRegKey);
             }
+        }
+
+        /// <summary>The ARP key under the 64-bit view - the same view the setup always writes.</summary>
+        private static RegistryKey OpenArpKey()
+        {
+            using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                return baseKey.OpenSubKey(ProductInfo.ArpRegKey);
         }
 
         private static void SetAndRecord(InstallManifest manifest, RegistryKey key, string name, string value)

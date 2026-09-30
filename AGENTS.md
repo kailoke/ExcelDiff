@@ -10,47 +10,11 @@ AI 工作流脚本统一在 [`AI_Script\`](AI_Script)（`verify.ps1` 验收门�
 
 ---
 
-## 调试工具：单元格渲染追踪
+## 单元格渲染问题的排查思路（历史笔记，插桩已不在仓库里）
 
-### 启用方式
+2026-09-30 实测核对（`git log --all -S`，全仓）：
 
-构建时传递 `EnableCellTrace=true` 参数：
+- `EnableCellTrace`、`edr_celltrace.log` 在 `.cs` / `.csproj` 里命中 **0**；在 git 全部历史里也只出现在本文件的文字中（`003469d`）。也就是说本节原先写的"构建时传 `/p:EnableCellTrace=true` 就能拿到追踪日志"**从来没有可执行的对象** —— 那是某次一次性插桩的笔记，插桩本身没进提交。要再用这套步骤必须先自己加插桩。
+- 原先记在这里的"修复"（`columnCount` 改为 `Cells.Keys.Max() + 1`）在代码里同样不存在：`ExcelDiff.GUI/Models/DiffGridModel.cs:77` 至今是 `SheetDiff.Rows.Max(r => r.Value.Cells.Count)`，而 `ExcelRowDiff.Cells` 是只装差异单元格的 `SortedDictionary<列号, ExcelCellDiff>`（`ExcelDiff/ExcelRowDiff.cs:28`）。所以那条要么属于那次未提交的改动，要么当时的判断本身不成立 —— **未取证，不要当结论用**。
 
-```powershell
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:EnableCellTrace=true /t:Rebuild /v:m /nologo
-```
-
-或通过 `Deploy-And-Restart.ps1` 部署（需先修改脚本传递此参数）。
-
-### 日志位置
-
-启用后，追踪日志写入 `%TEMP%\edr_celltrace.log`。
-
-### 日志内容
-
-- `[GetCell]` - FastGrid 请求渲染的每个单元格（row/col/direct/gridType）
-- `[TryGetCellDiff]` - 查找单元格差异的结果（包括 NOT FOUND 的情况）
-- `[GetCellText]` - 实际返回的文本值（status/text length）
-- `[TraceCell]` - Modified 单元格的详细信息（src/dst 值长度）
-
-### 典型问题诊断
-
-**问题：修改的单元格不显示文本**
-
-1. 启用追踪：`/p:EnableCellTrace=true`
-2. 部署并重现问题
-3. 读取日志：
-   ```powershell
-   Get-Content "$env:TEMP\edr_celltrace.log" | Select-String "col=2"
-   ```
-4. 分析：
-   - 如果日志中没有 `col=2` 的记录 → 渲染循环未到达该列 → 检查 `columnCount` 计算
-   - 如果有 `col=2` 但 `TryGetCellDiff NOT FOUND` → 单元格未正确创建 → 检查 `DiffCellsCaseEqual`
-   - 如果有 `GetCellText` 但 text=NULL → 单元格值为空 → 检查数据源
-
-**案例：columnCount 计算错误（已修复）**
-
-- 症状：修改的单元格在第 2 列，但只渲染到第 0 列
-- 日志：`[GetCell] col=0` 大量出现，无 `col=2`
-- 根因：`columnCount = SheetDiff.Rows.Max(r => r.Value.Cells.Count)` 计算的是差异单元格数量（1），而非最大列索引+1（3）
-- 修复：改为 `SheetDiff.Rows.Max(r => r.Value.Cells.Keys.Max() + 1)`
+仍然成立、值得留下的一点：网格渲染到第几列由 `columnCount` 决定（`DiffGridModel.cs:554` 的循环上界），遇到"某个差异单元格根本不出现"，先看这个值怎么算出来的，再去看取值逻辑。

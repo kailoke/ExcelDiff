@@ -92,6 +92,10 @@ namespace ExcelDiff.Setup
             var root = Path.GetPathRoot(full);
             if (string.IsNullOrEmpty(root))
                 return null;
+            // Both halves are needed, and they do not overlap (measured over drive roots, UNC and
+            // relative forms): the first catches "C:\" where GetFullPath keeps the separator, the
+            // second is the only thing that catches a UNC share root, because GetFullPath leaves
+            // "\\server\share" without one - drop it and installing onto a share root comes back.
             if (root == full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar
                 || root == full)
                 return null;
@@ -118,6 +122,10 @@ namespace ExcelDiff.Setup
         {
             if (!string.IsNullOrEmpty(_options.InstallDir))
             {
+                // Options.Parse runs this same predicate over the same text, so this throw is not
+                // reachable from a command line. It stays because it is the last stop before an
+                // unvalidated folder becomes an install target: "C:" reaching EnsureTrailingSeparator
+                // below would turn into "C:\" and install onto a drive root.
                 var requested = ValidateTargetDir(_options.InstallDir);
                 if (requested == null)
                     throw new InvalidOperationException(Strings.T("err.badTarget") + " " + _options.InstallDir);
@@ -148,6 +156,7 @@ namespace ExcelDiff.Setup
 
             var existing = Detect();
             var previous = existing == null ? null : RegistryStore.Snapshot();
+            var previousArp = RegistryStore.SnapshotArp();
             var dirExistedBefore = Directory.Exists(dir.TrimEnd(Path.DirectorySeparatorChar));
             // The backup sits next to the folder being moved, never next to the new target.
             var backup = existing == null
@@ -182,9 +191,14 @@ namespace ExcelDiff.Setup
                 Report(Strings.T("log.extract"));
                 Payload.ExtractTo(dir, manifest, ReportProgress);
 
-                var setupCopy = Path.Combine(dir, ProductInfo.SetupCopyName);
-                File.Copy(ReliableSelfPath(), setupCopy, true);
-                manifest.AddFile(setupCopy);
+                var uninstaller = Path.Combine(dir, ProductInfo.UninstallerName);
+                var self = ReliableSelfPath();
+                // File.Copy onto itself throws, and the %TEMP% relay does not cover it: the relay only
+                // fires for an image inside the *recorded* folder. Reaching Uninstall.exe from another
+                // folder (a copied-out uninstaller, a manual /dir) lands here with self == uninstaller.
+                if (!string.Equals(self, uninstaller, StringComparison.OrdinalIgnoreCase))
+                    File.Copy(self, uninstaller, true);
+                manifest.AddFile(uninstaller);
 
                 var startLink = CreateShortcut(ProductInfo.StartMenuDir, dir, manifest);
                 if (startLink != null)
@@ -217,8 +231,6 @@ namespace ExcelDiff.Setup
 
                 Report(Strings.T("log.registry"));
                 RegistryStore.WriteInstallState(manifest, dir, Culture, Selected(Components.AutoStart), shellRegistered);
-                RegistryStore.WriteArpEntry(manifest, dir, setupCopy, Path.Combine(dir, ProductInfo.MainExeName),
-                    SizeOf(dir));
                 undo.Add(() =>
                 {
                     if (previous != null && previous.Count > 0)
@@ -228,6 +240,14 @@ namespace ExcelDiff.Setup
                 });
 
                 WriteAutoStart(dir, Selected(Components.AutoStart));
+
+                // Last of the fallible writes: a rolled-back upgrade must not leave Control Panel
+                // pointing at an Uninstall.exe the restored old folder never had. Restoring it is
+                // deliberately NOT in the undo stack - ClearRegistry() (an earlier undo) deletes the
+                // whole ARP tree, and the entry only becomes meaningful again once the old folder is
+                // back in place, so it happens after the rollback below.
+                RegistryStore.WriteArpEntry(manifest, dir, uninstaller, Path.Combine(dir, ProductInfo.MainExeName),
+                    SizeOf(dir));
 
                 manifest.Save(dir);
 
@@ -257,6 +277,9 @@ namespace ExcelDiff.Setup
                     Report(RolledBack ? Strings.T("log.rollback.ok") : Strings.F("log.rollback.fail", SetupLog.Path));
                 }
 
+                if (RolledBack)
+                    RegistryStore.RestoreArp(previousArp);
+
                 return false;
             }
         }
@@ -268,13 +291,14 @@ namespace ExcelDiff.Setup
         }
 
         /// <summary>
-        /// ARP's UninstallString and a "double-click the copy in the program folder to reinstall"
-        /// both run setup from inside the folder that is about to be moved aside - the moved path
-        /// then cannot be copied or re-read. Re-launch a copy from %TEMP% and forward the result.
+        /// ARP's UninstallString, and any launch of the in-folder Uninstall.exe, run setup from inside
+        /// the folder that is about to be moved aside or deleted - and a double-click leaves the
+        /// process standing in that folder, which is itself enough to lock it. Re-launch a copy from
+        /// %TEMP% outside the folder and forward the work to it.
         /// </summary>
         public static int? RelaunchOutsideInstallFolder(Options options)
         {
-            if (options != null && options.FromTemp)
+            if (options.FromTemp)
                 return null;
 
             var args = Environment.GetCommandLineArgs();
@@ -289,18 +313,58 @@ namespace ExcelDiff.Setup
 
             var temp = Path.Combine(Path.GetTempPath(),
                 "ExcelDiffSetup-" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".exe");
+            var handedOver = false;
             try
             {
+                // Step out of the folder first: a double-click leaves this process standing inside it,
+                // and a live process's current directory can be neither moved nor deleted (measured;
+                // and with this line removed the gate goes red: D's reinstall exits 1 because the
+                // child cannot Move the folder this waiting process is standing in).
+                Directory.SetCurrentDirectory(Path.GetTempPath());
+
                 File.Copy(self, temp, true);
 
-                var tail = string.Join(" ", args.Skip(1).Select(QuoteArg).Append("/setup-from-temp"));
+                var forwarded = new List<string>(args.Skip(1)
+                    .Where(a => !a.StartsWith("/log:", StringComparison.OrdinalIgnoreCase)
+                                && !a.StartsWith("/log=", StringComparison.OrdinalIgnoreCase))
+                    .Select(QuoteArg));
+                forwarded.Add("/setup-from-temp");
+                // The copy is renamed (ExcelDiffSetup-<guid>.exe), so the role can no longer come
+                // from the file name - carry it as an explicit switch or the child would reinstall.
+                if (options.Uninstall)
+                    forwarded.Add("/uninstall");
+                // The child must not compute the same per-second log name as us: we hold it open with
+                // FileShare.Read, so its SetupLog.Open would throw and it would run unlogged (this is
+                // the mistake already fixed for the shell-op child).
+                if (!string.IsNullOrEmpty(SetupLog.Path))
+                    forwarded.Add(QuoteArg("/log:" + SetupLog.Path + "." +
+                        (options.Uninstall ? "uninstall" : "install") + ".relay.log"));
+                var tail = string.Join(" ", forwarded);
                 SetupLog.Info("relaunching setup outside the install folder: " + temp);
-                var startInfo = new ProcessStartInfo(temp, tail) { UseShellExecute = false };
+                var startInfo = new ProcessStartInfo(temp, tail)
+                {
+                    UseShellExecute = false,
+                    // Named rather than inherited: this is the process that does the deleting, and a
+                    // live process's own current directory is undeletable (measured). Left to inherit
+                    // the double-click's working directory it removed every file, failed on the folder,
+                    // warned, still returned 0 - and left an empty install folder behind forever.
+                    WorkingDirectory = Path.GetTempPath()
+                };
+
+                // Uninstall is handed over, not waited on: this process is the image the child has
+                // to delete, so waiting here would lock it and the child could only ever refuse
+                // (measured: the main exe vanished, the folder and the registry stayed, exit 1).
+                // The caller gets 0 = "delegated"; whether it worked is visible in the folder and in
+                // Control Panel, which is also what Settings/ARP assumes.
+                if (options.Uninstall)
+                {
+                    Process.Start(startInfo).Dispose();
+                    handedOver = true;
+                    return 0;
+                }
+
                 using (var process = Process.Start(startInfo))
                 {
-                    if (process == null)
-                        return 1;
-
                     // No timeout: this wrapper also carries the interactive wizard, and killing it
                     // mid-transaction would leave .old-* and a half-written HKLM behind.
                     process.WaitForExit();
@@ -314,7 +378,40 @@ namespace ExcelDiff.Setup
             }
             finally
             {
-                TryDeleteFile(temp);
+                // A handed-over child is still running that file: its own ScheduleSelfDelete owns it.
+                if (!handedOver)
+                    TryDeleteFile(temp);
+            }
+        }
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool MoveFileEx(string existingFileName, string newFileName, int flags);
+
+        private const int MoveFileDelayUntilReboot = 0x4;
+
+        /// <summary>
+        /// The %TEMP% copy that took over an uninstall is itself the image doing the deleting, so it
+        /// cannot remove the file while running. Registering a delete-on-reboot is the standard way to
+        /// keep a 5.9 MB file from sitting in %TEMP% forever; Windows collects it at the next boot, and
+        /// the log files it writes next to it are left for whatever cleans %TEMP% on this machine.
+        /// </summary>
+        public static void ScheduleSelfDelete()
+        {
+            try
+            {
+                var self = ReliableSelfPath();
+                if (string.IsNullOrEmpty(self) || !self.StartsWith(Path.GetTempPath(), StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                if (MoveFileEx(self, null, MoveFileDelayUntilReboot))
+                    SetupLog.Info("temp copy scheduled for removal at next boot: " + self);
+                else
+                    SetupLog.Warn("temp copy not scheduled for removal, Win32 error " +
+                                  Marshal.GetLastWin32Error() + ": " + self);
+            }
+            catch (Exception ex)
+            {
+                SetupLog.Warn("temp copy not scheduled for removal: " + ex.Message);
             }
         }
 
@@ -334,10 +431,11 @@ namespace ExcelDiff.Setup
             InstallDir = dir;
 
             // Nothing to replay means we would be guessing: an early version of this path cleared
-            // HKLM and reported success while deleting no files at all. Refuse instead.
+            // HKLM and reported success while deleting no files at all. Refuse instead - and say the
+            // real reason, because the "no recorded install" advice above cannot fix this state.
             if (!InstallManifest.Exists(dir))
             {
-                FailureReason = Strings.T("err.noUninstallTarget");
+                FailureReason = Strings.T("err.noManifest");
                 Report(FailureReason + " " + dir);
                 return false;
             }
@@ -572,9 +670,15 @@ namespace ExcelDiff.Setup
         /// <summary>
         /// The settings folder is keyed by assembly name and shared by every install of this
         /// variant, so it is cleared only on an explicit request (/clearsettings or the checkbox).
+        /// Recorded as a fact rather than as the request, because the finish page must not promise a
+        /// removal that an open file could have prevented (the wizard reads this, not ClearSettings).
         /// </summary>
+        public bool SettingsCleared { get; private set; }
+
         private void ClearUserSettings()
         {
+            SettingsCleared = false;
+
             var dir = ProductInfo.UserConfigDir;
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
                 return;
@@ -588,6 +692,7 @@ namespace ExcelDiff.Setup
             try
             {
                 Directory.Delete(dir, true);
+                SettingsCleared = true;
                 SetupLog.Info("user settings removed: " + dir);
             }
             catch (Exception ex)
@@ -751,7 +856,7 @@ namespace ExcelDiff.Setup
                 return location;
 
             var args = Environment.GetCommandLineArgs();
-            return args.Length > 0 ? args[0] : ProductInfo.SetupCopyName;
+            return args.Length > 0 ? args[0] : ProductInfo.UninstallerName;
         }
 
         private static string QuoteArg(string arg)

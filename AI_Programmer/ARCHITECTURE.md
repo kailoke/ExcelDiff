@@ -7,7 +7,7 @@
 ## 1. 项目概览
 
 - 用途：Excel/CSV/TSV 的 GUI 差异对比工具，可作 Git/Mercurial difftool。
-- 技术栈：WPF (.NET Framework 4.6.2, WinExe) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock/Extended.Wpf.Toolkit。
+- 技术栈：WPF (.NET Framework 4.7.2, WinExe) + Prism 6.3 + Unity 4.0.1 + YamlDotNet + AvalonDock/Extended.Wpf.Toolkit。
 - 核心库：ExcelDiff（读取/解析）、NetDiff（差异算法）、FastWpfGrid（虚拟化网格）。
 - 双构建：同一份源码可编译出**主版本 EDR**（ExcelDataReader 读取）与**保底版 EDN**（NPOI 读取，代码保留、不日常构建），进程/程序集/配置/显示名完全隔离。**EDR 为主版本，是唯一的构建/部署/门禁目标；EDN 代码保留作保底对照（EDR 盲区兜底）。**
 
@@ -128,18 +128,21 @@ CLI/difftool ─> CommandLineOption ─> DiffCommand
 ## 8. 部署布局
 
 ```
-<ProgramFilesBase>\ExcelDiffEDRTool\   → EDR 主版本（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\）
+<ProgramFilesBase>\ExcelDiffEDRTool\   → EDR 主版本（ExcelDiffEDR.GUI.exe + ExcelDiff.dll[EDR] + lang\ + Uninstall.exe）
 <ProgramFilesBase>\ExcelDiffTool\      → EDN 历史目录（代码保留、不再日常构建/部署）
 %APPDATA%\ExcelDiffEDR.GUI\            → EDR 配置
 %APPDATA%\ExcelDiff.GUI\               → EDN 配置（历史）
+%ProgramData%\Microsoft\Windows\Start Menu\Programs\ExcelDiffEDR\  → setup 装的开始菜单组（一条启动快捷方式）
 ```
+
+- **setup 装出来的目录与"覆盖式部署"的内容不完全相同**：setup 载荷里过滤掉 `.pdb` 与 EDN 三件套（E7）；`Uninstall.exe` **不在载荷 zip 里**，是 `InstallEngine.Install()` 把正在运行的自己复制进目标目录得到的那份副本（与发布出去的 setup exe 字节相同，靠文件名承担"双击即卸载"的角色，ADR-018）。`Deploy-And-Restart.ps1` 复制的是仓库 `bin\Release`，因此那份目录里**没有** `Uninstall.exe`、也没有安装身份（HKLM 产品键 / ARP / COM 注册）—— 这是两条链路各自的预期，见下面一条。
 
 - `<ProgramFilesBase>` / 目录名都出自根目录 `ProjectPaths.ps1`：`$ProgramFilesBasePath` + `$EdrInstallDirName` = `$EdrDeployPath`（`Deploy-And-Restart.ps1` 的 `-Dst` 默认值）。自查：`powershell -File ProjectPaths.ps1 -Print`。文档不写盘符。
 - **setup 的默认目录 = 本机 `%ProgramFiles%\ExcelDiffEDRTool`**（`Environment.SpecialFolder.ProgramFiles` + `ProductInfo.InstallDirName`），只有目录名与 `ProjectPaths.ps1` 同源；`$ProgramFilesBasePath`（本机可能是别的盘）不进分发包，否则会把开发机的盘符写进客户机器。
 - **两条链路各自决定自己的目录，不需要对齐**（业主 2026-09-26 裁定：安装器的配置由安装器本身决定，本地部署不管安装器的逻辑）。所以本机 Program Files ≠ `$ProgramFilesBasePath` 时，`Deploy-And-Restart.ps1` 与 setup 落在两个目录是**预期行为**，不是缺陷，也不要为此改 `ProjectPaths.ps1`；`EXCELDIFF_PROGRAM_FILES` / `-Dst` 只用来改**本地部署**的目标，与 setup 无关。想让 setup 装到别处，就在向导里改目录或传 `/dir=`。
 
 - EDR 发布包由 `ExcelDiff.Installer\Build-Setup.ps1` 构建：GUI/ShellExtension 先进入 `ExcelDiff.Installer\obj\stage`（隔离输入，E7），载荷打成 zip 后以 manifest resource 内嵌进 `ExcelDiffSetup.exe`。setup 的 FileVersion 必须等于主 EXE FileVersion（E8），ARP `DisplayVersion` 同源。ShellExtension 的 COM 注册/注销走自己拉起的子进程（`/shell-op:`），因为进程内 `LoadFrom` 会锁住扩展 DLL 让卸载删不掉文件（E9）。发布门禁是 `AI_Script\verify-installer.ps1 -Install`（静态检查 + 安装/卸载/重装/回滚真实用例，E10）。
-- setup 默认装到 `%ProgramFiles%\ExcelDiffEDRTool`，路径写入 `HKLM\SOFTWARE\ExcelDiffEDR\InstallFolder` 并在下次安装时沿用；命令行 `/dir=<绝对路径>` 优先（相对路径与盘符根在参数层就拒，退出码 4；见 §8 静默参数与 AGENTS §4）。卸载按 `install-manifest.txt` 逐项删除；当前用户的 `%APPDATA%\ExcelDiffEDR.GUI` **默认保留**，仅 `/clearsettings`（或向导上勾"同时删除设置"）时才清理（业主 2026-09-26 裁定）。退出码：0 成功 / 1 失败 / 2 帮助 / 3 无载荷 / 4 参数非法 / 130 取消。正式对外分发前需在发布流水线完成 Authenticode 签名。
+- setup 默认装到 `%ProgramFiles%\ExcelDiffEDRTool`，路径写入 `HKLM\SOFTWARE\ExcelDiffEDR\InstallFolder` 并在下次安装时沿用；命令行 `/dir=<绝对路径>` 优先（相对路径与盘符根在参数层就拒，退出码 4；见 §8 静默参数与 AGENTS §4）。卸载按 `install-manifest.txt` 逐项删除；当前用户的 `%APPDATA%\ExcelDiffEDR.GUI` **默认保留**，仅 `/clearsettings`（或向导上勾"同时删除设置"）时才清理（业主 2026-09-26 裁定）。退出码：0 成功 / 1 失败 / 2 帮助 / 3 无载荷 / 4 参数非法 / 130 取消。**唯一的例外**：从安装目录里直接运行 `Uninstall.exe` 时 0 只表示"已移交给 %TEMP% 副本"（父进程持有子进程要删的映像，等待即自锁，ADR-018），卸载是否成就要看目录与 ARP 是否消失，门禁 L/M 因此轮询效果而不是断言退出码。正式对外分发前需在发布流水线完成 Authenticode 签名。
 - 向导第一页是语言选择，默认值取 `CultureInfo.InstalledUICulture`（`zh*`→中文，其余英文），选择结果同时写入 `HKLM\...\SetupCulture` 供程序首启动读取；程序侧解析顺序为「用户显式选过 > HKLM 种子 > 系统显示语言 > zh-CN」（`ApplicationSetting.EnsureCulture` / `ApplyInstallerSeed`，`Load()` 比对 `InstallerSeedApplied` 签名，只在签名变化时重新播种）。许可/EULA 页、修复入口、自定义美术均**明确不做**（ADR-017）。
 - NGEN 已对 EDR exe 预编译。
 - Git difftool：`difftool.ExcelDiffEDR`（EDR，主）；`difftool.ExcelDiff`（EDN，历史，仍可用）。
