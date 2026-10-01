@@ -6,12 +6,8 @@
 # ExcelDiff
 
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
-同一份源码编译出两套产品（EDR 为主版本，EDN 保留保底对照）：
 
-- **EDR**（主版本，`ExcelDiffEDR.GUI.exe`）：ExcelDataReader 读取。读取效率高（基准测试约 1.8MB 文件读取耗时约为 EDN 的 28%，提升约 72%），日常构建 / 部署 / 门禁均以 EDR 为准。
-- **EDN**（保底版，`ExcelDiff.GUI.exe`）：NPOI 读取。语义最全，代码保留作为 EDR 盲区兜底与验证对照，不参与日常构建 / 部署。
-
-两版进程 / 程序集 / 配置 / 显示名全隔离，互不干扰。界面语言支持中/英：默认取安装向导里选的语言（写入注册表供程序读取），没选过则按系统显示语言判定，之后在设置里手动切换优先。
+产品是 **`ExcelDiffEDR.GUI.exe`**，读取层用 ExcelDataReader —— 基准测试里 1.8MB 文件的读取耗时约为原先 NPOI 路线的 28%（快约 72%），所以被定为主版本；原先靠编译开关共存的第二套实现（EDN，NPOI 读取）已于 2026-09-30 从源码里整体移除，现在只有这一个版本。界面语言支持中/英：默认取安装向导里选的语言（写入注册表供程序读取），没选过则按系统显示语言判定，之后在设置里手动切换优先。
 
 ![Demo](media/demo.gif)
 
@@ -71,22 +67,18 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 
 本机使用 `dotnet msbuild`（无独立 MSBuild），需指定参考程序集根目录；下文 `<repo>` 表示仓库根目录的绝对路径（`git rev-parse --show-toplevel`）。
 
-### EDR（主版本，ExcelDataReader 读取）— 产物 `ExcelDiffEDR.GUI.exe`
+### 构建 — 产物 `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
-
-### EDN（保底版，NPOI 读取，代码保留 / 不日常构建）— 产物 `ExcelDiff.GUI.exe`
-
-同上，去掉 `/p:EdrRead=true`（默认）。仅在需要 EDN 保底对照时手工构建。
 
 ### 部署次序与常驻进程重启
 
-1. 构建 EDR → 部署 EDR。
-2. **每次部署后立即重启 EDR 常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
+1. 构建 → 部署。
+2. **每次部署后立即重启常驻进程**（杀进程 → 从部署路径以 `--startup` 拉起）。
 
-原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。EDN（NPOI）保底代码保留但不参与日常构建 / 部署。
+原因：常驻进程从部署目录启动并锁住 exe，不杀进程无法覆盖部署，且旧进程仍在内存运行，测试结果失真。
 
 ### 一键验证门禁
 
@@ -130,7 +122,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <左文件> -d <右文件> [-c <工具>] [-i] [-w
 
 ### Git difftool
 
-`.gitconfig`（`<安装目录>` = 实际安装位置：安装程序默认 `%ProgramFiles%\ExcelDiffEDRTool`，可在向导里改目录，或用**下载的安装包**（`ExcelDiffSetup-<版本>.exe`）加 `/dir=<绝对路径>` 指定 —— 安装目录里那份 `Uninstall.exe` 只用于卸载；EDR 主版本 exe 为 `ExcelDiffEDR.GUI.exe`，EDN 为 `ExcelDiff.GUI.exe`）
+`.gitconfig`（`<安装目录>` = 实际安装位置：安装程序默认 `%ProgramFiles%\ExcelDiffEDRTool`，可在向导里改目录，或用**下载的安装包**（`ExcelDiffSetup-<版本>.exe`）加 `/dir=<绝对路径>` 指定 —— 安装目录里那份 `Uninstall.exe` 只用于卸载；主程序 exe 是 `ExcelDiffEDR.GUI.exe`）
 
 ```
 [diff]
@@ -171,7 +163,7 @@ exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty
 vdiff = exceldiff
 ```
 
-> 路径请按实际部署目录调整；基准对比以 EDR 为准，EDN 作保底验证对照。
+> 路径请按实际部署目录调整。
 
 ### 资源管理器右键菜单
 
@@ -245,14 +237,13 @@ vdiff = exceldiff
 %APPDATA%\<程序集名>\<程序集名>.yml
 ```
 
-- EDR：`%APPDATA%\ExcelDiffEDR.GUI\`
-- EDN：`%APPDATA%\ExcelDiff.GUI\`
+即 `%APPDATA%\ExcelDiffEDR.GUI\ExcelDiffEDR.GUI.yml`（目录名由程序集名派生）。
 
 ## 回归验证
 
-- `AI_Script\verify.ps1`：一键门禁（EDR 主版本编译 + 安装器工程编译 + NetDiff 31 用例 + lang↔resx 双向同步 + 两份 resx 键集一致 + 坑扫描）。
+- `AI_Script\verify.ps1`：一键门禁（产品编译 + 安装器工程编译 + NetDiff 31 用例 + lang↔resx 双向同步 + 两份 resx 键集一致 + 坑扫描）。
 - `AI_Script\verify-installer.ps1`：安装包发布门禁（静态检查；`-Install` 追加 A–M 十三个真实安装/卸载/重装/回滚/拒绝用例，需管理员）。
-- `DiffHarness\`：headless diff 对比（EDN/EDR 输出确定性 diff 文本）。
+- `DiffHarness\`：headless diff 输出（确定性 diff 文本，用于同一文件两个版本之间的回归比对）。
 - `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 
 ## Known problems

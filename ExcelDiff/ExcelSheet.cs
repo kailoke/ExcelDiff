@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using NPOI.SS.UserModel;
 using NetDiff;
 using SKCore.Collection;
 
@@ -15,15 +14,6 @@ namespace ExcelDiff
         {
             Rows = new SortedDictionary<int, ExcelRow>();
         }
-
-#if PERF_TIMING || NPOI_READ
-        public static ExcelSheet Create(ISheet srcSheet, ExcelSheetReadConfig config)
-        {
-            var rows = ExcelReader.Read(srcSheet);
-
-            return CreateSheet(rows, config);
-        }
-#endif
 
         public static ExcelSheet Create(IEnumerable<ExcelRow> rows, ExcelSheetReadConfig config)
         {

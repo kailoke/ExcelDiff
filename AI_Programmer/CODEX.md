@@ -22,7 +22,7 @@ exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
        └─ window.Closed → diffView.RemoveEventListeners()           防静态分发器泄漏
   └─ DiffView 内（用户点“显示差异”或启动即跑）
        ├─ ReadWorkbooks()                          DiffView.xaml.cs:445
-       │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = EDR:ExcelDataReader / EDN:NPOI
+       │     Task.Run×2 并行 → ExcelWorkbook.Create(src/dst)        读层 = ExcelDataReader（唯一实现）
        ├─ ExecuteDiff(ExcelSheet,ExcelSheet)     DiffView.xaml.cs:520
        │     ProgressWindow.DoWorkWithModal → ExcelSheet.Diff(src,dst,config)
        └─ ExecuteDiff(bool isStartup=false)      DiffView.xaml.cs:537
@@ -51,7 +51,7 @@ exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
 
 | 类型 | 位置 | 关键成员 / 职责 |
 |------|------|-----------------|
-| `App` | App.xaml.cs:14 | 生命周期中枢。`Setting`、`CommandLineOption`、`CurrentDiffView`、`DisplayName`（`#if EDR_READ`）、`HideToTray/ShowMainWindow/ExitApplication`、`UpdateResourceCulture`（语言切换=关窗）、`UpdateRecentFiles`、`GetRecentFiles*` |
+| `App` | App.xaml.cs | 生命周期中枢。`Setting`、`CommandLineOption`、`CurrentDiffView`、`DisplayName`（固定 `ExcelDiffEDR`）、`HideToTray/ShowMainWindow/ExitApplication`、`UpdateResourceCulture`（语言切换=关窗）、`UpdateRecentFiles`、`GetRecentFiles*` |
 | `SingleInstance` | SingleInstance.cs:14 | `TryAcquire`（Mutex，Local\exe名-用户SID）、`SendToRunningInstance`（管道 out，3s 超时）、`StartServer`（后台线程）+`ServerLoop` |
 | `TrayIconManager` | TrayIconManager.cs:10 | `Show/Hide/Dispose`；图标=exe 关联图标；双击→onOpen；右键菜单（打开/退出，`Resources.Word_Open/Exit`） |
 | `StartupHelper` | StartupHelper.cs:10 | `SetEnabled(bool)` → `HKCU\...\Run` 写 `"exe" --startup` |
@@ -74,7 +74,7 @@ exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
 
 | 类型 | 位置 | 关键成员 / 职责 |
 |------|------|-----------------|
-| `ExcelWorkbook` | ExcelWorkbook.cs:10 | `Create(path,config)` 扩展名分发（csv/tsv/`#if NPOI_READ`→`CreateUsingNpoi`，否则 EDR `CreateFromExcel`）；`VerifyRead` 双读比对（`#if PERF_TIMING \|\| NPOI_READ`）；`GetSheetNames`（xlsx 走 zip 直读 `xl/workbook.xml`，其余 NPOI） |
+| `ExcelWorkbook` | ExcelWorkbook.cs | `Create(path,config)` 扩展名分发（csv/tsv 自研解析器，其余 `CreateFromExcel` = ExcelDataReader 唯一实现）；`GetSheetNames`（xlsx 走 zip 直读 `xl/workbook.xml`，其余用同一个 reader 枚举；csv/tsv 返回文件名后 `yield break`）。跨读取器双读比对 `VerifyRead` 已随 EDN 删除 |
 | `ExcelSheet` | ExcelSheet.cs | `Create(ISheet/rows/Csv/Tsv)` 多入口；`Diff(src,dst,config)`：列对齐（`CreateColumnStatusMap` 用 NetDiff 对列）→ 行内空白补齐 → 行匹配（`DiffUtil.Diff/Order(LazyDeleteFirst)/OptimizeCaseDeletedFirst`）→ `DiffCells`；>10000 条结果抽样 |
 | `ExcelSheetDiff` | ExcelSheetDiff.cs:6 | `Rows: SortedDictionary<int,ExcelRowDiff>`；`CreateRow`；`CreateSummary`（Added/Removed/Modified 行列计数） |
 | `ExcelRowDiff` | ExcelRowDiff.cs | `IsModified/IsAdded/IsRemoved/ModifiedCellCount` |

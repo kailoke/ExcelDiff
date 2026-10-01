@@ -6,8 +6,9 @@ namespace DiffHarness
 {
     /// <summary>
     /// Headless diff harness: reads two workbook files and prints a deterministic
-    /// per-sheet diff summary + modified cells. Used to compare the EDN (NPOI) and
-    /// EDR (ExcelDataReader) builds against the same file pair (same-named file, HEAD vs working).
+    /// per-sheet diff summary + modified cells, for comparing the same-named file in
+    /// HEAD against the working copy (AGENTS 7.9). Output shape is stable so captured
+    /// runs stay diffable, which is why the READER= line stays.
     /// </summary>
     public static class Program
     {
@@ -60,11 +61,7 @@ namespace DiffHarness
                 };
 
                 var sb = new StringBuilder();
-#if NPOI_READ
-                sb.AppendLine("READER=NPOI");
-#else
                 sb.AppendLine("READER=EDR");
-#endif
                 sb.AppendLine("SRC=" + src);
                 sb.AppendLine("DST=" + dst);
 

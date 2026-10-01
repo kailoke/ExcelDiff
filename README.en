@@ -6,12 +6,7 @@
 # ExcelDiff
 
 A Windows desktop GUI diff tool for Excel / CSV / TSV. Can be used as a Git / Mercurial difftool.
-Two products are built from the same source (EDR is the main build; EDN is retained as a fallback reference):
-
-- **EDR** (main build, `ExcelDiffEDR.GUI.exe`): reads via ExcelDataReader. Fast reading (benchmark on a ~1.8 MB Excel file takes about 28% of EDN's time, ~72% faster); daily build / deploy / gate all target EDR.
-- **EDN** (fallback build, `ExcelDiff.GUI.exe`): reads via NPOI. Most complete semantics; code is retained as the fallback for EDR blind spots and as a validation reference, but is not built / deployed in the daily flow.
-
-The two builds are fully isolated (process / assembly / config / display name). UI language supports Chinese and English: the default is the language chosen in the setup wizard (recorded in the registry for the app to read), falling back to the system display language; a manual choice in Settings always wins.
+There is **one product**: `ExcelDiffEDR.GUI.exe`, reading through ExcelDataReader - in the benchmark a ~1.8 MB file took about 28% of the time the old NPOI reader needed (~72% faster), which is why it became the main build. The second implementation that used to coexist through a compile-time switch (EDN, reading via NPOI) was removed from the source entirely on 2026-09-30. UI language is Chinese/English: it defaults to the language picked in the setup wizard (written to the registry for the app to read), falls back to the machine's display language if never chosen, and an in-app choice then always wins.
 
 ![Demo](media/demo.gif)
 
@@ -74,19 +69,15 @@ Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must 
 ### EDR (main build, ExcelDataReader) — output `ExcelDiffEDR.GUI.exe`
 
 ```
-dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
+dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
 ```
-
-### EDN (fallback, NPOI read; code retained, not built daily) — output `ExcelDiff.GUI.exe`
-
-Same as above without `/p:EdrRead=true` (default). Build manually only when an EDN fallback comparison is needed.
 
 ### Deploy order & resident restart
 
-1. Build EDR → deploy EDR.
-2. **Restart the EDR resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
+1. Build → deploy.
+2. **Restart the resident process right after every deploy** (kill process → relaunch with `--startup` from the deployed path).
 
-Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results. The EDN (NPOI) fallback code is retained but not built / deployed in the daily flow.
+Reason: the resident process starts from the deployed directory and locks the exe; without killing it the exe cannot be overwritten, and the old process keeps running in memory, distorting test results.
 
 ### One-command verification gate
 
@@ -130,7 +121,7 @@ ExcelDiffEDR.GUI.exe [diff] -s <left file> -d <right file> [-c <tool>] [-i] [-w]
 
 ### Git difftool
 
-`.gitconfig` (`<install dir>` = where the app is actually installed: the setup wizard defaults to `%ProgramFiles%\ExcelDiffEDRTool`, changeable in the wizard or by adding `/dir=<absolute path>` to **the setup package you downloaded** (`ExcelDiffSetup-<version>.exe`) - the `Uninstall.exe` inside the install folder only uninstalls; the EDR main build ships `ExcelDiffEDR.GUI.exe`, the EDN build ships `ExcelDiff.GUI.exe`)
+`.gitconfig` (`<install dir>` = where the app is actually installed: the setup wizard defaults to `%ProgramFiles%\ExcelDiffEDRTool`, changeable in the wizard or by adding `/dir=<absolute path>` to **the setup package you downloaded** (`ExcelDiffSetup-<version>.exe`) - the `Uninstall.exe` inside the install folder only uninstalls; the app itself is `ExcelDiffEDR.GUI.exe`)
 
 ```
 [diff]
@@ -171,7 +162,7 @@ exceldiff.diffargs = diff -s $parent1 -d $child -c WinMerge -i -w -v -e empty
 vdiff = exceldiff
 ```
 
-> Adjust paths to your actual deployment directory; benchmark comparisons use EDR, EDN serves as the fallback validation reference.
+> Adjust paths to your actual deployment directory.
 
 ### Explorer context menu
 
@@ -245,14 +236,13 @@ Settings are saved as YAML at:
 %APPDATA%\<assembly name>\<assembly name>.yml
 ```
 
-- EDR: `%APPDATA%\ExcelDiffEDR.GUI\`
-- EDN: `%APPDATA%\ExcelDiff.GUI\`
+i.e. `%APPDATA%\ExcelDiffEDR.GUI\ExcelDiffEDR.GUI.yml` (the folder name is derived from the assembly name).
 
 ## Regression Verification
 
-- `AI_Script\verify.ps1`: one-command gate (EDR main build + installer project compile + 31 NetDiff tests + `lang ↔ resx` sync both directions + matching resx key sets + pitfall scans).
+- `AI_Script\verify.ps1`: one-command gate (product build + installer project compile + 31 NetDiff tests + `lang ↔ resx` sync both directions + matching resx key sets + pitfall scans).
 - `AI_Script\verify-installer.ps1`: installer release gate (static checks; `-Install` adds A–M thirteen real install/uninstall/reinstall/rollback/refusal cases, needs admin).
-- `DiffHarness\`: headless diff comparison (deterministic diff text of EDN/EDR outputs).
+- `DiffHarness\`: headless diff output (deterministic diff text, for comparing one file's two versions).
 - `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
 
 ## Known Problems

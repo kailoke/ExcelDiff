@@ -5,7 +5,7 @@
 
 ## ADR-001 双版本 EDN/EDR 用条件编译而非分支
 
-- **状态**：已定（生效中）
+- **状态**：**已被 ADR-019 取代**（2026-09-30 双版本整体删除）。以下保留为当时的决策记录。
 - **背景**：需要"主版本读取（EDR）"与"保底读取（NPOI）"两套交付，又要保证行为同步。
 - **决策**：一份源码，MSBuild 属性 `EdrRead` 驱动 `AssemblyName` + `DefineConstants`（GUI `EDR_READ`、库 `NPOI_READ`），代码内 `#if` 分支。配置/IPC/显示名按程序集名派生隔离。
 - **后果**：EDR 主版本必须编译通过（INVARIANT A2）；EDN 代码保留不删（A3）。
@@ -13,7 +13,7 @@
 
 ## ADR-002 EDR（ExcelDataReader）为主版本，EDN（NPOI）保底对照
 
-- **状态**：已定
+- **状态**：**已被 ADR-019 取代**（EDN 变体与 NPOI 已删除，EDR 从"主版本"变成"唯一版本"）。以下保留为当时的决策记录。
 - **背景**：EDR 读取效率约提升 72%（约 1.8MB 文件读取耗时约为 NPOI 的 28%），未来潜力大；NPOI 语义最全但较慢。
 - **决策**：EDR（ExcelDataReader）**主版本**，开发与基准测试以 EDR 为准；EDN=NPOI **保底对照**（EDR 盲区兜底、验证）。EDR 路径尽力对齐 NPOI 语义（跳空行、裁尾空列）。
 - **后果**：EDN 保底不得移除（INVARIANT B1）；EDR 盲区（仅样式无值单元格）场景用 `VerifyRead` 双读比对 + EDN 对照（INVARIANT B3）。
@@ -93,7 +93,7 @@
 
 ## ADR-012 EDR 成为唯一构建/部署/门禁目标，EDN 代码保留退出日常流程
 
-- **状态**：已定
+- **状态**：**已被 ADR-019 取代**（EDN 代码不再保留，2026-09-30 删除）。以下保留为当时的决策记录；它当时"被否"的"删除 EDN 代码"一项，业主后来改判执行了，理由与新 ADR 的取证一起写在 ADR-019 里。
 - **背景**：EDR（ExcelDataReader）读取效率高；EDN（NPOI）双版本并存使每次改动需双版编译/部署，门禁与部署成本翻倍。
 - **决策**：EDR 定为**主版本**，是唯一构建/部署/门禁目标（`verify.ps1` 只构建 EDR；`Deploy-And-Restart.ps1` 只部署/重启 EDR）。EDN 代码（`#if NPOI_READ` 分支、`ExcelDiff.GUI` 程序集名、相关配置路径）**完整保留**，相关版本说明文档（ARCH §3 编译矩阵、ADR-001/002、INVARIANTS A/B）一并保留，仅在需 EDR 盲区兜底/对照验证时手工 build。
 - **后果**：日常门禁只验证 EDR（INVARIANT A2 "主版本必编译"）；EDN 保底对照退化为可选诊断（DiffHarness 保留）；若未来 EDR 出现对比 bug 需要对照，可随时手工构建 EDN 恢复保底验证（INVARIANT A3 保证 EDN 代码不删）。
@@ -116,6 +116,7 @@
 - **被否**：① 六个程序集全部统一 2.0.0.0 —— 我一度按"全部修改"这么做过，被用户驳回：FastWpfGrid / NetDiff 有各自的库版本身份（NetDiff 还带对外包 `Diff4Net` 的 nuspec），跟产品版本绑死会丢掉"这颗 DLL 是哪一版上游库"的信息；② 只改文档不改代码注释/变量名 —— 同一事实两处口径，后续会话仍会看到混用；③ 保留 ED/EDE —— "EDE" 无表意且与产品名不一致，改名成本只会随提交数继续上升。
 - **刻意未改**：`NetDiff/NetDiff/NetDiff.nuspec` 的 `<version>1.2.0</version>`（对外包 `Diff4Net` 自己的发布标识）；`ExcelDiff.Installer.vdproj`（ED 时代废弃安装包，`ProductName=ExcelDiff`、`ProductVersion 1.3.4` 与冻结的依赖快照，且仍挂在 `ExcelDiff.sln` 里 —— 建议后续从解决方案移除并删文件）；FastWpfGrid 的 `FastWpfGridTest` / `FastWpfGridSyncTest` / `FastWpfGridUnitTest` 三个工程 `1.0.0.0`（上游自带示例/测试，不在 `ExcelDiff.sln` 内）；`app.manifest` 的 `version="1.0.0.0"`（VS 模板默认值，`name="MyApplication.app"`，不承载产品版本）。
 - **后续（2026-09-25，ADR-017）**：`ExcelDiff.Installer.vdproj` 连同 `ExcelDiff.sln` 里的条目已随 MSI 链一并删除，上面那条"建议移除"已执行；本 ADR 的版本口径结论仍然有效，只有被点名的 vdproj 不再存在。
+- **后续（2026-09-30，ADR-019）**：本 ADR 改出来的两个标签里，**EDN 这一整套已随双版本一起删除**（变体代码、`EdrRead` 开关、`ExcelDiff.GUI` 程序集名都不在了），"EDR"这个标签本身也失去了对照对象 —— 现在它是唯一版本，不再需要标签来区分。版本落值 2.0.0.0 与"vendored 上游库保持自身版本"的结论不变。
 
 ## ADR-015 CLI 接受裸位置文件参数，归一化在解析前单点完成
 
@@ -152,3 +153,19 @@
 - **实测到的四个硬机制（写进 E13）**：① **转发必须把角色变成显式开关** —— `RelaunchOutsideInstallFolder` 把镜像复制成 `%TEMP%\ExcelDiffSetup-<guid>.exe`，名字判定随之失效，不补 `/uninstall` 时子进程按安装角色走（用例 L 当场红）。② **从目录内发起的卸载必须"移交"而不是"等待"** —— 父进程正跑着子进程要删的那个映像，`WaitForExit` 就等于把它锁住；实测症状正是业主那句话的机制版：主 exe 删掉了、目录和注册表还在、退出码 1（`remaining>0` 走拒绝分支，注册表按 E9 保留）。改为 `Process.Start` 后立即返回 0（语义是"已移交"），临时副本自身用 `MoveFileEx(..., DELAY_UNTIL_REBOOT)` 登记删除；门禁 L/M 因此**轮询效果**（`WaitForGone`/`WaitForGoneKey`）而不是信退出码。③ **移交之后，父进程的 0 会替一个已经死掉的子进程背书** —— 本轮改造自己踩到的：转发时把子进程日志路径当裸参数递了出去（漏了 `/log:` 前缀），子进程按"无法识别的开关"返回 4，而父进程早已返回 0，症状是"D/L/M 全绿式地跑完、目录与注册表原地不动"。所以凡是走转发的用例，必须同时断言**转明确实发生了**（D 用只有转发才会创建的 `*.relay.log` 新文件 + 恰好一个 `.old-*` 备份），只断言最终效果还不够，因为效果缺失时你分不清是"没转发"还是"转发了但子进程失败"。④ **转发必须把两个进程的工作目录都挪出安装目录**（独立子代理审查发现，2026-09-30 实测确认）—— 双击 exe 时 Explorer 把进程 CWD 设成它所在的文件夹，而 `UseShellExecute=false` 且没给 `WorkingDirectory` 的子进程**继承的正是这个 CWD**（实测 `cmd /c cd` 打印出父进程目录）；一个活动进程的当前目录既删不掉也 `Move` 不走（实测 `Directory.Delete` 报"正在被另一个进程使用"）。原先的症状：子进程把文件全删了、最后一步 `TryDeleteEmptyDir` 静默 warn、仍然返回 0，**Program Files 里永久留下一个空目录**。修法：转发前 `Directory.SetCurrentDirectory(%TEMP%)`（等待型分支自己不能再占着那个目录）+ 子进程 `WorkingDirectory = %TEMP%`。门禁原先从仓库根目录 `Start-Process`，CWD 从来不是安装目录，所以整条 A–M 全绿也看不见这个缺陷 —— L/M/D 现在都把工作目录当被测形状传进去。
 - **后果**：卸载入口与主流一致，且新增两条以前没被覆盖的路径进门禁 —— L（**从安装目录里**只带 `/silent` 跑 `Uninstall.exe`，端到端卸干净）与 M（**照 ARP 存的命令串原样执行**，串里没有 `/dir`，所以走的是 `ResolveUninstallDir()` 读 HKLM 记录的分支）。两条覆盖的口径要说准：`/dir`-缺失的读记录分支 **L 与 M 都命中**（L 也只带 `/silent`），M 独有的是"串本身拼得对不对"（引号、路径、开关）；而本 ADR 改出来的那条**交互式** `UninstallString` 仍只有形状断言（A 用例查值），没有执行覆盖 —— 它会弹向导，静默门禁里没法点，所以留给人工验收清单。代价：重装入口从"双击目录里的副本"改成"重新下载安装包或显式 `/install`"（文案 `finish.noshell`、`err.noUninstallTarget` 与 AGENTS §4 同步；目录里不再存在安装器命名的文件）；`SetupCopyName` 的两处兜底引用（`ReliableSelfPath`、`ShellRegistrar`）随常量改名。实测：`verify-installer.ps1 -Install` 现在 **119 项全绿（A–M 十三个用例，2026-09-30 清理既存死分支后复跑）**。锚点说明：ADR-017 收尾时是 88 项（A–K），本轮改造中途出现过"91 项/109 项/117 项"，那些是未提交工作区的中间值、没有对应提交可复现，所以只承认 88 → 119 两个锚。**反向证伪已做**（④ 那条）：把 `Directory.SetCurrentDirectory` 与 `WorkingDirectory` 两行临时注释后重跑，门禁当场红 5 项 —— D 的重装返回 1（子进程移不走等待中的父进程所站立的目录）、D 载荷未被重写、D 无 `.old-*` 备份、L 与 M 的目录 90 秒后仍在；恢复两行后回到 117/117（其后加的 UNC 两条判据用例使总数变 119）。③ 那条同样是先红后绿：漏 `/log:` 前缀的版本跑出 12 项 FAIL。
 - **被否**：① 只加开始菜单"卸载"快捷方式、目录里不动 —— 不满足"文件里没有 uninstaller"这一条，且双击仍是重装；② 目录里同时留 `ExcelDiffSetup.exe` + `Uninstall.exe` 两份同字节副本 —— 多 5.9 MB、`EstimatedSize` 虚高，且"同名不同角色"要靠人记；③ 把 ARP 的 `UninstallString` 改指新名同时保留等待 —— 自锁不解除，卸载仍会半途拒绝；④ 用硬链接/短名伪装一个文件两个名字 —— 依赖文件系统与卷，跨盘装时不可靠；⑤ 恢复 `ModifyPath` 做"修改/修复"入口 —— 与已裁的 `NoModify=1/NoRepair=1` 冲突，重跑安装包就是既定入口。
+
+## ADR-019 删除 EDN 变体与 NPOI，EDR 成为唯一版本
+
+- **状态**：已定（2026-09-30，业主指令："移除所有 EDN 版本相关的代码、说明、README，整个工程只保留 EDR 版"；追问 NPOI 依赖本身怎么处理时选"彻底去 NPOI"）
+- **取代**：ADR-001（条件编译双版本）、ADR-002（EDR 主 / EDN 保底）、ADR-012（EDN 代码不得移除）、ADR-014 里的 EDN 标签；INVARIANTS A 区与 B1/B3/B4 相应改写。
+- **背景（为什么要重开这桩旧案，以及当年"不可接受"为什么现在成立）**：ADR-012 保住 EDN 的理由是"EDR 盲区兜底与对照基准不可失去"。本轮动手前实测：兜底手段 `ExcelWorkbook.VerifyRead` 与 `CreateUsingNpoi` 在**整个仓库里没有任何调用方**（只有文件内部自引用），也就是说那份"保底对照"从来没被接进任何流程 —— 保住的是一条要走手工构建才存在的路径，而不是一个真在用的保险。另一侧的代价是实打实的：双变体让每个改动都要考虑条件编译矩阵，载荷里常年背着 4 个 NPOI dll 加 2 个传递依赖。
+- **决策**：① 删 `EdrRead` 属性与 `NPOI_READ` / `EDR_READ` 条件编译，程序集名固定 `ExcelDiffEDR.GUI`，`DisplayName` / `AssemblyTitle` / HKLM 种子键（`SOFTWARE\ExcelDiffEDR`）不再分支；② 删 EDN 读取实现本身：`ExcelReader.cs`（NPOI 专用）、`ExcelSheet.Create(ISheet,…)` 重载、`CreateUsingNpoi`、`VerifyRead`；③ **NPOI 依赖彻底退出**，为此把它在产品里剩下的两处活用途换成无依赖实现：`ExcelWorkbook.GetSheetNames` 的兜底从 `WorkbookFactory.Create` 改为**同一个 ExcelDataReader 枚举**（顺带让 sheet 名单与 `Create` 的字典键同源），`ExcelUtility.CreateWorkbook`（差异一侧文件不存在时生成的空工作簿）改为**手写 OOXML 五个部件**；④ 删掉只为 NPOI 而存在的 `GetWorkbookTypeStrict` / `GetWorkboolTypeStrict` / `IsXLS` / `IsXLSX`（实测无调用方）；⑤ 删双变体对照脚本 `DiffHarness\run_diff_compare.ps1`（它构建与比对的第二个 exe 已不存在），harness 本身保留为单变体确定性输出工具；⑥ 载荷与门禁：`Build-Setup.ps1` 不再过滤"EDN 三件套"，E7 改为断言**退役读取层的库不得出现在成品载荷里**（陈旧 bin 会活过重建，所以断言打在字节上）。
+- **实测（改动前后各跑过）**：反射探针 + 一个临时控制台探针，对着新构建的 `ExcelDiff.dll` 跑 8 项，全过 ——
+  1. sheet 名单一致性：4 个真实 xlsx（`Item`/`Card`/`Globalsetup`/`AllLocalizationWords`）上，zip 直读路径与新的 reader 枚举路径**结果与顺序都相同**；
+  2. 真 .xls（BIFF8，用本机 Excel 16 生成，两个 sheet `Alpha`/`Beta`）：`GetSheetNames` 返回 `[Alpha|Beta]`，`Create` 也拿到两个 sheet、3 行 —— 原先这条走 NPOI；
+  3. 手写空工作簿：1512 字节，自家 reader 读出 `[Sheet1]`、1 sheet、0 行；**再用真 Excel 打开同一个文件**确认 sheets=1 / name=Sheet1（不是只有我们自己读得动）；
+  4. csv / tsv 两个分支正常。
+  顺带查出一个**既存缺陷**：`GetSheetNames` 在 csv/tsv 分支 `yield return` 文件名之后没有 `yield break`，会继续掉进下面的工作簿枚举 —— 用 A/B 取证确认旧的 NPOI 版同样炸（`InvalidFormatException`），新实现改成 `HeaderException`，也就是说这条一直坏着，本轮补上 `yield break`（INVARIANTS B2 的"行列语义"不受影响）。
+  体积：载荷 56 文件 / 15.4 MB → **50 文件 / 7.5 MB**，setup exe 5.9 MB → **2.8 MB**。门禁：`verify.ps1` 8/8、`verify-installer.ps1` 静态与 `-Install`（A–M）见本轮验证记录。
+- **后果**：读取层只有一条实现，也就**没有兜底读取器**了 —— EDR 那个"仅样式无值单元格读不到 → 列漂移 → 漏报差异"的固有盲区从此只能如实说明，或另开 ADR 去修读取层本身（B3 已按这个口径改写）。基准对比手段收窄为：NetDiff 单测 + harness 的确定性输出 + 拿 Excel 人工对照。反向代价是工程更简单：没有变体矩阵、没有条件编译、少 6 个第三方 dll、载荷和安装包体积近乎减半。
+- **被否**：① 只删变体、把 NPOI 与 `VerifyRead` 留在源码里"以后对照用" —— 留下的是一条没有调用方的路径加 6 个 dll，正是这次要清的东西；② 保留 `GetSheetNames` 走 NPOI（只删 EDN 读取路径） —— NPOI 就还在依赖表和载荷里，"去 NPOI"名不副实；③ 用 Excel COM 自动化生成空工作簿 —— 引入 Office 运行时依赖，桌面工具不该这么干；④ 保留 `run_diff_compare.ps1` 改成"两个代码版本比对" —— 那需要同时构建两份 harness 并排运行，是新功能不是清理，需要时另开条目。

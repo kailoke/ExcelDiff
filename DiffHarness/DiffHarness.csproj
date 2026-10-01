@@ -3,12 +3,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net472</TargetFramework>
     <RootNamespace>DiffHarness</RootNamespace>
-    <AssemblyName Condition="'$(EdrRead)' == 'true'">DiffHarnessEDR</AssemblyName>
-    <AssemblyName Condition="'$(EdrRead)' != 'true'">DiffHarness</AssemblyName>
+    <AssemblyName>DiffHarness</AssemblyName>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath Condition="'$(EdrRead)' == 'true'">bin\Release-EDR\</OutputPath>
-    <OutputPath Condition="'$(EdrRead)' != 'true'">bin\Release\</OutputPath>
-    <DefineConstants Condition="'$(EdrRead)' != 'true'">$(DefineConstants);NPOI_READ</DefineConstants>
+    <OutputPath>bin\Release\</OutputPath>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>

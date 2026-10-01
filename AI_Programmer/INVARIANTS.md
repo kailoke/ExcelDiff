@@ -3,19 +3,18 @@
 > 改动任何代码前逐条核对。**违反任一条 = 阻断提交/部署。**
 > 来源：ARCHITECTURE.md、AGENTS.md、CODEX.md（各条标注出处）。
 
-## A. 双版本（EDN/EDR）隔离（EDR 为主版本）
+## A. 单一版本（EDR 是唯一版本）
 
-- [ ] **A1 单一代码源**：EDN/EDR 由同一份源码 + `#if NPOI_READ / EDR_READ` 编译产出，禁止复制两套实现。（AGENTS §5）
-- [ ] **A2 主版本必编译**：EDR（`EdrRead=true`）必须编译通过；EDN（`EdrRead` 空）代码保留作保底对照、**不参与日常门禁**（仅对照验证时手工 build）。（AGENTS §7.1 / ADR-012）
-- [ ] **A3 EDN 代码不得移除**：EDN（NPOI）分支、`ExcelDiff.GUI` 程序集名、`%APPDATA%\ExcelDiff.GUI\` 配置路径等保留，作为 EDR 盲区兜底与对照验证。（AGENTS §7.5 / ARCH §10）
-- [ ] **A4 隔离派生**：配置目录/IPC channel/显示名均按程序集名（exe 名）派生，EDN/EDR 天然隔离，不要硬编码共享。（ARCH §7.8、CODEX 链路B）
+- [ ] **A1 只有一个构建目标**：产品就是 `ExcelDiffEDR.GUI`（读取层唯一实现 = ExcelDataReader）。双版本机制已于 2026-09-30 整体移除（ADR-019）：`EdrRead` 属性、`NPOI_READ` / `EDR_READ` 条件编译、`ExcelDiff.GUI` 程序集名、NPOI 及其传递依赖都不许再被请回来 —— 需要第二种读取实现时另开 ADR，不要在源码里留影子。
+- [ ] **A2 门禁即构建**：`AI_Script\verify.ps1` 编译的产品必须通过；不再有"主版本/保底版本"的区分，也没有只属于某个变体的手工构建路径。（AGENTS §4）
+- [ ] **A3 身份仍按程序集名派生**：配置目录、IPC channel id、显示名继续从 exe 名派生（不要硬编码共享）。这条留着的理由不再是"两版隔离"，而是历史部署与用户配置目录（`%APPDATA%\ExcelDiffEDR.GUI`）都按这个名字绑定。（ARCH §7.8、CODEX 链路B）
 
 ## B. 读取层（核心库 ExcelDiff）
 
-- [ ] **B1 版本定位**：EDR=ExcelDataReader **主版本**（读取快约 72%）；EDN=NPOI **保底对照**（语义最全，代码保留、不日常构建）。基准测试以 EDR 为准；**EDN 代码不得移除**（EDR 盲区兜底）。（ARCH §5/§10、ADR-012）
-- [ ] **B2 EDR 语义对齐**：EDR 路径必须跳整空行、裁剪尾空单元格，保持与 NPOI 行/列语义一致。（ExcelWorkbook.cs:132-141）
-- [ ] **B3 EDR 已知盲区**：EDR 读不到"仅样式无值"单元格 → 列漂移 → 漏报真实变更。涉及该场景用 `ExcelWorkbook.VerifyRead` 双读校验 / EDN（NPOI）保底对照。（ARCH §9.6）
-- [ ] **B4 回归比对（可选）**：EDN/EDR 输出比对（如需对照）必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件/跨版本互比。（AGENTS §7.4/§7.7）
+- [ ] **B1 读取层只有一条实现**：`ExcelWorkbook.Create` 对 xls/xlsx 走 ExcelDataReader，csv/tsv 走自研解析器。约 72% 的读取效率优势是当年选它的理由，也是现在唯一实现的前提。（ARCH §5、ADR-019）
+- [ ] **B2 行列语义**：读取路径必须跳整空行、裁剪尾空单元格，每行的单元格列表止于最后一个有值的列 —— diff 的行/列对齐就建在这两条上。（ExcelWorkbook.cs 的 `CreateFromExcel`）
+- [ ] **B3 已知盲区（无兜底，别再承诺兜底）**：ExcelDataReader 读不到"仅样式无值"的单元格 → 空列被吞 → 列对齐漂移 → 漏报真实变更。原先的"用 `VerifyRead` 双读 / EDN 保底对照"整条已随 NPOI 移除（实测：`VerifyRead`/`CreateUsingNpoi` 在删除前已无任何调用方，即那套兜底从来没接上过线）。现在遇到该场景只能如实告知用户，或另开 ADR 设计校验手段。（ARCH §9.6）
+- [ ] **B4 回归比对（可选）**：`DiffHarness` 是单变体的 headless 输出工具；比对必须**严格用同名文件的 Unstaged（工作区）VS HEAD**，严禁跨文件对比。（AGENTS §7.4/§7.7）
 - [ ] **B5 扩展名分发**：新增文件类型解析在 `ExcelWorkbook.Create` 里统一分发，CSV/TSV 保持自研零依赖。
 
 ## C. 生命周期 / IPC（GUI 高危区）
@@ -42,7 +41,7 @@
 - [ ] **E4 不主动加注释**：沿用既有代码风格，改动不添加新注释（除非必须解释架构决策）。
 - [ ] **E5 NetDiff 算法**：改动 `EditGraph.cs`/`DiffUtil.cs` 后必须跑通 `NetDiff.TestRunner`（31 用例）。（AGENTS §7.3）
 - [ ] **E6 本地构建命令**：必须传 `/p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2"`（`<repo>`=仓库根，实际值取 `ProjectPaths.ps1` 的 `$RefAssemblyPath`；.NET Framework 引用程序集不在 SDK 里；旧属性名 `TargetFrameworkRootPath` 已弃用）。（AGENTS §4）
-- [ ] **E7 安装输入隔离**：setup 载荷只能来自 `ExcelDiff.Installer\obj\stage` 的专用构建（禁止扫描共享 `bin\Release`），且不得含 `.pdb`、EDN 三件套（`ExcelDiff.GUI.exe/.config/.pdb`）与任何辅助注册工具；打包不依赖外部安装器工具链。（AGENTS §4 / ADR-017）
+- [ ] **E7 安装输入隔离**：setup 载荷只能来自 `ExcelDiff.Installer\obj\stage` 的专用构建（禁止扫描共享 `bin\Release`），且不得含 `.pdb` 与任何辅助注册工具；退役读取层留下的库（`NPOI*`、`ICSharpCode.SharpZipLib`、`BouncyCastle`）也不得再出现在载荷里 —— 陈旧 bin 目录会活过重建，所以这条断言打在**成品字节**上而不是源码上。（AGENTS §4 / ADR-017 / ADR-019）
 - [ ] **E8 安装身份一致**：`ExcelDiffSetup.exe` 的 FileVersion 必须等于 staged 主 EXE `ExcelDiffEDR.GUI.exe` 的 FileVersion，ARP `DisplayVersion` 取同一值；同版本重装必须复用同一注册表键与目录，不得产生第二份"应用和功能"条目。（`Build-Setup.ps1` 校验 / ADR-017）
 - [ ] **E9 安装事务完整**：ShellExtension 的 COM 注册/注销必须成对且**在子进程里执行**（进程内 `LoadFrom` 会锁住扩展 DLL 导致卸载删不掉）；重装必须先 `Directory.Move` 旧目录并保留 undo 栈，任一步失败要还原旧目录、恢复 HKLM 状态快照；文件删除只能按 `install-manifest.txt` 逐项执行，**清单缺失一律拒绝卸载**（不做"按已知文件名删"的回落，那会在 `/dir` 打错时删到别一份安装；实测：删掉清单后卸载返回 1、文件与 HKLM 记录俱在，放回清单才返回 0），绝不递归删未知目录——目标目录安装前已存在时，回滚只按清单删自己放下去的东西；卸载有文件删不掉时**必须返回失败且不清注册表/ARP/用户配置**，禁止"提示再卸载一次"却报成功；安装与卸载的目标目录必须在**参数层**判定为绝对路径且非盘符根（判定要看过 `Path.GetFullPath` 之前的原文 —— 解析之后再问 `IsPathRooted` 永远为真，相对值会静默落到进程的工作目录），坏形态返回退出码 4 而不是 1，这样根本不触碰机器。（ADR-017）
 - [ ] **E10 安装发布门禁**：正式分发前必须 `AI_Script\verify-installer.ps1 -Install` 全绿（静态检查 + A–M 十三个真实安装/卸载/重装/回滚/拒绝用例），并在发布流水线完成 Authenticode 签名；未签名产物不得对外。（AGENTS §4 / ADR-017 / ADR-018）

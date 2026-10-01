@@ -6,7 +6,7 @@
     Static checks always run:
       - the published setup exe exists and carries the payload + both string tables
       - the payload's own main exe FileVersion equals the setup exe FileVersion (E8)
-      - the payload holds no symbols, no EDN exe and no helper tool (E7)
+      - the payload holds no symbols, no helper tool and no leftover reader library (E7)
       - zh-CN and en-US string tables have identical key sets, with the same {0} placeholders
         per key (a drifting arity throws at runtime)
       - the published exe is newer than every installer source (a green run on a stale binary
@@ -166,7 +166,12 @@ try {
     Check 'payload has both lang json' (($leaves -contains 'zh-CN.json') -and ($leaves -contains 'en-US.json'))
     Check 'payload has shell extension + SharpShell' (($leaves -contains 'ExcelDiff.ShellExtension.dll') -and ($leaves -contains 'SharpShell.dll'))
     Check 'payload free of pdb (E7)' (@($leaves | Where-Object { $_ -like '*.pdb' }).Count -eq 0)
-    Check 'payload free of EDN exe (E7)' ($leaves -notcontains 'ExcelDiff.GUI.exe')
+    # The NPOI family came in as a transitive dependency of the retired EDN reader. Stale bin
+    # directories survive rebuilds, so assert against the shipped bytes that none of them is
+    # still being delivered.
+    Check 'payload free of retired reader libraries (E7)' `
+        (@($leaves | Where-Object { $_ -match '^(NPOI|ICSharpCode\.SharpZipLib|BouncyCastle)' }).Count -eq 0) `
+        ('left=' + (($leaves | Where-Object { $_ -match '^(NPOI|ICSharpCode|BouncyCastle)' }) -join ','))
     Check 'payload free of srm.exe (E7)' ($leaves -notcontains 'srm.exe')
 
     # E8 against the shipped bytes, not against a possibly stale obj\stage.

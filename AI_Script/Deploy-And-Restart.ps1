@@ -1,12 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Build EDR (main), deploy to Program Files, and restart the resident process.
+    Build the product, deploy to Program Files, and restart the resident process.
 
 .DESCRIPTION
     Solidifies the deploy/restart procedure documented in AI_Programmer\AGENTS.md §7.6 / §8.6 / §8.7.
-    EDR (EdrRead=true) is the main/primary version and the only variant built, deployed,
-    and restarted by this script. The EDN (NPOI) fallback variant is retained in source for
-    reference/对照 but is no longer built or deployed in the daily flow.
+    There is one product build (ExcelDiffEDR.GUI, read via ExcelDataReader); the former EDN (NPOI)
+    variant has been removed from the source, along with the EdrRead switch that selected it.
 
     IMPORTANT - integrity level:
     The resident GUI must run at the SAME integrity level as the interactive desktop; otherwise a
@@ -211,7 +210,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "ExcelDiff restore failed (exit $LASTEXITCODE)" }
 
         Write-Host "== Build EDR (main) =="
-        dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:EdrRead=true `
+        dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release `
             "/p:FrameworkPathOverride=$RefAssemblyPath" `
             /p:IncludePackageReferencesDuringMarkupCompilation=false `
             /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture `

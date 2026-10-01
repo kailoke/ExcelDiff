@@ -44,15 +44,8 @@ namespace ExcelDiff.GUI
             get { return (App)Current; }
         }
 
-        /// <summary>
-        /// Application display name. Compile-time constant, distinct per build:
-        /// authoritative EDN (NPOI) build = "ExcelDiff", EDR build = "ExcelDiffEDR".
-        /// </summary>
-#if EDR_READ
+        /// <summary>Application display name, matching the product identity in ARP and the shell menu.</summary>
         public const string DisplayName = "ExcelDiffEDR";
-#else
-        public const string DisplayName = "ExcelDiff";
-#endif
 
         protected override void OnStartup(StartupEventArgs e)
         {

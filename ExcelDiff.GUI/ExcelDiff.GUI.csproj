@@ -7,8 +7,7 @@
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ExcelDiff.GUI</RootNamespace>
-    <AssemblyName Condition="'$(EdrRead)' == 'true'">ExcelDiffEDR.GUI</AssemblyName>
-    <AssemblyName Condition="'$(EdrRead)' != 'true'">ExcelDiff.GUI</AssemblyName>
+    <AssemblyName>ExcelDiffEDR.GUI</AssemblyName>
     <TargetFramework>net472</TargetFramework>
     <FrameworkPathOverride>$(MSBuildThisFileDirectory)..\packages\refs\.NETFramework\v4.7.2</FrameworkPathOverride>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -43,7 +42,6 @@
   </PropertyGroup>
   <PropertyGroup>
     <DefineConstants Condition="'$(EnablePerfTiming)' == 'true'">$(DefineConstants);PERF_TIMING</DefineConstants>
-    <DefineConstants Condition="'$(EdrRead)' == 'true'">$(DefineConstants);EDR_READ</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>app.ico</ApplicationIcon>

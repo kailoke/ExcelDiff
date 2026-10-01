@@ -362,12 +362,8 @@ namespace ExcelDiff.GUI.Settings
         // The setup wizard records its choices here. The key carries the build-variant identity so an
         // EDN build never reads an EDR install's seed (INVARIANTS A4); Build-Setup.ps1 asserts that
         // this literal and the installer's ProductInfo.ProductRegKey stay identical.
-        private static readonly string InstallerStateKey =
-#if EDR_READ
-            @"SOFTWARE\ExcelDiffEDR";
-#else
-            @"SOFTWARE\ExcelDiff";
-#endif
+        // The key the setup writes its language / auto-start seed into (ADR-017).
+        private static readonly string InstallerStateKey = @"SOFTWARE\ExcelDiffEDR";
         private const string InstallerCultureValue = "SetupCulture";
         private const string InstallerStartOnBootValue = "SetupStartOnBoot";
 

@@ -6,7 +6,7 @@
     Replaces the retired WiX/MSI chain. Flow:
       1. assert the installer's folder-name constant matches ProjectPaths.ps1
       2. restore + rebuild EDR GUI and ShellExtension into isolated staging (INVARIANTS E7)
-      3. merge the shell files into the app payload, drop pdb/xml and the EDN trio
+      3. merge the shell files into the app payload, drop pdb/xml
       4. assert the installer version equals the main exe FileVersion (INVARIANTS E8)
       5. zip the payload and embed it as a manifest resource by building the csproj
       6. verify the produced exe really carries the payload resource
@@ -65,7 +65,8 @@ $registryStore = Get-Content -LiteralPath (Join-Path $InstallerDir 'Core\Registr
 $keyMatch = [regex]::Match((Get-Content -LiteralPath $ProductCs -Raw), 'ProductRegKey\s*=\s*@"([^"]+)"')
 if (-not $keyMatch.Success) { throw "could not read ProductRegKey from $ProductCs" }
 $productRegKey = $keyMatch.Groups[1].Value
-# The app reads the EDR key under #if EDR_READ; both literals must match or the seed silently no-ops.
+# The app reads the EDR key unconditionally (the #if EDR_READ branch it used to sit behind was
+# removed with the EDN variant, ADR-019); both literals must match or the seed silently no-ops.
 if ($appSettings -notmatch ('@"' + [regex]::Escape($productRegKey) + '"')) {
     throw "ApplicationSetting.cs does not read HKLM\$productRegKey - installer and app disagree about the seed key"
 }
@@ -94,7 +95,7 @@ if (-not $SkipBuild) {
 
     dotnet restore "$GuiProj" --configfile $NuGetConfigPath /v:m
     if ($LASTEXITCODE -ne 0) { throw 'EDR restore failed' }
-    dotnet msbuild "$GuiProj" /p:Configuration=Release /p:EdrRead=true `
+    dotnet msbuild "$GuiProj" /p:Configuration=Release `
         /p:FrameworkPathOverride="$RefAssemblyPath" `
         /p:IncludePackageReferencesDuringMarkupCompilation=false `
         /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture `
@@ -128,9 +129,9 @@ foreach ($shellFile in @('ExcelDiff.ShellExtension.dll', 'SharpShell.dll', 'Syst
     Copy-Item -LiteralPath $source -Destination (Join-Path $AppStage $shellFile) -Force
 }
 
-# Symbols, docs and the EDN build must never ship inside the EDR package.
+# Symbols and docs must never ship inside the package.
 Get-ChildItem -LiteralPath $AppStage -Recurse -File | Where-Object {
-    $_.Extension -in '.pdb', '.xml' -or $_.Name -in 'ExcelDiff.GUI.exe', 'ExcelDiff.GUI.exe.config'
+    $_.Extension -in '.pdb', '.xml'
 } | Remove-Item -Force
 
 $payloadFiles = Get-ChildItem -LiteralPath $AppStage -Recurse -File

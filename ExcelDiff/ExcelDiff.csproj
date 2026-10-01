@@ -36,15 +36,14 @@
   </PropertyGroup>
   <PropertyGroup>
     <DefineConstants Condition="'$(EnablePerfTiming)' == 'true'">$(DefineConstants);PERF_TIMING</DefineConstants>
-    <DefineConstants Condition="'$(EdrRead)' != 'true'">$(DefineConstants);NPOI_READ</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
+
     <PackageReference Include="ExcelDataReader" Version="3.9.0" />
-    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+
     <PackageReference Include="System.Memory" Version="4.5.5" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
-    <PackageReference Include="NPOI" Version="2.5.6" />
+
     <PackageReference Include="SKCore" Version="1.0.1" />
   </ItemGroup>
   <ItemGroup>
@@ -54,7 +53,6 @@
     <Compile Include="ExcelCellStatus.cs" />
     <Compile Include="ExcelColumn.cs" />
     <Compile Include="ExcelColumnStatus.cs" />
-    <Compile Include="ExcelReader.cs" />
     <Compile Include="ExcelRow.cs" />
     <Compile Include="ExcelRowDiff.cs" />
     <Compile Include="ExcelSheet.cs" />

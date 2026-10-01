@@ -1,93 +1,72 @@
 using System;
 using System.IO;
-using NPOI.SS.UserModel;
-using NPOI.HSSF.UserModel;
-using NPOI.XSSF.UserModel;
+using System.IO.Compression;
+using System.Text;
 
 namespace ExcelDiff
 {
     public class ExcelUtility
     {
-#if PERF_TIMING || NPOI_READ
-        public static object GetCellValue(ICell cell)
-        {
-            if (cell == null)
-                return null;
+        private const string ContentTypesXml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+            "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>" +
+            "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+            "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+            "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+            "</Types>";
 
-            return GetCellValue(cell, cell.CellType);
-        }
+        private const string RootRelsXml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+            "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+            "</Relationships>";
 
-        private static object GetCellValue(ICell cell, CellType type)
-        {
-            if (cell != null)
-            {
-                switch (type)
-                {
-                    case CellType.Numeric:
-                        if (DateUtil.IsCellDateFormatted(cell))
-                        {
-                            return cell.DateCellValue;
-                        }
-                        else
-                        {
-                            return cell.NumericCellValue;
-                        }
-                    case CellType.String:
-                        return cell.StringCellValue;
-                    case CellType.Boolean:
-                        return cell.BooleanCellValue;
-                    case CellType.Formula:
-                        return GetCellValue(cell, cell.CachedFormulaResultType);
-                }
-            }
+        private const string WorkbookXml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" " +
+            "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+            "<sheets><sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>";
 
-            return string.Empty;
-        }
+        private const string WorkbookRelsXml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+            "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+            "</Relationships>";
 
-        public static string GetCellStringValue(ICell cell)
-        {
-            if (cell == null)
-                return string.Empty;
+        private const string Sheet1Xml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData/></worksheet>";
 
-            return GetCellValue(cell).ToString();
-        }
-#endif
-
+        /// <summary>
+        /// Creates an empty single-sheet .xlsx. This is what the diff opens when one side of the
+        /// compared pair does not exist on disk (DiffCommand.EnsureFile): the file only has to be
+        /// readable by our own reader, so the five package parts are written by hand instead of
+        /// keeping a spreadsheet library alive just to mint empty workbooks. Only XLSX is produced,
+        /// which is all any caller asks for.
+        /// </summary>
         public static void CreateWorkbook(string path, ExcelWorkbookType workbookType)
         {
-            if (!ValidateExtension(path, workbookType))
+            if (workbookType != ExcelWorkbookType.XLSX ||
+                !string.Equals(Path.GetExtension(path), ".xlsx", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("The specified Excel type and path extension do not match.");
 
-            var workbook = CreateWorkbook(workbookType);
-            var sheet = workbook.CreateSheet();
-
-            using (var fileStream = new FileStream(path, FileMode.Create))
+            using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write))
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
             {
-                workbook.Write(fileStream);
+                WriteEntry(archive, "[Content_Types].xml", ContentTypesXml);
+                WriteEntry(archive, "_rels/.rels", RootRelsXml);
+                WriteEntry(archive, "xl/workbook.xml", WorkbookXml);
+                WriteEntry(archive, "xl/_rels/workbook.xml.rels", WorkbookRelsXml);
+                WriteEntry(archive, "xl/worksheets/sheet1.xml", Sheet1Xml);
             }
         }
-        private static IWorkbook CreateWorkbook(ExcelWorkbookType workbookType)
+
+        private static void WriteEntry(ZipArchive archive, string name, string content)
         {
-            switch (workbookType)
-            {
-                case ExcelWorkbookType.XLS: return new HSSFWorkbook() as IWorkbook;
-                case ExcelWorkbookType.XLSX: return new XSSFWorkbook() as IWorkbook;
-                default: break;
-            }
-
-            throw new ArgumentException("The specified excel type is not supported instantiating.");
-        }
-
-        private static bool ValidateExtension(string path, ExcelWorkbookType workbookType)
-        {
-            switch (workbookType)
-            {
-                case ExcelWorkbookType.XLS: return Path.GetExtension(path) == ".xls";
-                case ExcelWorkbookType.XLSX: return Path.GetExtension(path) == ".xlsx";
-                default: break;
-            }
-
-            return false;
+            var entry = archive.CreateEntry(name);
+            using (var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false)))
+                writer.Write(content);
         }
 
         public static ExcelWorkbookType GetWorkbookType(string path)
@@ -101,51 +80,6 @@ namespace ExcelDiff
             }
 
             return ExcelWorkbookType.None;
-        }
-
-        [System.Obsolete("Use GetWorkbookTypeStrict instead.")]
-        public static ExcelWorkbookType GetWorkboolTypeStrict(string path)
-        {
-            return GetWorkbookTypeStrict(path);
-        }
-
-        public static ExcelWorkbookType GetWorkbookTypeStrict(string path)
-        {
-            var type = GetWorkbookType(path);
-
-            if (type == ExcelWorkbookType.None)
-            {
-                if (IsXLS(path))
-                    type = ExcelWorkbookType.XLS;
-                else if (IsXLSX(path))
-                    type = ExcelWorkbookType.XLSX;
-            }
-
-            return type;
-        }
-
-        public static bool IsXLS(string path)
-        {
-            try
-            {
-                return WorkbookFactory.Create(path) is HSSFWorkbook;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public static bool IsXLSX(string path)
-        {
-            try
-            {
-                return WorkbookFactory.Create(path) is XSSFWorkbook;
-            }
-            catch
-            {
-                return false;
-            }
         }
     }
 }

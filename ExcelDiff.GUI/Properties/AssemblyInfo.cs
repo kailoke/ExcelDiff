@@ -7,15 +7,8 @@ using System.Windows;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-// FileDescription/ProductName follow the build variant so the two products
-// are distinguishable in Task Manager (EDN vs EDR).
-#if EDR_READ
 [assembly: AssemblyTitle("ExcelDiffEDR")]
 [assembly: AssemblyProduct("ExcelDiffEDR")]
-#else
-[assembly: AssemblyTitle("ExcelDiff")]
-[assembly: AssemblyProduct("ExcelDiff")]
-#endif
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]

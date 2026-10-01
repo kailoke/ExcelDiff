@@ -1,7 +1,6 @@
 # verify.ps1 - One-command development gate.
-# Builds the EDR (ExcelDataReader) main variant, runs the NetDiff unit tests, checks
-# lang\*.json <-> .resx sync, and prints the WIP snapshot.
-# The EDN (NPOI) fallback variant is retained in source but is not part of the gate.
+# Builds the product (ExcelDiffEDR.GUI, ExcelDataReader reader), runs the NetDiff unit
+# tests, checks lang\*.json <-> .resx sync, and prints the WIP snapshot.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1 [-SkipBuild]
 # Exit code 0 = all checks passed.
@@ -44,7 +43,6 @@ if (-not $SkipBuild) {
     $nugetConfig = $NuGetConfigPath
     $common = @(
         '/p:Configuration=Release',
-        '/p:EdrRead=true',
         "/p:FrameworkPathOverride=$refs",
         '/p:IncludePackageReferencesDuringMarkupCompilation=false',
         '/p:GenerateResourceMSBuildArchitecture=CurrentArchitecture',
