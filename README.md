@@ -88,7 +88,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 
 全绿 = 产品编译通过 + 安装器工程编译通过 + NetDiff 31 用例通过 + `lang\*.json ↔ resx` 双向同步 + 两份 resx 键集一致 + 坑扫描（禁止对转发进程 `Start-Process -Wait`、XAML 内禁止硬编码可见文本）。
 
-安装包另有发布门禁：`powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install`（静态检查载荷/资源/版本/双语键集，外加 A–O 十五个**真实**安装·卸载·重装·回滚·拒绝用例；需要管理员，机器上已有安装记录时会拒绝运行，跑完自动还原 `HKCU Run` 与用户设置目录）。
+安装包另有发布门禁：`powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install`（静态检查载荷/资源/版本/双语键集，外加 A–Q 十七个**真实**安装·卸载·重装·回滚·拒绝用例；需要管理员，机器上已有安装记录时会拒绝运行，跑完自动还原 `HKCU Run` 与用户设置目录）。
 
 ## 使用方式
 
@@ -242,7 +242,7 @@ vdiff = exceldiff
 ## 回归验证
 
 - `AI_Script\verify.ps1`：一键门禁（产品编译 + 安装器工程编译 + NetDiff 31 用例 + lang↔resx 双向同步 + 两份 resx 键集一致 + 坑扫描）。
-- `AI_Script\verify-installer.ps1`：安装包发布门禁（静态检查；`-Install` 追加 A–O 十五个真实安装/卸载/重装/回滚/拒绝用例，需管理员）。
+- `AI_Script\verify-installer.ps1`：安装包发布门禁（静态检查；`-Install` 追加 A–Q 十七个真实安装/卸载/重装/回滚/拒绝用例，需管理员）。
 - `DiffHarness\`：headless diff 输出（确定性 diff 文本，用于同一文件两个版本之间的回归比对）。
 - `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 

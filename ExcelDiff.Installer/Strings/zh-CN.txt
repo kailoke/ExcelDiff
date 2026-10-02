@@ -91,3 +91,4 @@ log.kill=正在结束正在运行的 ExcelDiffEDR（{0} 个进程）
 err.runningAborted=ExcelDiffEDR 未能结束，本次操作已取消：未删除任何文件，也未改动注册表。
 err.foreignRecord=注册表记录的安装目录与本次要卸载的目录不是同一个（记录为 {0}），已拒绝执行：不删文件、不动注册表。请改用记录里那个目录自己的 Uninstall.exe，或从目录外调用安装包并带上 /dir=<记录里的目录>。
 err.foreignManifest=这份 install-manifest.txt 记的路径不在本次目标目录之内（{0}），照它删除会动到别的安装，已拒绝执行：不删文件、不动注册表。请改用那些路径所在目录自己的 Uninstall.exe。
+err.foreignInstallSource=注册表记录的旧安装目录（{0}）里没有 install-manifest.txt，无法确认那是本安装器装下去的目录，因此不会把它搬走或删除。请先卸载记录里的一份；若这条记录已经失效，删掉 HKLM\SOFTWARE\ExcelDiffEDR 再重新安装。

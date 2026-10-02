@@ -87,7 +87,7 @@ powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 
 All green = the product build compiles + installer project compiles + 31 NetDiff tests pass + `lang\*.json ↔ resx` in sync (both directions) + the two resx files carry the same key set + pitfall scans (no `Start-Process -Wait` on the forwarder, no hardcoded visible text in XAML).
 
-The installer has its own release gate: `powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install` (static checks on payload / embedded resources / version / bilingual key sets, plus A–O fifteen **real** install · uninstall · reinstall · rollback · refusal cases; needs admin, refuses to run when the machine already has an install record, and restores `HKCU Run` and the user settings folder afterwards).
+The installer has its own release gate: `powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install` (static checks on payload / embedded resources / version / bilingual key sets, plus A–Q seventeen **real** install · uninstall · reinstall · rollback · refusal cases; needs admin, refuses to run when the machine already has an install record, and restores `HKCU Run` and the user settings folder afterwards).
 
 ## Usage
 
@@ -241,7 +241,7 @@ i.e. `%APPDATA%\ExcelDiffEDR.GUI\ExcelDiffEDR.GUI.yml` (the folder name is deriv
 ## Regression Verification
 
 - `AI_Script\verify.ps1`: one-command gate (product build + installer project compile + 31 NetDiff tests + `lang ↔ resx` sync both directions + matching resx key sets + pitfall scans).
-- `AI_Script\verify-installer.ps1`: installer release gate (static checks; `-Install` adds A–O fifteen real install/uninstall/reinstall/rollback/refusal cases, needs admin).
+- `AI_Script\verify-installer.ps1`: installer release gate (static checks; `-Install` adds A–Q seventeen real install/uninstall/reinstall/rollback/refusal cases, needs admin).
 - `DiffHarness\`: headless diff output (deterministic diff text, for comparing one file's two versions).
 - `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
 

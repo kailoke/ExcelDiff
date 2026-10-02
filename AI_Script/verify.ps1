@@ -128,7 +128,7 @@ if ($resxMaps.ContainsKey('en-US') -and $resxMaps.ContainsKey('zh-CN')) {
 $psFiles = Get-ChildItem -Path $root -Filter '*.ps1' -Recurse -File -ErrorAction SilentlyContinue |
     Where-Object {
         $_.FullName -ne $PSCommandPath -and
-        $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\backup_installed_|\\packages\\|\\\.git\\'
+        $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\packages\\|\\\.git\\'
     }
 $pitfall = @()
 foreach ($psf in $psFiles) {
@@ -162,7 +162,7 @@ $d1Class = '[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uff01-\uff5e\u
 $d1UiAttrs = 'Text|Content|Header|ToolTip|Description|Title'
 $d1 = @()
 $xamlFiles = Get-ChildItem -Path $root -Filter '*.xaml' -Recurse -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\backup_installed_|\\packages\\|\\\.git\\' }
+    Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Build\\|\\packages\\|\\\.git\\' }
 foreach ($xf in $xamlFiles) {
     $lines = [System.IO.File]::ReadAllLines($xf.FullName)
     $inComment = $false

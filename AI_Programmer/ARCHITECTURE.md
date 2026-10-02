@@ -63,7 +63,7 @@ ExcelDiff ──> ExcelDataReader 3.9.0（唯一读取实现）
 | 本地化 | `Localization/` `LocalizationManager.cs` | 外置 `lang\<culture>.json`（自定义 JSON 解析器，UTF-8）；`Resources.Designer.cs` 桥接到 `LocalizationManager.GetString`；`{x:Static Resources.*}` 在窗口加载时固化 → 语言变更需关闭主窗口、下次命令再重建（`App.CloseMainWindowForLanguageChange`，`App.xaml.cs:346`） |
 | 视图 | `Views/` | `MainWindow`（含 PowerShell 控制台宿主）；`DiffView`（对比网格 + 差异导航 + 搜索 + 日志输出）；`NoDiffWindow`（无差异提示，`CloseResultButton.IsDefault` 支持回车关闭）；`ProgressWindow`；设置/外部命令系列窗口 |
 | ViewModel | `ViewModels/` | `MainWindowViewModel`、`DiffViewModel`、各设置窗口 VM，基于 Prism `BindableBase` |
-| 模型 | `Models/` | `DiffGridModel`（行状态预计算、按需刷新 minimap 优化）；渲染到第几列由它的 `columnCount` 决定（绘制循环的上界就是该值），排查"某个差异单元格根本不出现"先看这个值怎么算出来的，再看取值逻辑；`DiffType` |
+| 模型 | `Models/` | `DiffGridModel`（行状态预计算、按需刷新 minimap 优化）；它的 `ColumnCount`（内部 `columnCount`）决定"这个网格一共有多少列"，绘制循环只遍历视口可见列、越界的列被跳过（`FastGridControl_Render.cs` 的 `col >= _realColumnCount` 护栏），所以排查"某个差异单元格根本不出现"要先看这个列数怎么算出来的，再看取值逻辑；`DiffType` |
 | 事件 | `Views/DiffViewEvent/` | 事件分发器/监听器/处理器 |
 | 行为/转换器 | `Behaviors/` `ValueConverters/` | 拖放文件、条件转换器等 |
 | 计时 | `Timing.cs` | `PERF_TIMING` 下的分段计时输出 |

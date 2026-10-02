@@ -32,6 +32,14 @@
          the %TEMP% relay carries the role as an explicit switch
       M  the ARP QuietUninstallString itself performs the uninstall - the only coverage of the
          recorded-folder branch of ResolveUninstallDir, because that string carries no /dir
+      N  uninstall while the product is running from that very folder: the gate first ends any
+         running ExcelDiffEDR (a machine side effect it prints, redeploy afterwards), starts the
+         copy it installed, then asserts the uninstall ends that process and deletes the folder
+      O  ownership before deletion: a copied install folder and a manifest pointing outside the
+         target are both refused with exit 1 while both installs survive, and the same command
+         succeeds once the record points back at the real folder
+    The interactive UninstallString (wizard needs a human click) is asserted only in shape by A;
+    executing it belongs to the manual acceptance checklist in AI_Programmer\AGENTS.md section 4.
 
     Every assertion is taken BEFORE the finally-block repairs anything, so a product bug cannot be
     hidden by the gate's own cleanup. -Install writes HKLM keys, registers a COM server and touches
@@ -325,6 +333,28 @@ function ClsidCodeBase {
 function Normalize-Uri([string]$value) {
     if (-not $value) { return '' }
     return [System.Uri]::UnescapeDataString([string]$value).Replace('file:///', '').Replace('/', '\')
+}
+
+# The star is a literal key name: Get-Item/Get-ChildItem would glob it across every registered class
+# (measured: that runs for minutes), so the handler entry is read through the .NET API. This is the
+# hookup point SharpShell actually uses - the per-extension ones stay empty (measured).
+function ContextMenuHandlerEntry {
+    $found = @()
+    foreach ($hive in @([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryHive]::CurrentUser)) {
+        foreach ($view in @([Microsoft.Win32.RegistryView]::Registry64, [Microsoft.Win32.RegistryView]::Registry32)) {
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey($hive, $view)
+            $relative = if ($hive -eq [Microsoft.Win32.RegistryHive]::LocalMachine) { 'SOFTWARE\Classes' } else { 'Software\Classes' }
+            $key = $base.OpenSubKey($relative + '\*\ShellEx\ContextMenuHandlers')
+            if ($key) {
+                $handler = $key.OpenSubKey('ContextMenuExtension')
+                if ($handler) { $found += ($hive.ToString() + '/' + $view.ToString() + '=' + [string]$handler.GetValue('')) }
+                if ($handler) { $handler.Dispose() }
+                $key.Dispose()
+            }
+            $base.Dispose()
+        }
+    }
+    return ($found -join ';')
 }
 
 # Refuse to run where the gate would damage a live developer setup.
@@ -709,6 +739,54 @@ try {
     CheckKey 'O uninstalling the real install succeeds' $code 0
     Check 'O real folder gone' (WaitForGone $dirO1.TrimEnd('\') 60) $(if (Test-Path $dirO1) { 'still there' } else { '' })
     Remove-Item -LiteralPath (Split-Path -Parent $dirO2) -Recurse -Force -ErrorAction SilentlyContinue
+
+    # ---- P: an install must not move aside (and then delete) a folder it never created
+    '== P: install refuses to move aside a folder that is not ours =='
+    $dirP1 = Join-Path $work 'P\real\ExcelDiffEDRTool'
+    $dirP2 = Join-Path $work 'P\userdata'
+    $dirP3 = Join-Path $work 'P\newtarget\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirP1), '/components:none')
+    Check 'P baseline install exit 0' ($code -eq 0) ('exit=' + $code)
+    New-Item -ItemType Directory -Path $dirP2 -Force | Out-Null
+    $keepP = Join-Path $dirP2 'my-report.xlsx'
+    Set-Content -LiteralPath $keepP -Value 'not ours'
+    # A stale or hand-edited record pointing at the user's own folder. Without the narrow gate the
+    # success path would Move that tree next to the new target and TryDeleteTree it.
+    Set-ItemProperty -LiteralPath $ProductRegPath -Name 'InstallFolder' -Value $dirP2
+    $code = RunSetup @('/silent', ('/dir=' + $dirP3), '/components:none')
+    CheckKey 'P install refused when the recorded folder has no manifest' $code 1
+    Check 'P the user folder survived' (Test-Path $keepP) 'gone'
+    Check 'P nothing was created at the new target' (-not (Test-Path $dirP3)) ('exists=' + (Test-Path $dirP3))
+    $recordP = (Get-Item -LiteralPath $ProductRegPath).GetValue('InstallFolder')
+    Check 'P the record is untouched' ($recordP -eq $dirP2) ('got=' + $recordP)
+    # Positive control: with the record back on our own install, changing folder works as designed.
+    Set-ItemProperty -LiteralPath $ProductRegPath -Name 'InstallFolder' -Value $dirP1
+    $code = RunSetup @('/silent', ('/dir=' + $dirP3), '/components:none')
+    CheckKey 'P install into a new folder succeeds when the record is ours' $code 0
+    Check 'P new folder in place' (Test-Path (Join-Path $dirP3 'ExcelDiffEDR.GUI.exe')) 'missing'
+    Check 'P the old folder was taken over' (-not (Test-Path (Join-Path $dirP1 'ExcelDiffEDR.GUI.exe'))) 'still there'
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirP3))
+    CheckKey 'P uninstall of the moved install exit 0' $code 0
+    Check 'P folder gone' (WaitForGone $dirP3 60) $(if (Test-Path $dirP3) { 'still there' } else { '' })
+    Remove-Item -LiteralPath (Split-Path -Parent $dirP2) -Recurse -Force -ErrorAction SilentlyContinue
+
+    # ---- Q: the shell registration must go down even when the extension DLL is already gone
+    '== Q: shell registration is swept by code base when the DLL is missing =='
+    $dirQ = Join-Path $work 'Q\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirQ), '/culture=zh-CN', '/components:shell')
+    Check 'Q install with the shell component exit 0' ($code -eq 0) ('exit=' + $code)
+    $codeBaseQ = Normalize-Uri (ClsidCodeBase)
+    Check 'Q COM registered for THIS folder' ($codeBaseQ.StartsWith($dirQ)) ('codebase=' + $codeBaseQ)
+    Check 'Q handler entry present' ((ContextMenuHandlerEntry).Length -gt 0) ('entry=' + (ContextMenuHandlerEntry))
+    Remove-Item -LiteralPath (Join-Path $dirQ 'ExcelDiff.ShellExtension.dll') -Force -ErrorAction SilentlyContinue
+    Check 'Q extension DLL removed by hand' (-not (Test-Path (Join-Path $dirQ 'ExcelDiff.ShellExtension.dll'))) 'still there'
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirQ))
+    CheckKey 'Q uninstall exit 0 without the extension DLL' $code 0
+    # SharpShell's own unregistration needs the DLL, so without the sweep both entries would survive as
+    # a right-menu item that cannot open, and the next install/gate would trip the CLSID pre-flight.
+    Check 'Q CLSID swept' (-not (ClsidCodeBase)) ('left=' + (Normalize-Uri (ClsidCodeBase)))
+    Check 'Q handler entry swept' ((ContextMenuHandlerEntry).Length -eq 0) ('left=' + (ContextMenuHandlerEntry))
+    Check 'Q folder gone' (WaitForGone $dirQ 60) $(if (Test-Path $dirQ) { 'still there' } else { '' })
 }
 finally {
     # Repairs happen after every assertion above, so they cannot mask a product bug.
@@ -723,7 +801,13 @@ finally {
     # missing: a case that legitimately lets the product create its settings (first run after G's
     # /clearsettings) would otherwise fail this check for a reason that is not a defect.
     if ((Test-Path $configBackupPath) -and ((Hash-Dir $liveAppData) -ne $appDataBefore)) {
-        Write-Host '  note: gate restores the live settings folder from its snapshot'
+        # Name the drift before repairing it: a silent restore would also hide a product that leaves
+        # garbage in the user's settings folder (a stray temp file, a rewritten yml).
+        $nowNames = @((Get-ChildItem -LiteralPath $liveAppData -Recurse -File -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.Name })) -join ','
+        $snapNames = @((Get-ChildItem -LiteralPath $configBackupPath -Recurse -File -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.Name })) -join ','
+        Write-Host ('  note: live settings changed during the gate, restoring the snapshot. now=[' + $nowNames + '] snapshot=[' + $snapNames + ']')
         Remove-Item -LiteralPath $liveAppData -Recurse -Force -ErrorAction SilentlyContinue
         Copy-Item -LiteralPath $configBackupPath -Destination $liveAppData -Recurse -Force
     }
@@ -740,6 +824,16 @@ finally {
         if ($stuck) {
             $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $stuck.TrimEnd('\')))
             Check 'gate uninstalled its own leftovers' ($code -eq 0) ('exit=' + $code + ' dir=' + $stuck)
+            if ($code -ne 0) {
+                # The refusal is the ownership gate doing its job (the record points at a folder whose
+                # manifest is not its own - case O leaves exactly this shape if it fails midway). But
+                # the recorded folder lives under $work, which the next line deletes: keeping the key
+                # would lock every future run out at pre-flight with nothing left to uninstall. This
+                # removes only the gate's own test identity, and only after the assertion is recorded.
+                Write-Host ('  note: gate drops its own leftover record, uninstall refused with exit ' + $code)
+                Remove-Item -LiteralPath $ArpRegPath -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath $ProductRegPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
     }
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue

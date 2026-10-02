@@ -253,3 +253,4 @@ TestExcel/**
 
 # Setup packager output (regenerable by ExcelDiff.Installer\Build-Setup.ps1)
 ExcelDiff.Installer/Release/
+AI架构复刻包/

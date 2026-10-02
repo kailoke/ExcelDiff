@@ -182,6 +182,18 @@ namespace ExcelDiff.Setup
             {
                 Report(Strings.F("log.begin", ProductInfo.Version, dir));
 
+                // A recorded folder that is not the target gets moved aside and, once the install
+                // succeeds, deleted. That is only ours to do when the folder really is one of our
+                // installs: every setup leaves its manifest behind, so a recorded folder without one
+                // holds files we never put there. Same-directory reinstalls skip this - there the caller
+                // pointed setup at the folder on purpose.
+                if (existing != null && !SameFolder(existing.Dir, dir) && !InstallManifest.Exists(existing.Dir))
+                {
+                    FailureReason = Strings.F("err.foreignInstallSource", existing.Dir);
+                    Report(FailureReason);
+                    return false;
+                }
+
                 // Inside the try on purpose: a throw here would otherwise escape the task the wizard
                 // never awaits, and the window would sit on the progress page with no way out.
                 if (!EnsureMainProcessStopped(dir))
@@ -635,6 +647,11 @@ namespace ExcelDiff.Setup
             {
                 SetupLog.Warn("shell unregister skipped: " + ex.Message);
             }
+
+            // The child needs the extension DLL to exist. Sweep afterwards and unconditionally: if the
+            // DLL is already gone the SharpShell path does nothing, and without this the CLSID and the
+            // handler entry survive as a right-menu item that cannot be opened.
+            ShellRegistrar.SweepByTargetFolder(dir);
         }
 
         private static void WriteAutoStart(string installDir, bool enabled)

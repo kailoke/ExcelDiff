@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Microsoft.Win32;
 
 namespace ExcelDiff.Setup
 {
@@ -115,6 +116,159 @@ namespace ExcelDiff.Setup
             {
                 SetupLog.Warn("SHChangeNotify failed: " + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Where Explorer looks for context-menu handlers. SharpShell registers the extension on `*`
+        /// (measured: `SOFTWARE\Classes\*\ShellEx\ContextMenuHandlers\ContextMenuExtension`), never per
+        /// extension - the per-extension roots are listed only so a future change cannot hide a residue.
+        /// </summary>
+        private static readonly string[] HandlerRoots =
+        {
+            "*", "AllFileSystemObjects", "Directory", "Folder", "Drive",
+            ".xls", ".xlsx", ".csv", ".tsv"
+        };
+
+        /// <summary>
+        /// Removes the shell registrations whose recorded code base points inside the folder being
+        /// deleted. SharpShell's own unregistration needs the extension DLL, so when that DLL is already
+        /// gone (deleted by hand, or eaten by a half-finished uninstall) the CLSID and the handler entry
+        /// survive as a dead right-menu item - and then block the next install and the release gate.
+        /// Ownership comes from the path written in the registry, never from a name we guess.
+        /// </summary>
+        public static void SweepByTargetFolder(string installDir)
+        {
+            var probe = installDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                        + Path.DirectorySeparatorChar;
+            var swept = 0;
+
+            foreach (var hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
+            {
+                foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+                {
+                    try
+                    {
+                        using (var baseKey = RegistryKey.OpenBaseKey(hive, view))
+                        {
+                            var classesName = hive == RegistryHive.LocalMachine
+                                ? @"SOFTWARE\Classes"
+                                : @"Software\Classes";
+
+                            using (var classes = baseKey.OpenSubKey(classesName))
+                            {
+                                if (classes == null)
+                                    continue;
+
+                                foreach (var clsid in FindOurClsids(classes, probe))
+                                    if (DeleteOurRegistrations(classes, clsid, probe))
+                                        swept++;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        SetupLog.Warn("shell sweep skipped in " + hive + "/" + view + ": " + ex.Message);
+                    }
+                }
+            }
+
+            if (swept > 0)
+            {
+                SetupLog.Info("shell registrations swept by code base: " + swept);
+                NotifyShellChanged();
+            }
+        }
+
+        private static IEnumerable<string> FindOurClsids(RegistryKey classes, string probe)
+        {
+            var found = new List<string>();
+
+            foreach (var root in HandlerRoots)
+            {
+                using (var handlers = classes.OpenSubKey(root + @"\ShellEx\ContextMenuHandlers"))
+                {
+                    if (handlers == null)
+                        continue;
+
+                    foreach (var name in handlers.GetSubKeyNames())
+                    {
+                        using (var handler = handlers.OpenSubKey(name))
+                        {
+                            var clsid = handler == null ? null : handler.GetValue(string.Empty) as string;
+                            if (string.IsNullOrEmpty(clsid))
+                                continue;
+
+                            if (CodeBaseInside(classes, clsid, probe) && !found.Contains(clsid))
+                                found.Add(clsid);
+                        }
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        private static bool CodeBaseInside(RegistryKey classes, string clsid, string probe)
+        {
+            using (var key = classes.OpenSubKey(@"CLSID\" + clsid + @"\InprocServer32"))
+            {
+                var codeBase = key == null ? null : key.GetValue("CodeBase") as string;
+                if (string.IsNullOrEmpty(codeBase))
+                    return false;
+
+                return ToLocalPath(codeBase).StartsWith(probe, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>Registry code bases are stored as file:/// URLs with percent escapes.</summary>
+        private static string ToLocalPath(string codeBase)
+        {
+            var unescaped = Uri.UnescapeDataString(codeBase);
+            unescaped = unescaped.Replace("file:///", string.Empty).Replace("file://", string.Empty);
+            return unescaped.Replace('/', Path.DirectorySeparatorChar);
+        }
+
+        private static bool DeleteOurRegistrations(RegistryKey classes, string clsid, string probe)
+        {
+            var removed = false;
+
+            foreach (var root in HandlerRoots)
+            {
+                using (var handlers = classes.OpenSubKey(root + @"\ShellEx\ContextMenuHandlers", true))
+                {
+                    if (handlers == null)
+                        continue;
+
+                    foreach (var name in handlers.GetSubKeyNames())
+                    {
+                        using (var handler = handlers.OpenSubKey(name))
+                        {
+                            var value = handler == null ? null : handler.GetValue(string.Empty) as string;
+                            if (!string.Equals(value, clsid, StringComparison.OrdinalIgnoreCase))
+                                continue;
+                        }
+
+                        handlers.DeleteSubKey(name, false);
+                        SetupLog.Info("handler entry removed: " + root + @" \ " + name);
+                        removed = true;
+                    }
+                }
+            }
+
+            if (CodeBaseInside(classes, clsid, probe))
+            {
+                using (var clsids = classes.OpenSubKey("CLSID", true))
+                {
+                    if (clsids != null && clsids.OpenSubKey(clsid) != null)
+                    {
+                        clsids.DeleteSubKeyTree(clsid, false);
+                        SetupLog.Info("CLSID removed: " + clsid);
+                        removed = true;
+                    }
+                }
+            }
+
+            return removed;
         }
 
         private const uint ShcneAssocChanged = 0x08000000;

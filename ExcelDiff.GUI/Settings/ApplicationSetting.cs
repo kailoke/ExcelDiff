@@ -521,7 +521,10 @@ namespace ExcelDiff.GUI.Settings
             // cancelled by RunInBackground, and a tray-hidden resident has no window to close), so a
             // half-written live file is a normal outcome, not a corner case. The body goes to a sibling
             // temp and NTFS swaps it in: a kill before the swap leaves the previous settings intact.
-            var temp = path + ".tmp";
+            // The temp name carries the process id because App.Main loads and may save before the
+            // single-instance check, so a forwarding process and the resident can be in Save at the
+            // same moment - one shared temp name would make the second writer throw.
+            var temp = path + "." + System.Diagnostics.Process.GetCurrentProcess().Id + ".tmp";
             using (var fs = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
             using (var sw = new StreamWriter(fs, new System.Text.UTF8Encoding(false)))
             {
@@ -530,10 +533,54 @@ namespace ExcelDiff.GUI.Settings
                 fs.Flush(true);
             }
 
+            // Measured: with four processes swapping the same live file back to back, about one save in
+            // five threw - Replace and Move both fail while another writer holds the destination for the
+            // microseconds its own swap takes. Retrying is enough because that window is the swap itself,
+            // and the caller cannot afford a throw here: App.Main saves before the single-instance check
+            // has run, so at that point nothing catches anything and a forwarding difftool call dies.
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    SwapIntoPlace(temp, path);
+                    return;
+                }
+                catch (IOException) when (attempt < SwapAttempts)
+                {
+                    System.Threading.Thread.Sleep(SwapRetryMilliseconds * attempt);
+                }
+            }
+        }
+
+        private const int SwapAttempts = 6;
+        private const int SwapRetryMilliseconds = 25;
+
+        /// <summary>Replaces the live file when there is one, moves the temp in when there is not.</summary>
+        private static void SwapIntoPlace(string temp, string path)
+        {
             if (File.Exists(path))
-                File.Replace(temp, path, null);
-            else
+            {
+                try
+                {
+                    File.Replace(temp, path, null);
+                    return;
+                }
+                catch (IOException)
+                {
+                    // The live file went away between the check and the swap; Move is the same swap
+                    // without the replace semantics.
+                }
+            }
+
+            try
+            {
                 File.Move(temp, path);
+            }
+            catch (IOException)
+            {
+                // The other writer created the live file while we were moving, so Replace applies.
+                File.Replace(temp, path, null);
+            }
         }
 
         private static ApplicationSetting Deserialize(string path)
