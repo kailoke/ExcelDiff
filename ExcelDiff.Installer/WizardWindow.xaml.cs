@@ -38,6 +38,12 @@ namespace ExcelDiff.Setup
             {
                 Progressbar.Value = total <= 0 ? 0 : 100.0 * done / total;
             });
+            // The engine works on a worker thread, so this question belongs back on the thread that
+            // owns the wizard; the answer decides whether it looks for the process again.
+            // WPF has no Retry/Cancel pair (that is WinForms), so Yes=try again, No=give up.
+            _engine.RetryPrompt = text => Dispatcher.Invoke(() =>
+                MessageBox.Show(text, Strings.T("running.title"),
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes);
             Strings.CultureChanged += ApplyTexts;
 
             _existing = InstallEngine.Detect();

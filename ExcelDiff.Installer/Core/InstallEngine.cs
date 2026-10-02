@@ -27,6 +27,13 @@ namespace ExcelDiff.Setup
         private const string BackupInfix = ".old-";
         private const string FailedInfix = ".failed-";
 
+        /// <summary>
+        /// Exit code for "the uninstall was handed to a copy outside the install folder and is still
+        /// running". Distinct from 0 (done) so a script cannot read a hand-over as a success, and clear
+        /// of the codes Windows Installer reserves (1601-1699, 3010).
+        /// </summary>
+        public const int ExitDelegated = 100;
+
         private readonly Options _options;
 
         public event Action<string> Step;
@@ -37,6 +44,12 @@ namespace ExcelDiff.Setup
         public Components Components;
         /// <summary>Owner ruling: settings are cleared only when the caller asked for it.</summary>
         public bool ClearSettings;
+        /// <summary>
+        /// Set by the wizard only for an interactive run: asks whether to look for the running program
+        /// again. Silent runs leave it null, because a modal there would hang the caller that asked to
+        /// be silent - they fail with a reason instead.
+        /// </summary>
+        public Func<string, bool> RetryPrompt;
 
         public string FailureReason { get; private set; }
         public bool RolledBack { get; private set; }
@@ -169,6 +182,16 @@ namespace ExcelDiff.Setup
             {
                 Report(Strings.F("log.begin", ProductInfo.Version, dir));
 
+                // Inside the try on purpose: a throw here would otherwise escape the task the wizard
+                // never awaits, and the window would sit on the progress page with no way out.
+                if (!EnsureMainProcessStopped(dir))
+                    return false;
+
+                // The folder that gets moved aside is the recorded one, which is not the new target when
+                // /dir points elsewhere - and a product running out of it pins the image the Move needs.
+                if (existing != null && !SameFolder(existing.Dir, dir) && !EnsureMainProcessStopped(existing.Dir))
+                    return false;
+
                 if (existing != null)
                 {
                     Report(Strings.F("log.found", string.IsNullOrEmpty(existing.Version) ? "?" : existing.Version));
@@ -236,7 +259,7 @@ namespace ExcelDiff.Setup
                     if (previous != null && previous.Count > 0)
                         RegistryStore.Restore(previous);
                     else
-                        ClearRegistry();
+                        ClearRegistry(dir);
                 });
 
                 WriteAutoStart(dir, Selected(Components.AutoStart));
@@ -354,13 +377,16 @@ namespace ExcelDiff.Setup
                 // Uninstall is handed over, not waited on: this process is the image the child has
                 // to delete, so waiting here would lock it and the child could only ever refuse
                 // (measured: the main exe vanished, the folder and the registry stayed, exit 1).
-                // The caller gets 0 = "delegated"; whether it worked is visible in the folder and in
-                // Control Panel, which is also what Settings/ARP assumes.
+                // The caller therefore gets ExitDelegated, never 0; whether it worked is visible in
+                // the folder and in Control Panel, which is also what Settings/ARP assumes.
                 if (options.Uninstall)
                 {
                     Process.Start(startInfo).Dispose();
                     handedOver = true;
-                    return 0;
+                    // Not "success": the work belongs to the copy that is still running. Callers that
+                    // need the real verdict uninstall from outside the install folder, where setup does
+                    // the job itself and returns 0/1.
+                    return ExitDelegated;
                 }
 
                 using (var process = Process.Start(startInfo))
@@ -440,11 +466,35 @@ namespace ExcelDiff.Setup
                 return false;
             }
 
+            // Same rule as the install side: while the product is running its own image is pinned,
+            // and a half-removed folder with the identity still recorded is worse than a refusal.
             try
             {
                 Report(Strings.T("log.uninstall.begin"));
 
+                // Ownership comes before deletion. The manifest stores absolute paths, so replaying a
+                // copy that was moved elsewhere deletes the *other* install's files and leaves the
+                // folder the caller pointed at untouched - and used to report that as success
+                // (measured: exit 0, target intact, sibling eaten).
+                var recorded = RegistryStore.ReadInstallFolder();
+                if (!string.IsNullOrEmpty(recorded) && !SameFolder(recorded, dir))
+                {
+                    FailureReason = Strings.F("err.foreignRecord", recorded);
+                    Report(FailureReason);
+                    return false;
+                }
+
                 var manifest = InstallManifest.Load(dir);
+                var stray = FirstForeignManifestPath(manifest, dir);
+                if (stray != null)
+                {
+                    FailureReason = Strings.F("err.foreignManifest", stray);
+                    Report(FailureReason);
+                    return false;
+                }
+
+                if (!EnsureMainProcessStopped(dir))
+                    return false;
 
                 if (manifest.RegisteredShellDll != null || RegistryStore.ReadShellRegistered())
                     UnregisterShell(dir);
@@ -483,7 +533,7 @@ namespace ExcelDiff.Setup
                 TryDeleteBackups(dir);
 
                 RemoveAutoStart(dir);
-                ClearRegistry();
+                ClearRegistry(dir);
                 ClearUserSettings();
 
                 Report(Strings.T("log.uninstall.done"));
@@ -632,6 +682,30 @@ namespace ExcelDiff.Setup
             WriteAutoStart(installDir, false);
         }
 
+        /// <summary>
+        /// The first recorded payload path that is not inside the folder being uninstalled, or null
+        /// when every file belongs to it. Only files are checked: the start-menu and desktop shortcuts
+        /// are machine-wide by design (one product identity), so treating them as foreign would refuse
+        /// every ordinary uninstall - measured. Registry rows are audit-only and the two product keys
+        /// are covered by the install-folder check instead.
+        /// </summary>
+        private static string FirstForeignManifestPath(InstallManifest manifest, string dir)
+        {
+            return manifest.Files.FirstOrDefault(path => !IsUnderTarget(path, dir));
+        }
+
+        /// <summary>Folder equality ignoring the trailing separator, for ownership tests.</summary>
+        private static bool SameFolder(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b))
+                return false;
+
+            return string.Equals(
+                a.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                b.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool BelongsToDir(string runValueData, string dir)
         {
             if (string.IsNullOrEmpty(runValueData) || string.IsNullOrEmpty(dir))
@@ -650,8 +724,182 @@ namespace ExcelDiff.Setup
             return Path.GetFileNameWithoutExtension(ProductInfo.MainExeName);
         }
 
-        private static void ClearRegistry()
+        /// <summary>
+        /// Ends the running product before anything is moved or deleted. A live process pins its own
+        /// image, so with ExcelDiffEDR still up an uninstall eats some files, fails on the rest, and an
+        /// install cannot move the old folder aside at all.
+        /// Only processes whose image actually sits inside the target folder are touched (a same-named
+        /// app started from another folder is not ours to kill). The close request is a best attempt, not
+        /// a reliable exit: with the window hidden in the tray there is no window to close, and while
+        /// "keep running in the background" is on the main window cancels its own close, so in both cases
+        /// the hard kill below is what actually ends it. That is survivable because the product persists
+        /// its settings atomically (ApplicationSetting.Serialize) - a kill can only lose state that was
+        /// never written yet.
+        /// </summary>
+        private bool EnsureMainProcessStopped(string targetDir)
         {
+            var name = Path.GetFileNameWithoutExtension(ProductInfo.MainExeName);
+
+            while (true)
+            {
+                var ours = FindTargetProcesses(name, targetDir);
+                if (ours.Count == 0)
+                    return true;
+
+                Report(Strings.F("log.kill", ours.Count));
+                foreach (var process in ours)
+                {
+                    try
+                    {
+                        var askedNicely = false;
+                        try
+                        {
+                            askedNicely = process.CloseMainWindow();
+                        }
+                        catch (Exception ex)
+                        {
+                            SetupLog.Warn("no window to close: " + ex.Message);
+                        }
+
+                        if (askedNicely && HasExitedWithin(process, GracefulWaitMilliseconds))
+                            continue;
+
+                        process.Kill();
+                        if (!HasExitedWithin(process, KillWaitMilliseconds))
+                            SetupLog.Warn(name + " still running after kill");
+                    }
+                    catch (Exception ex)
+                    {
+                        SetupLog.Warn("could not end " + name + ": " + ex.Message);
+                    }
+                    finally
+                    {
+                        process.Dispose();
+                    }
+                }
+
+                var still = FindTargetProcesses(name, targetDir);
+                foreach (var survivor in still)
+                    survivor.Dispose();
+                if (still.Count == 0)
+                    return true;
+
+                var prompt = RetryPrompt;
+                if (prompt == null || !prompt(Strings.T("running.prompt")))
+                {
+                    FailureReason = Strings.T("err.runningAborted");
+                    Report(FailureReason);
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The product's own processes inside this folder. A process whose image path cannot be read is
+        /// still counted - refusing on a maybe is cheaper than deleting under a live image - but one
+        /// that has already exited is not: a process in its death throes keeps showing up in the list
+        /// while MainModule starts failing with a partial ReadProcessMemory error, which used to be read
+        /// as "still running" and refused an uninstall that had actually succeeded in ending it.
+        /// </summary>
+        private static List<Process> FindTargetProcesses(string name, string targetDir)
+        {
+            var ours = new List<Process>();
+
+            foreach (var process in Process.GetProcessesByName(name))
+            {
+                try
+                {
+                    if (process.HasExited)
+                    {
+                        process.Dispose();
+                        continue;
+                    }
+                }
+                catch
+                {
+                    process.Dispose();
+                    continue;
+                }
+
+                string path;
+                try
+                {
+                    path = process.MainModule != null ? process.MainModule.FileName : null;
+                }
+                catch (Exception ex)
+                {
+                    SetupLog.Warn("image path unreadable, treating it as ours: " + ex.Message);
+                    ours.Add(process);
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(path) || IsUnderTarget(path, targetDir))
+                    ours.Add(process);
+                else
+                    process.Dispose();
+            }
+
+            return ours;
+        }
+
+        private static bool HasExitedWithin(Process process, int milliseconds)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(milliseconds);
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    if (process.HasExited)
+                        return true;
+                }
+                catch
+                {
+                    return true;
+                }
+
+                System.Threading.Thread.Sleep(100);
+            }
+
+            try
+            {
+                return process.HasExited;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        /// <summary>Path containment for ownership tests; directory comparison ignores the separator.</summary>
+        private static bool IsUnderTarget(string path, string dir)
+        {
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(dir))
+                return false;
+
+            var probe = dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                        + Path.DirectorySeparatorChar;
+            return path.StartsWith(probe, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private const int GracefulWaitMilliseconds = 4000;
+        private const int KillWaitMilliseconds = 5000;
+
+        /// <summary>
+        /// Removes the product and ARP trees, but only when the record on the machine is about the
+        /// folder that was just removed. Without that test an uninstall racing a hand-over (or a
+        /// snapshot that failed to read and came back empty) could wipe the identity of an install
+        /// sitting in a different folder - the same ownership rule RemoveAutoStart already applies
+        /// to the Run value through BelongsToDir.
+        /// </summary>
+        private static void ClearRegistry(string installDir)
+        {
+            var recorded = RegistryStore.ReadInstallFolder();
+            if (!string.IsNullOrEmpty(recorded) && !SameFolder(recorded, installDir))
+            {
+                SetupLog.Warn("registry left alone: it records " + recorded + ", not " + installDir);
+                return;
+            }
+
             try
             {
                 using (var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))

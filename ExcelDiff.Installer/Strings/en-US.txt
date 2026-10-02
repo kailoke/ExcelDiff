@@ -85,3 +85,9 @@ err.unknownCulture=Unsupported language {0}; only zh-CN and en-US are available.
 uninstall.clearsettings=Also delete the current user's ExcelDiffEDR settings
 finish.noshell=The Explorer context menu was not added. To get it, download and run the setup package again and tick "Add the Explorer context menu" (the Uninstall.exe in the install folder only uninstalls).
 log.settingskept=Kept the current user settings folder; clearing it needs an explicit request.
+running.title=ExcelDiffEDR is running
+running.prompt=ExcelDiffEDR is still running: setup sent its processes a termination request and they did not exit. Nothing gets deleted or changed until it is gone.\nChoose Yes to look again and try ending it once more; choose No to abandon this operation (files and registry stay exactly as they are).
+log.kill=Ending the running ExcelDiffEDR ({0} process(es))
+err.runningAborted=ExcelDiffEDR could not be ended, so this operation was cancelled: no files were deleted and the registry was left alone.
+err.foreignRecord=The registry records a different install folder than the one being uninstalled (recorded: {0}), so setup refused: no files deleted, no registry changes. Use the Uninstall.exe inside the recorded folder, or run the setup package from outside it with /dir=<recorded folder>.
+err.foreignManifest=This install-manifest.txt records paths outside the target folder ({0}); following it would touch a different install, so setup refused: no files deleted, no registry changes. Use the Uninstall.exe of the folder those paths live in.

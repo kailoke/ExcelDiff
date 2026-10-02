@@ -218,7 +218,7 @@ Check 'placeholder sets match per key across languages' ($drift.Count -eq 0) ('d
 # A green run against a stale binary proves nothing about the sources on disk.
 # -Include is ignored with -LiteralPath (measured: it returned pdb/exe/obj files), so filter by hand.
 $newestSource = (Get-ChildItem -LiteralPath (Join-Path $root 'ExcelDiff.Installer') -Recurse -File |
-    Where-Object { $_.Extension -in '.cs', '.xaml' -and $_.FullName -notmatch '\\bin\\|\\obj\\|\\Release\\' } |
+    Where-Object { $_.Extension -in '.cs', '.xaml', '.txt', '.csproj', '.manifest' -and $_.FullName -notmatch '\\bin\\|\\obj\\|\\Release\\' } |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1)
 Check 'setup exe is newer than installer sources' ((Get-Item -LiteralPath $SetupExe).LastWriteTime -gt $newestSource.LastWriteTime) `
     ($newestSource.FullName.Substring($root.Length + 1) + ' ' + $newestSource.LastWriteTime + ' vs exe ' + (Get-Item -LiteralPath $SetupExe).LastWriteTime)
@@ -299,6 +299,17 @@ function WaitForGoneKey([string]$path, [int]$seconds) {
         Start-Sleep -Milliseconds 500
     }
     return -not (Test-Path $path)
+}
+
+# Case N needs to know a specific process ended, not merely that no name matches (another instance
+# could start in the window).
+function WaitForProcessGone([int]$processId, [int]$seconds) {
+    $until = (Get-Date).AddSeconds($seconds)
+    while ((Get-Date) -lt $until) {
+        if (-not (Get-Process -Id $processId -ErrorAction SilentlyContinue)) { return $true }
+        Start-Sleep -Milliseconds 500
+    }
+    return -not (Get-Process -Id $processId -ErrorAction SilentlyContinue)
 }
 
 function ClsidCodeBase {
@@ -512,6 +523,17 @@ try {
     Check 'G /clearsettings uninstall exit 0' ($code -eq 0) ('exit=' + $code)
     Check 'G /clearsettings removes user settings' (-not (Test-Path $marker))
 
+    # Repair at the point of damage, not only at the end. /clearsettings really does delete the live
+    # settings folder, and a later case that starts the product would recreate it with factory
+    # defaults - the end-of-run restore could then no longer tell "the user's own settings" from
+    # "defaults written by the gate", and one run did lose them that way.
+    if ((Test-Path $configBackupPath) -and ((Hash-Dir $liveAppData) -ne $appDataBefore)) {
+        Remove-Item -LiteralPath $liveAppData -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item -LiteralPath $configBackupPath -Destination $liveAppData -Recurse -Force
+    }
+    Check 'G puts the live settings back after /clearsettings' ((Hash-Dir $liveAppData) -eq $appDataBefore) `
+        ('before=' + $appDataBefore + ' now=' + (Hash-Dir $liveAppData))
+
     # ---- H: malformed switches must refuse, not fall through to the UI
     '== H: bad command lines are refused =='
     $code = RunSetup @('/silent=1', '/culture=de-DE', ('/dir=' + (Join-Path $work 'H\ExcelDiffEDRTool')))
@@ -591,7 +613,7 @@ try {
     # assert the effects, exactly like the user reads them off Control Panel.
     # Working directory = the install folder, exactly like an Explorer double-click.
     $code = RunExe (Join-Path $dirL $UninstallerName) @('/silent') $dirL
-    CheckKey 'L handover exits 0' $code 0
+    CheckKey 'L handover exits delegated (100)' $code 100
     Check 'L folder removed' (WaitForGone $dirL 90) $(if (Test-Path $dirL) { 'still there after 90s' } else { '' })
     Check 'L ARP entry removed' (WaitForGoneKey $ArpRegPath 30) $(if (Test-Path $ArpRegPath) { 'still registered after 30s' } else { '' })
     Check 'L product key removed' (WaitForGoneKey $ProductRegPath 30) $(if (Test-Path $ProductRegPath) { 'still registered after 30s' } else { '' })
@@ -611,11 +633,82 @@ try {
         ((Test-Path $dirM) -and (Test-Path $ProductRegPath) -and (Test-Path $StartMenuDir)) `
         ('dir=' + (Test-Path $dirM) + ' hklm=' + (Test-Path $ProductRegPath) + ' start=' + (Test-Path $StartMenuDir))
     $code = RunCommandString $qstr
-    CheckKey 'M uninstall via ARP string hands over' $code 0
+    CheckKey 'M uninstall via ARP string hands over (100)' $code 100
     Check 'M folder gone' (WaitForGone $dirM 90) $(if (Test-Path $dirM) { 'still there after 90s' } else { '' })
     Check 'M ARP entry removed' (WaitForGoneKey $ArpRegPath 30) $(if (Test-Path $ArpRegPath) { 'still registered after 30s' } else { '' })
     Check 'M product key removed' (WaitForGoneKey $ProductRegPath 30) $(if (Test-Path $ProductRegPath) { 'still registered after 30s' } else { '' })
     Check 'M start-menu folder removed' (WaitForGone $StartMenuDir 30) $(if (Test-Path $StartMenuDir) { 'still there after 30s' } else { '' })
+
+    # ---- N: uninstall while the product is running from that very folder
+    '== N: the uninstaller ends the running product before it deletes =='
+    $dirN = Join-Path $work 'N\ExcelDiffEDRTool'
+    # G repairs the folder its own /clearsettings deleted, so the product started here is running
+    # against the user's real settings, not a factory-first-run state. If that ever stops being true
+    # this precondition says so instead of quietly testing a different shape.
+    Check 'N settings folder is present before the launch' (Test-Path $liveAppData) 'absent'
+    # zh-CN + no autostart keeps the recorded seed identical to the live settings' own signature, so
+    # this case cannot re-seed the user's language or auto-start choice.
+    $code = RunSetup @('/silent', ('/dir=' + $dirN), '/culture=zh-CN', '/components:none')
+    Check 'N install exit 0' ($code -eq 0) ('exit=' + $code)
+    # The product is single-instance and the mutex name comes from the exe name, so a copy started
+    # while another resident is alive forwards its arguments and exits - the case would silently test
+    # "nothing was running". Any resident outside this folder has to go first, and that is a machine
+    # side effect worth naming: redeploy the dev build after the gate.
+    $strays = @(Get-Process -Name 'ExcelDiffEDR.GUI' -ErrorAction SilentlyContinue)
+    if ($strays.Count -gt 0) {
+        Write-Host ('  note: ending ' + $strays.Count + ' running ExcelDiffEDR so N can start its own (redeploy afterwards)')
+        $strays | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 2
+    }
+    Check 'N no ExcelDiffEDR running before the launch' `
+        (@(Get-Process -Name 'ExcelDiffEDR.GUI' -ErrorAction SilentlyContinue).Count -eq 0) 'a resident survived'
+    $app = Start-Process -FilePath (Join-Path $dirN 'ExcelDiffEDR.GUI.exe') -WorkingDirectory $dirN -PassThru
+    $running = $false
+    $untilN = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $untilN) {
+        $probe = Get-Process -Name 'ExcelDiffEDR.GUI' -ErrorAction SilentlyContinue
+        $running = @($probe | Where-Object { $_.Path -and $_.Path.StartsWith($dirN, [StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
+        if ($running) { break }
+        Start-Sleep -Milliseconds 500
+    }
+    Check 'N product is running from the target folder' $running ('pid=' + $app.Id)
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirN))
+    CheckKey 'N uninstall exit 0 with the product running' $code 0
+    Check 'N the running process ended' (WaitForProcessGone $app.Id 30) ('pid=' + $app.Id + ' still alive')
+    # The folder can only go if the image was released first: deleting or moving a running exe fails,
+    # so "folder gone" is the proof of the ordering, not a separate lucky outcome.
+    Check 'N folder removed' (WaitForGone $dirN 90) $(if (Test-Path $dirN) { 'still there after 90s' } else { '' })
+    Check 'N product key removed' (WaitForGoneKey $ProductRegPath 30) $(if (Test-Path $ProductRegPath) { 'still registered after 30s' } else { '' })
+
+    # ---- O: a folder that is not the recorded install must be refused, and the real install spared
+    '== O: ownership is decided before anything is deleted =='
+    $dirO1 = Join-Path $work 'O\real\ExcelDiffEDRTool'
+    $dirO2 = Join-Path $work 'O\copy\ExcelDiffEDRTool'
+    $code = RunSetup @('/silent', ('/dir=' + $dirO1), '/components:none')
+    Check 'O install exit 0' ($code -eq 0) ('exit=' + $code)
+    # A copied install folder: its manifest holds the original absolute paths, which is exactly the
+    # shape that used to eat the *other* install's files and still report success.
+    Copy-Item -LiteralPath $dirO1 -Destination $dirO2 -Recurse -Force
+    Check 'O copy made' (Test-Path (Join-Path $dirO2 'install-manifest.txt')) $dirO2
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirO2))
+    CheckKey 'O uninstalling a copy is refused' $code 1
+    Check 'O the copy survived the refusal' (Test-Path (Join-Path $dirO2 'ExcelDiffEDR.GUI.exe')) 'gone'
+    Check 'O the recorded install survived the refusal' (Test-Path (Join-Path $dirO1 'ExcelDiffEDR.GUI.exe')) 'gone'
+    $recordedO = (Get-Item -LiteralPath $ProductRegPath).GetValue('InstallFolder')
+    Check 'O the record still points at the real install' ($recordedO -eq ($dirO1 + '\')) ('got=' + $recordedO)
+    # Now make the record agree with the copy while its manifest still lists the real install: that is
+    # the only way to reach the manifest half of the ownership test, so it is forced here.
+    Set-ItemProperty -LiteralPath $ProductRegPath -Name 'InstallFolder' -Value $dirO2
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirO2))
+    CheckKey 'O manifest pointing outside the target is refused' $code 1
+    Check 'O the copy survived the manifest refusal' (Test-Path (Join-Path $dirO2 'ExcelDiffEDR.GUI.exe')) 'gone'
+    Check 'O the recorded install survived the manifest refusal' (Test-Path (Join-Path $dirO1 'ExcelDiffEDR.GUI.exe')) 'gone'
+    # Positive control: with the record back on the real folder, the same command line uninstalls it.
+    Set-ItemProperty -LiteralPath $ProductRegPath -Name 'InstallFolder' -Value $dirO1
+    $code = RunSetup @('/uninstall', '/silent', ('/dir=' + $dirO1))
+    CheckKey 'O uninstalling the real install succeeds' $code 0
+    Check 'O real folder gone' (WaitForGone $dirO1.TrimEnd('\') 60) $(if (Test-Path $dirO1) { 'still there' } else { '' })
+    Remove-Item -LiteralPath (Split-Path -Parent $dirO2) -Recurse -Force -ErrorAction SilentlyContinue
 }
 finally {
     # Repairs happen after every assertion above, so they cannot mask a product bug.
@@ -626,10 +719,19 @@ finally {
     if ($runBefore) { Set-ItemProperty -LiteralPath $RunKey -Name $RunValue -Value $runBefore }
     elseif ((Get-Item -LiteralPath $RunKey).GetValue($RunValue)) { (Get-Item -LiteralPath $RunKey).DeleteValue($RunValue) }
     if ($marker) { Remove-Item -LiteralPath $marker -Force -ErrorAction SilentlyContinue }
-    if ((Test-Path $configBackupPath) -and (-not (Test-Path $liveAppData))) {
+    # Restore whenever the live state differs from what the gate found, not only when the folder went
+    # missing: a case that legitimately lets the product create its settings (first run after G's
+    # /clearsettings) would otherwise fail this check for a reason that is not a defect.
+    if ((Test-Path $configBackupPath) -and ((Hash-Dir $liveAppData) -ne $appDataBefore)) {
+        Write-Host '  note: gate restores the live settings folder from its snapshot'
+        Remove-Item -LiteralPath $liveAppData -Recurse -Force -ErrorAction SilentlyContinue
         Copy-Item -LiteralPath $configBackupPath -Destination $liveAppData -Recurse -Force
     }
-    Check 'live settings restored after the gate' ((Hash-Dir $liveAppData) -eq $appDataBefore)
+    elseif (-not (Test-Path $configBackupPath) -and (Test-Path $liveAppData) -and $appDataBefore -eq 'absent') {
+        Remove-Item -LiteralPath $liveAppData -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Check 'live settings restored after the gate' ((Hash-Dir $liveAppData) -eq $appDataBefore) `
+        ('before=' + $appDataBefore + ' now=' + (Hash-Dir $liveAppData))
 
     # A failed case can leave HKLM pointing into $work; the next run would then refuse at
     # pre-flight and be unable to recover, because the manifest dies with $work.

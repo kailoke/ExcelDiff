@@ -516,10 +516,24 @@ namespace ExcelDiff.GUI.Settings
         {
             var serializer = new SerializerBuilder().Build();
             var yml = serializer.Serialize(setting);
-            using (var sr = new StreamWriter(path))
+
+            // The uninstaller ends this process with TerminateProcess (its "please close" request is
+            // cancelled by RunInBackground, and a tray-hidden resident has no window to close), so a
+            // half-written live file is a normal outcome, not a corner case. The body goes to a sibling
+            // temp and NTFS swaps it in: a kill before the swap leaves the previous settings intact.
+            var temp = path + ".tmp";
+            using (var fs = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var sw = new StreamWriter(fs, new System.Text.UTF8Encoding(false)))
             {
-                sr.Write(yml);
+                sw.Write(yml);
+                sw.Flush();
+                fs.Flush(true);
             }
+
+            if (File.Exists(path))
+                File.Replace(temp, path, null);
+            else
+                File.Move(temp, path);
         }
 
         private static ApplicationSetting Deserialize(string path)

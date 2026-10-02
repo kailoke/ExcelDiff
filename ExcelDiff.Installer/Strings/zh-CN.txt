@@ -85,3 +85,9 @@ err.unknownCulture=不支持的语言 {0}，可选值只有 zh-CN 与 en-US。
 uninstall.clearsettings=同时删除当前用户的 ExcelDiffEDR 设置
 finish.noshell=本次未添加资源管理器右键菜单。需要的话，重新下载安装包运行并勾选"添加资源管理器右键菜单"（安装目录里的 Uninstall.exe 只用于卸载）。
 log.settingskept=未要求清除，已保留当前用户的设置目录
+running.title=ExcelDiffEDR 正在运行
+running.prompt=ExcelDiffEDR 仍在运行：安装器已经向它的进程发出结束指令，但它没有退出。在它结束之前，这里不会删除或改动任何东西。\n点"是"再检查一次并再次尝试结束它；点"否"放弃本次操作（文件与注册表都保持原样）。
+log.kill=正在结束正在运行的 ExcelDiffEDR（{0} 个进程）
+err.runningAborted=ExcelDiffEDR 未能结束，本次操作已取消：未删除任何文件，也未改动注册表。
+err.foreignRecord=注册表记录的安装目录与本次要卸载的目录不是同一个（记录为 {0}），已拒绝执行：不删文件、不动注册表。请改用记录里那个目录自己的 Uninstall.exe，或从目录外调用安装包并带上 /dir=<记录里的目录>。
+err.foreignManifest=这份 install-manifest.txt 记的路径不在本次目标目录之内（{0}），照它删除会动到别的安装，已拒绝执行：不删文件、不动注册表。请改用那些路径所在目录自己的 Uninstall.exe。

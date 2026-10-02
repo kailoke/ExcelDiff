@@ -266,6 +266,12 @@ namespace ExcelDiff.Setup
             text.AppendLine("/dir:\"D:\\Tools\"             absolute install folder (relative paths and drive roots refused) / 安装目录");
             text.AppendLine("/components:shell,desktop,autostart   (or \"none\"/\"all\") / 组件");
             text.AppendLine("/log:<path>                 write the log here / 日志路径");
+            text.AppendLine();
+            text.AppendLine("exit codes / 退出码:  0 done 完成 | 1 failed 失败 | 2 help 帮助 | 3 no payload 无载荷");
+            text.AppendLine("                     4 bad command line 命令行非法 | 130 cancelled 取消");
+            text.AppendLine("                     100 uninstall handed over to a copy outside the install folder and");
+            text.AppendLine("                         still running / 已移交目录外副本，尚未结束（要判定结果请轮询目录");
+            text.AppendLine("                         与\"应用和功能\"条目，或从目录外调用安装包）");
             return text.ToString();
         }
     }
