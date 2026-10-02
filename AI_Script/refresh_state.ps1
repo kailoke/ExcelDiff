@@ -26,7 +26,6 @@ function Invoke-Git([string[]]$cmdArgs) {
 $branch   = Invoke-Git @('rev-parse', '--abbrev-ref', 'HEAD')
 $head     = Invoke-Git @('rev-parse', 'HEAD')
 $subject  = Invoke-Git @('log', '-1', '--format=%h %s%nAuthor: %an <%ae>%nDate:   %ad', '--date=short')
-$recent   = Invoke-Git @('log', '--oneline', '-10', '--decorate')
 $upstream = Invoke-Git @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}')
 if ($LASTEXITCODE -ne 0) { $upstream = '(no upstream)' }
 
@@ -47,11 +46,6 @@ $lines.Add('')
 $lines.Add('## HEAD commit')
 $lines.Add('```')
 $lines.Add($subject)
-$lines.Add('```')
-$lines.Add('')
-$lines.Add('## Recent commits')
-$lines.Add('```')
-$lines.Add($recent)
 $lines.Add('```')
 $lines.Add('')
 

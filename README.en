@@ -6,7 +6,7 @@
 # ExcelDiff
 
 A Windows desktop GUI diff tool for Excel / CSV / TSV. Can be used as a Git / Mercurial difftool.
-There is **one product**: `ExcelDiffEDR.GUI.exe`, reading through ExcelDataReader - in the benchmark a ~1.8 MB file took about 28% of the time the old NPOI reader needed (~72% faster), which is why it became the main build. The second implementation that used to coexist through a compile-time switch (EDN, reading via NPOI) was removed from the source entirely on 2026-09-30. UI language is Chinese/English: it defaults to the language picked in the setup wizard (written to the registry for the app to read), falls back to the machine's display language if never chosen, and an in-app choice then always wins.
+There is **one product**: `ExcelDiffEDR.GUI.exe`, reading through ExcelDataReader - the only reader implementation in the tree. UI language is Chinese/English: it defaults to the language picked in the setup wizard (written to the registry for the app to read), falls back to the machine's display language if never chosen, and an in-app choice then always wins.
 
 ![Demo](media/demo.gif)
 
@@ -38,7 +38,7 @@ Run the released `ExcelDiffSetup-<version>.exe` (administrator rights required).
 - Component defaults: desktop shortcut ✓ / start on boot ✓ / **Explorer context menu ✗** (tick it on that page if you want it).
 - Silent install: `ExcelDiffSetup-<version>.exe /silent /dir="D:\Tools\ExcelDiffEDRTool" /components:shell,desktop,autostart /culture:en-US`.
   Switches: `/silent|/quiet`, `/uninstall`, `/install`, `/culture:zh-CN|en-US`, `/dir=<absolute path>` (relative paths and drive roots are refused), `/components:shell,desktop,autostart|none|all`, `/clearsettings`, `/log:<path>`, `/?`.
-  Exit codes: `0` success / `1` failure / `2` help shown / `3` no payload / `4` invalid command line / `130` cancelled. **One exception**: an uninstall started from `Uninstall.exe` inside the install folder returns 0 to mean "handed over" (the copy it made in the temp folder does the work), so judge the result by whether the folder and the entry in "Apps & features" are gone.
+  Exit codes: `0` success / `1` failure / `2` help shown / `3` no payload / `4` invalid command line / `130` cancelled / `100` **uninstall handed over** (the copy running from the temp folder does the work, so 0 never arrives from this path). As long as the install record is in the registry, an uninstall started from `Uninstall.exe` inside the install folder or from "Apps & features" returns `100` - that process is itself the file being deleted, and waiting would only lock it. For a verdict a script can trust, run the **setup package from outside** that folder: `ExcelDiffSetup <version>.exe /uninstall /silent /dir=<install dir>` finishes in place and returns 0/1. Otherwise judge by whether the folder and the "Apps & features" entry are gone.
 
 After a successful install the install folder keeps a copy of the installer named **`Uninstall.exe`**.
 
@@ -66,7 +66,7 @@ Any of these:
 
 Uses `dotnet msbuild` (no standalone MSBuild); the reference-assembly root must be specified. `<repo>` below means the absolute path of the repository root (`git rev-parse --show-toplevel`).
 
-### EDR (main build, ExcelDataReader) — output `ExcelDiffEDR.GUI.exe`
+### Build - output `ExcelDiffEDR.GUI.exe`
 
 ```
 dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:FrameworkPathOverride="<repo>\packages\refs\.NETFramework\v4.7.2" /p:IncludePackageReferencesDuringMarkupCompilation=false /p:GenerateResourceMSBuildArchitecture=CurrentArchitecture /p:GenerateResourceMSBuildRuntime=CurrentRuntime /t:Build /v:m /nologo
@@ -85,9 +85,9 @@ Reason: the resident process starts from the deployed directory and locks the ex
 powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-All green = EDR main build compiles + installer project compiles + 31 NetDiff tests pass + `lang\*.json ↔ resx` in sync (both directions) + the two resx files carry the same key set + pitfall scans (no `Start-Process -Wait` on the forwarder, no hardcoded visible text in XAML).
+All green = the product build compiles + installer project compiles + 31 NetDiff tests pass + `lang\*.json ↔ resx` in sync (both directions) + the two resx files carry the same key set + pitfall scans (no `Start-Process -Wait` on the forwarder, no hardcoded visible text in XAML).
 
-The installer has its own release gate: `powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install` (static checks on payload / embedded resources / version / bilingual key sets, plus A–M thirteen **real** install · uninstall · reinstall · rollback · refusal cases; needs admin, refuses to run when the machine already has an install record, and restores `HKCU Run` and the user settings folder afterwards).
+The installer has its own release gate: `powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install` (static checks on payload / embedded resources / version / bilingual key sets, plus A–O fifteen **real** install · uninstall · reinstall · rollback · refusal cases; needs admin, refuses to run when the machine already has an install record, and restores `HKCU Run` and the user settings folder afterwards).
 
 ## Usage
 
@@ -241,7 +241,7 @@ i.e. `%APPDATA%\ExcelDiffEDR.GUI\ExcelDiffEDR.GUI.yml` (the folder name is deriv
 ## Regression Verification
 
 - `AI_Script\verify.ps1`: one-command gate (product build + installer project compile + 31 NetDiff tests + `lang ↔ resx` sync both directions + matching resx key sets + pitfall scans).
-- `AI_Script\verify-installer.ps1`: installer release gate (static checks; `-Install` adds A–M thirteen real install/uninstall/reinstall/rollback/refusal cases, needs admin).
+- `AI_Script\verify-installer.ps1`: installer release gate (static checks; `-Install` adds A–O fifteen real install/uninstall/reinstall/rollback/refusal cases, needs admin).
 - `DiffHarness\`: headless diff output (deterministic diff text, for comparing one file's two versions).
 - `NetDiff\NetDiff.TestRunner\`: offline algorithm unit-test runner.
 

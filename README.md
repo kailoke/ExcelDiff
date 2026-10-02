@@ -7,7 +7,7 @@
 
 Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Mercurial difftool。
 
-产品是 **`ExcelDiffEDR.GUI.exe`**，读取层用 ExcelDataReader —— 基准测试里 1.8MB 文件的读取耗时约为原先 NPOI 路线的 28%（快约 72%），所以被定为主版本；原先靠编译开关共存的第二套实现（EDN，NPOI 读取）已于 2026-09-30 从源码里整体移除，现在只有这一个版本。界面语言支持中/英：默认取安装向导里选的语言（写入注册表供程序读取），没选过则按系统显示语言判定，之后在设置里手动切换优先。
+产品是 **`ExcelDiffEDR.GUI.exe`**，读取层只有 ExcelDataReader 一套实现。界面语言支持中/英：默认取安装向导里选的语言（写入注册表供程序读取），没选过则按系统显示语言判定，之后在设置里手动切换优先。
 
 ![Demo](media/demo.gif)
 
@@ -39,7 +39,7 @@ Windows 桌面 GUI 差异对比工具（Excel / CSV / TSV），可作 Git / Merc
 - 组件默认勾选：桌面快捷方式 ✓ / 开机自启 ✓ / **资源管理器右键菜单 ✗**（要用请在这一页勾上）。
 - 静默安装：`ExcelDiffSetup-<版本>.exe /silent /dir="D:\Tools\ExcelDiffEDRTool" /components:shell,desktop,autostart /culture:zh-CN`。
   开关：`/silent|/quiet`、`/uninstall`、`/install`、`/culture:zh-CN|en-US`、`/dir=<绝对路径>`（相对路径与盘符根会被拒绝）、`/components:shell,desktop,autostart|none|all`、`/clearsettings`、`/log:<路径>`、`/?`。
-  退出码：`0` 成功 / `1` 失败 / `2` 显示帮助 / `3` 载荷缺失 / `4` 命令行非法 / `130` 用户取消。**唯一例外**：从安装目录内的 `Uninstall.exe` 发起的卸载返回 0 只代表"已移交"（真正执行的是它复制到临时目录的那份），成不成看目录与"应用和功能"里的条目是否消失。
+  退出码：`0` 成功 / `1` 失败 / `2` 显示帮助 / `3` 载荷缺失 / `4` 命令行非法 / `130` 用户取消 / `100` **卸载已移交**（真正执行的是复制到临时目录的那份，0 不代表卸完）。只要注册表里留着安装记录，从安装目录内的 `Uninstall.exe` 或"应用和功能"发起的卸载就返回 `100`——它自己就是要被删的那个文件，等着只会锁住自己。脚本要可信的成败判定，请从**目录外**用安装包执行 `ExcelDiffSetup <版本>.exe /uninstall /silent /dir=<安装目录>`（同步完成，返回 0/1）；否则按"目录与'应用和功能'里的条目是否消失"来判。
 
 安装完成后，安装目录里会留下一份与安装包同内容的 **`Uninstall.exe`**。
 
@@ -86,9 +86,9 @@ dotnet msbuild ExcelDiff.GUI/ExcelDiff.GUI.csproj /p:Configuration=Release /p:Fr
 powershell -ExecutionPolicy Bypass -File AI_Script\verify.ps1
 ```
 
-全绿 = EDR 主版本编译通过 + 安装器工程编译通过 + NetDiff 31 用例通过 + `lang\*.json ↔ resx` 双向同步 + 两份 resx 键集一致 + 坑扫描（禁止对转发进程 `Start-Process -Wait`、XAML 内禁止硬编码可见文本）。
+全绿 = 产品编译通过 + 安装器工程编译通过 + NetDiff 31 用例通过 + `lang\*.json ↔ resx` 双向同步 + 两份 resx 键集一致 + 坑扫描（禁止对转发进程 `Start-Process -Wait`、XAML 内禁止硬编码可见文本）。
 
-安装包另有发布门禁：`powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install`（静态检查载荷/资源/版本/双语键集，外加 A–M 十三个**真实**安装·卸载·重装·回滚·拒绝用例；需要管理员，机器上已有安装记录时会拒绝运行，跑完自动还原 `HKCU Run` 与用户设置目录）。
+安装包另有发布门禁：`powershell -ExecutionPolicy Bypass -File AI_Script\verify-installer.ps1 -Install`（静态检查载荷/资源/版本/双语键集，外加 A–O 十五个**真实**安装·卸载·重装·回滚·拒绝用例；需要管理员，机器上已有安装记录时会拒绝运行，跑完自动还原 `HKCU Run` 与用户设置目录）。
 
 ## 使用方式
 
@@ -242,7 +242,7 @@ vdiff = exceldiff
 ## 回归验证
 
 - `AI_Script\verify.ps1`：一键门禁（产品编译 + 安装器工程编译 + NetDiff 31 用例 + lang↔resx 双向同步 + 两份 resx 键集一致 + 坑扫描）。
-- `AI_Script\verify-installer.ps1`：安装包发布门禁（静态检查；`-Install` 追加 A–M 十三个真实安装/卸载/重装/回滚/拒绝用例，需管理员）。
+- `AI_Script\verify-installer.ps1`：安装包发布门禁（静态检查；`-Install` 追加 A–O 十五个真实安装/卸载/重装/回滚/拒绝用例，需管理员）。
 - `DiffHarness\`：headless diff 输出（确定性 diff 文本，用于同一文件两个版本之间的回归比对）。
 - `NetDiff\NetDiff.TestRunner\`：离线算法单测 runner。
 
