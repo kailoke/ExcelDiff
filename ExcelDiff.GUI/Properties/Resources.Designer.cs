@@ -1255,12 +1255,57 @@ namespace ExcelDiff.GUI.Properties {
                 return LocalizationManager.GetString("Word_Close", ResourceManager, resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Command line.
+        /// </summary>
+        public static string Help_Title {
+            get {
+                return LocalizationManager.GetString("Help_Title", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} [diff] &lt;left file&gt; &lt;right file&gt;.
+        /// </summary>
+        public static string Help_Usage {
+            get {
+                return LocalizationManager.GetString("Help_Usage", ResourceManager, resourceCulture);
+            }
+        }
         /// <summary>
         ///   Looks up a localized string similar to Invalid argument..
         /// </summary>
         public static string Message_InvalidArgument {
             get {
                 return LocalizationManager.GetString("Message_InvalidArgument", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A command could not be handled..
+        /// </summary>
+        public static string Message_UIError {
+            get {
+                return LocalizationManager.GetString("Message_UIError", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Details were written to {0}.
+        /// </summary>
+        public static string Message_LogWritten {
+            get {
+                return LocalizationManager.GetString("Message_LogWritten", ResourceManager, resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The error log could not be written.
+        /// </summary>
+        public static string Message_LogFailed {
+            get {
+                return LocalizationManager.GetString("Message_LogFailed", ResourceManager, resourceCulture);
             }
         }
         

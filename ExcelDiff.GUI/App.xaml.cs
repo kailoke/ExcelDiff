@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using ExcelDiff.GUI.Commands;
@@ -51,6 +53,11 @@ namespace ExcelDiff.GUI
         {
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
 
+            // Forwarded commands are posted onto this thread, so an exception escaping here would take
+            // the resident down together with every comparison already open. The AppDomain hook cannot
+            // stop that - it only reports, and its handler ends in Environment.Exit.
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+
             base.OnStartup(e);
 
             Timing.Mark("StartupBegin");
@@ -76,6 +83,18 @@ namespace ExcelDiff.GUI
             if (args.Contains("--startup"))
             {
                 // Started from the Run key at login: run hidden in the tray.
+                if (trayIcon != null)
+                    trayIcon.Show();
+                return;
+            }
+
+            if (IsHelpRequested(args))
+            {
+                ShowCommandLineHelp();
+
+                // Stay resident like any argument-less launch does: --help must not leave the
+                // machine without a resident, because the next difftool call would then have to
+                // start one and that starter never exits.
                 if (trayIcon != null)
                     trayIcon.Show();
                 return;
@@ -167,18 +186,45 @@ namespace ExcelDiff.GUI
             if (filtered.Length == 0)
                 return;
 
-            CommandLineOption option;
-            if (!TryParseOption(filtered, out option))
+            if (IsHelpRequested(filtered))
+            {
+                ShowCommandLineHelp();
                 return;
+            }
 
-            // Force-dismiss any open modal (e.g. "no difference") so the new command takes effect.
-            if (CurrentDiffView != null)
-                CurrentDiffView.DismissModalWindows();
+            CommandLineOption option;
+            try
+            {
+                if (!TryParseOption(filtered, out option))
+                {
+                    // A swallowed command is indistinguishable from "no difference" to the caller:
+                    // the forwarding process has already exited, so this window is the only place
+                    // the rejected argument can still be shown.
+                    ReportInvalidArguments(filtered);
+                    return;
+                }
 
-            if (MainWindow != null)
-                ShowMainWindow();
+                // Forwarding used to skip the command-word check entirely: `merge` came in and ran as
+                // a plain diff, while the same word typed into a cold launch is rejected. Same owner.
+                CommandFactory.Create(option);
 
-            RouteCommand(option);
+                // Force-dismiss any open modal (e.g. "no difference") so the new command takes effect.
+                if (CurrentDiffView != null)
+                    CurrentDiffView.DismissModalWindows();
+
+                if (MainWindow != null)
+                    ShowMainWindow();
+
+                RouteCommand(option);
+            }
+            catch (Exceptions.ExcelDiffException ex)
+            {
+                // The resident must not die over one bad command line: the caller already exited
+                // after forwarding, so killing this process also loses every earlier comparison.
+                if (ex.ShowDialog)
+                    MessageBox.Show(ex.Message, GUI.Properties.Resources.Message_ErrorCaption,
+                                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private bool TryParseOption(string[] args, out CommandLineOption option)
@@ -195,6 +241,30 @@ namespace ExcelDiff.GUI
                 });
             option = local;
             return parsed;
+        }
+
+        private static bool IsHelpRequested(IEnumerable<string> args)
+        {
+            return args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(a, "/?", StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(a, "-?", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static void ShowCommandLineHelp()
+        {
+            var exe = Path.GetFileName(Environment.GetCommandLineArgs()[0]);
+
+            MessageBox.Show(string.Format(GUI.Properties.Resources.Help_Usage, exe)
+                            + Environment.NewLine + CommandLineArguments.DescribeOptions(),
+                            GUI.Properties.Resources.Help_Title,
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ReportInvalidArguments(IEnumerable<string> args)
+        {
+            MessageBox.Show(string.Format(GUI.Properties.Resources.Message_InvalidArgument, string.Join(" ", args)),
+                            GUI.Properties.Resources.Message_ErrorCaption,
+                            MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         private void RouteCommand(CommandLineOption option)
@@ -234,6 +304,47 @@ namespace ExcelDiff.GUI
             throw new Exceptions.ExcelDiffException(true, string.Format(GUI.Properties.Resources.Message_InvalidArgument, string.Join(" ", args)));
         }
 
+        private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            // ExcelDiffException is the designed channel for "hand this to the external tool": its
+            // AppDomain handler asks whether to run the fallback command. Taking it over here would
+            // silently disable that path, so it is left unhandled on purpose.
+            if (e.Exception is Exceptions.ExcelDiffException)
+            {
+                e.Handled = false;
+                return;
+            }
+
+            var logPath = LogError(e.Exception);
+            var text = string.Format(GUI.Properties.Resources.Message_UIError, e.Exception.Message);
+
+            MessageBox.Show(text
+                            + (logPath != null
+                                ? Environment.NewLine + string.Format(GUI.Properties.Resources.Message_LogWritten, logPath)
+                                : Environment.NewLine + GUI.Properties.Resources.Message_LogFailed),
+                            GUI.Properties.Resources.Message_ErrorCaption,
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+
+            e.Handled = true;
+        }
+
+        private static string LogError(Exception ex)
+        {
+            var path = Path.Combine(Path.GetDirectoryName(ApplicationSetting.Location), "error.log");
+            try
+            {
+                File.AppendAllText(path, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + ex + Environment.NewLine,
+                                   new UTF8Encoding(false));
+                return path;
+            }
+            catch
+            {
+                // A log that cannot be written must not replace the error it was recording, and the
+                // prompt must not promise a file that does not exist.
+                return null;
+            }
+        }
+
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             var exception = e.ExceptionObject as Exception;
@@ -260,6 +371,12 @@ namespace ExcelDiff.GUI
 
         public void ExecuteExternalCommand()
         {
+            // The --help path returns before CommandLineOption is assigned, and this runs from the
+            // AppDomain handler; dereferencing null there would kill the process while it was busy
+            // reporting another failure.
+            if (CommandLineOption == null)
+                return;
+
             var command = Setting.ExternalCommands.FirstOrDefault(c => c.Name == CommandLineOption.ExternalCommand);
             if (command == null)
                 return;

@@ -24,6 +24,7 @@
 - [ ] **C3 关窗语义**：`RunInBackground=true` → 关窗仅隐藏到托盘；`IsClosingMainWindow`（语言切换）→ 允许真正关；`ExitApplication` 置 `IsExiting` 后 `Shutdown`。（MainWindow.xaml.cs:122）
 - [ ] **C4 转发进程不驻留**：对转发进程 `Start-Process -Wait` 会挂起（无常驻时转发器变常驻）。等待会话用 `AI_Script\Invoke-ExcelDiff.ps1`（fire-and-forget + 轮询窗口）；入库脚本由 `AI_Script\verify.ps1` 坑扫描自动拦截 `Start-Process ... -Wait ... ExcelDiff`。（AGENTS §8.3）
 - [ ] **C5 模态强关**：远程命令生效前 `CurrentDiffView.DismissModalWindows()` 强关无差异等模态，再 `ShowMainWindow`。（App.xaml.cs:181-185）
+- [ ] **C6 常驻不因非法命令行退出**：转发给常驻的一条坏参数只能换来一个可见提示，不能打死常驻 —— 转发进程送完就退，常驻一死，之前打开的所有对比一起没了，而调用方毫无察觉。`OnRemoteCommand` 必须把整条"解析 → 校验命令词 → 路由"包在 `catch (ExcelDiffException)` 里（`CommandLineArguments.Normalize`、`CommandFactory.Create` 都在其内），解析失败（`NotParsed`）也要弹提示而不是静默 return。参数值的路径合法性（非法字符、超过 260 的 `PathTooLongException`）在归一化末尾就判掉，不让 `ArgumentException` 逃到调用层。**边界（别写成"全部兜住"）**：`DispatcherUnhandledException` 只兜**非** `ExcelDiffException` 的异常并写 `%APPDATA%\ExcelDiffEDR.GUI\error.log`；`ExcelDiffException` 刻意放行，由 `AppDomain` 处理器继续问"是否执行外部命令"，那是 `-c`/`-i` 外部工具回退的既定通道。冷启动（尚无常驻）参数非法仍会退出，与改动前一致。**证伪方法**：`& exe A B C`（三个位置参数）与 `& exe -v=false A B` 发给运行中的常驻 → 断言常驻 PID 不变且弹出"参数无效/无法处理"提示；进程死了即违反本条。
 
 ## D. 本地化
 

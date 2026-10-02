@@ -529,6 +529,30 @@
 参数：
 {0}</value>
   </data>
+  <data name="Message_UIError" xml:space="preserve">
+    <value>有一条命令没能处理。
+{0}
+
+ExcelDiffEDR 没有退出。屏幕上的对比可能不完整，如有疑问请重新加载对比。</value>
+  </data>
+  <data name="Message_LogWritten" xml:space="preserve">
+    <value>详情已写入 {0}。</value>
+  </data>
+  <data name="Message_LogFailed" xml:space="preserve">
+    <value>错误日志写入失败。</value>
+  </data>
+  <data name="Help_Title" xml:space="preserve">
+    <value>命令行参数</value>
+  </data>
+  <data name="Help_Usage" xml:space="preserve">
+    <value>{0} [diff] &lt;左文件&gt; &lt;右文件&gt;
+{0} [diff] -s &lt;左文件&gt; -d &lt;右文件&gt; [选项]
+
+左表是源文件（-s），右表是目标文件（-d）。位置参数按书写顺序依次填入这两个槽位，最多两个，且不要与 -s / -d 混用。
+命令词 diff 可以省略。
+
+选项：</value>
+  </data>
   <data name="Message_UnknownCommand" xml:space="preserve">
     <value>{0} 不是有效命令</value>
   </data>

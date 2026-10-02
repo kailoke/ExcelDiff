@@ -529,6 +529,30 @@ If you don't want to apply file settings, enable "Ignore File Setting".</value>
 argument:
 {0}</value>
   </data>
+  <data name="Message_UIError" xml:space="preserve">
+    <value>A command could not be handled.
+{0}
+
+ExcelDiffEDR did not exit. The comparison on screen may be incomplete - reload it if in doubt.</value>
+  </data>
+  <data name="Message_LogWritten" xml:space="preserve">
+    <value>Details were written to {0}.</value>
+  </data>
+  <data name="Message_LogFailed" xml:space="preserve">
+    <value>The error log could not be written.</value>
+  </data>
+  <data name="Help_Title" xml:space="preserve">
+    <value>Command line</value>
+  </data>
+  <data name="Help_Usage" xml:space="preserve">
+    <value>{0} [diff] &lt;left file&gt; &lt;right file&gt;
+{0} [diff] -s &lt;left file&gt; -d &lt;right file&gt; [options]
+
+The left table is the source file (-s), the right table is the destination file (-d). Positional files fill those two slots in the order written, at most two, and must not be mixed with -s / -d.
+The command word "diff" is optional.
+
+Options:</value>
+  </data>
   <data name="Message_UnknownCommand" xml:space="preserve">
     <value>{0} is unknown command</value>
   </data>

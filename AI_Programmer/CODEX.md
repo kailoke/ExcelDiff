@@ -10,8 +10,8 @@
 
 ```
 exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
-  └─ App.Main()                                   App.xaml.cs:28    加载 Setting、EnsureCulture、UpdateResourceCulture、Run
-  └─ App.OnStartup()                              App.xaml.cs:50    TryAcquire() 失败→转发给常驻实例后退出
+  └─ App.Main()                                   App.xaml.cs:30    加载 Setting、EnsureCulture、UpdateResourceCulture、Run
+  └─ App.OnStartup()                              App.xaml.cs:52    TryAcquire() 失败→转发给常驻实例后退出
        ├─ SingleInstance.StartServer(OnRemoteCommand)               后台管道线程
        ├─ InitializeTray() → TrayIconManager                        托盘常驻
        ├─ StartupHelper.SetEnabled(Setting.StartOnBoot)             Run 键
@@ -38,11 +38,11 @@ exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
 新进程 exe diff ... → SingleInstance.TryAcquire()==false
   └─ SingleInstance.SendToRunningInstance(args)   SingleInstance.cs:75   命名管道 client（channel=exe 名）
   └─ 常驻进程管道线程 ServerLoop()                SingleInstance.cs:113   server 收包 → handler(args)
-  └─ App.OnRemoteCommand(args)                    App.xaml.cs:154
+  └─ App.OnRemoteCommand(args)                    App.xaml.cs:173
        ├─ Dispatcher.BeginInvoke(...)                                      管道线程绝不阻塞/同步等待
        ├─ CurrentDiffView.DismissModalWindows()                            强关 NoDiffWindow 等模态
        ├─ ShowMainWindow()                                                保留最大化状态恢复窗口
-       └─ RouteCommand(option)                    App.xaml.cs:200
+       └─ RouteCommand(option)                    App.xaml.cs:270
              ├─ CurrentDiffView==null → new DiffCommand(option).Execute()
              └─ 否则 CurrentDiffView.ApplyDiff(option)  DiffView.xaml.cs:392
 ```
@@ -51,14 +51,14 @@ exe <src> <dst>   或   exe diff -s <src> -d <dst> ...
 
 | 类型 | 位置 | 关键成员 / 职责 |
 |------|------|-----------------|
-| `App` | App.xaml.cs:14 | 生命周期中枢。`Setting`、`CommandLineOption`、`CurrentDiffView`、`DisplayName`（固定 `ExcelDiffEDR`）、`HideToTray/ShowMainWindow/ExitApplication`、`UpdateResourceCulture`（语言切换=关窗）、`UpdateRecentFiles`、`GetRecentFiles*` |
+| `App` | App.xaml.cs:16 | 生命周期中枢。`Setting`、`CommandLineOption`、`CurrentDiffView`、`DisplayName`（固定 `ExcelDiffEDR`）、`HideToTray/ShowMainWindow/ExitApplication`、`UpdateResourceCulture`（语言切换=关窗）、`UpdateRecentFiles`、`GetRecentFiles*` |
 | `SingleInstance` | SingleInstance.cs:14 | `TryAcquire`（Mutex，Local\exe名-用户SID）、`SendToRunningInstance`（管道 out，3s 超时）、`StartServer`（后台线程）+`ServerLoop` |
 | `TrayIconManager` | TrayIconManager.cs:10 | `Show/Hide/Dispose`；图标=exe 关联图标；双击→onOpen；右键菜单（打开/退出，`Resources.Word_Open/Exit`） |
 | `StartupHelper` | StartupHelper.cs:10 | `SetEnabled(bool)` → `HKCU\...\Run` 写 `"exe" --startup` |
 | `Timing` | Timing.cs:12 | `[Conditional("PERF_TIMING")] Mark/Log`，写 `%TEMP%\em_open_timing.log`；正式版编译期裁掉 |
 | `DiffCommand` | Commands/DiffCommand.cs:8 | 组装 MainWindow+DiffView+VM；`ValidateOption`（`-e empty-file-name`→`EnsureFile`，扩展名校验）；`DefaultEnabledExtensions` |
 | `CommandFactory` | Commands/CommandFactory.cs:3 | `Create(option)` → DiffCommand |
-| `CommandLineArguments` | Commands/CommandLineArguments.cs:11 | `Normalize(args)`：把位置参数改写成 `-s`/`-d`（最多两个，与显式 `-s`/`-d` 互斥，违规抛 `Invalid argument.`）；未知开关（`--help`/`--version`/`--startup`）原样透传交给 CommandLineParser |
+| `CommandLineArguments` | Commands/CommandLineArguments.cs:14 | `Normalize(args)`：把位置参数改写成 `-s`/`-d`（最多两个，与显式 `-s`/`-d` 互斥，违规抛 `Invalid argument.`）；未知开关（`--help`/`--version`/`--startup`）原样透传交给 CommandLineParser |
 | `CommandLineOption` | Commands/CommandLineOption.cs:7 | CLI 参数绑定（`-s/-d/-c/-i/-w/-v/-e`）；`MainCommand`（首参→`CommandType`，缺省 `Diff`）；位置参数由 `CommandLineArguments` 先归一化 |
 | `MainWindow` | Views/MainWindow.xaml.cs:11 | PowerShell 宿主；窗口状态持久化（600ms 去抖 timer）；`OnClosing`（托盘/退出二分）；`WndProc` ESC 钩子；`RestoreWindowState/SaveWindowState` |
 | `DiffView` | Views/DiffView.xaml.cs:25 | 对比视图核心。`InitializeEventListeners`（静态分发器注册 src/dst 两个 handler）、`ReadWorkbooks`、`ExecuteDiff`（双重载）、`ApplyDiff`、`DismissModalWindows`、`RemoveEventListeners`；`#if PERF_TIMING` 分段计时 |
