@@ -1,6 +1,6 @@
 # Invoke-ExcelDiff.ps1 - Safe wrapper for starting a GUI diff.
 #
-# AI_Programmer\AGENTS.md 8.3 / INVARIANTS C4: NEVER `Start-Process ... -Wait` on the ExcelDiff
+# INVARIANTS C4 / .agents/skills/exceldiff-workflow/SKILL.md: NEVER `Start-Process ... -Wait` on the ExcelDiff
 # forwarder. When no resident instance is running, the forwarder becomes resident
 # itself and never exits, so -Wait hangs forever.
 #

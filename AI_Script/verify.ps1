@@ -121,7 +121,7 @@ if ($resxMaps.ContainsKey('en-US') -and $resxMaps.ContainsKey('zh-CN')) {
     }
 }
 
-# --- 6. AGENTS 8.3 pitfall scan: no Start-Process -Wait on ExcelDiff ---
+# --- 6. INVARIANTS C4 pitfall scan: no Start-Process -Wait on ExcelDiff ---
 # Waiting on the forwarder with -Wait hangs when no resident instance exists
 # (the forwarder becomes resident and never exits). Enforce the fire-and-forget
 # rule in every checked-in script.
@@ -140,7 +140,7 @@ foreach ($psf in $psFiles) {
         }
     }
 }
-if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelDiff (AGENTS 8.3 pitfall)' }
+if ($pitfall.Count -eq 0) { OkStep 'No Start-Process -Wait on ExcelDiff (INVARIANTS C4 pitfall)' }
 else { FailStep ('Start-Process -Wait on ExcelDiff found: ' + ($pitfall -join '; ')) }
 
 # --- 6b. INVARIANT D1 scan: no hardcoded UI text in XAML ---

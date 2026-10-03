@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "note": "代码锚点注册表。id 稳定不变；file 相对项目根目录；pattern 为匹配该文件第一处的正则表达式（特殊字符需转义，如括号写 \\( ）。运行 AI_Script/refresh-code-index.ps1 会重解析行号并刷新 AI_docs/CODE_INDEX.md 及文档内的行号引用。锚点写法：文档里引用代码只写 `路径/File.cs#L行号 <!-- anchor:ID -->`（行号由脚本刷新），不裸写行号。",
+  "anchors": [
+    { "id": "App.Main", "file": "ExcelDiff.GUI/App.xaml.cs", "pattern": "public static void Main", "note": "进程入口：加载设置、EnsureCulture、UpdateResourceCulture、Run" },
+    { "id": "App.OnStartup", "file": "ExcelDiff.GUI/App.xaml.cs", "pattern": "override void OnStartup", "note": "单实例判定：TryAcquire 失败即转发参数并退出" },
+    { "id": "App.OnRemoteCommand", "file": "ExcelDiff.GUI/App.xaml.cs", "pattern": "private void OnRemoteCommand", "note": "常驻收到远程命令：BeginInvoke 投递、强关模态、恢复窗口、路由" },
+    { "id": "App.RouteCommand", "file": "ExcelDiff.GUI/App.xaml.cs", "pattern": "private void RouteCommand", "note": "已有对比窗口走 ApplyDiff，否则新建 DiffCommand" },
+    { "id": "App.Class", "file": "ExcelDiff.GUI/App.xaml.cs", "pattern": "class App\\b", "note": "生命周期中枢：托盘、语言切换、最近文件" },
+    { "id": "DiffCommand.Execute", "file": "ExcelDiff.GUI/Commands/DiffCommand.cs", "pattern": "public void Execute\\(", "note": "组装 MainWindow+DiffView+VM 并执行对比" },
+    { "id": "DiffCommand.Class", "file": "ExcelDiff.GUI/Commands/DiffCommand.cs", "pattern": "class DiffCommand", "note": "命令实现：ValidateOption 与默认扩展" },
+    { "id": "DiffView.ReadWorkbooks", "file": "ExcelDiff.GUI/Views/DiffView.xaml.cs", "pattern": "Tuple<ExcelWorkbook, ExcelWorkbook> ReadWorkbooks", "note": "Task.Run×2 并行读取两个工作簿（唯一读取实现）" },
+    { "id": "DiffView.ExecuteDiff", "file": "ExcelDiff.GUI/Views/DiffView.xaml.cs", "pattern": "ExcelSheetDiff ExecuteDiff\\(ExcelSheet", "note": "进度模态内跑 ExcelSheet.Diff" },
+    { "id": "DiffView.ExecuteDiffStartup", "file": "ExcelDiff.GUI/Views/DiffView.xaml.cs", "pattern": "private void ExecuteDiff\\(bool", "note": "选 sheet → 建模型 → 摘要 → 无差异弹窗 → 聚焦首差异" },
+    { "id": "DiffView.ApplyDiff", "file": "ExcelDiff.GUI/Views/DiffView.xaml.cs", "pattern": "public void ApplyDiff", "note": "远程命令对已有窗口复用：换文件重跑对比" },
+    { "id": "DiffView.Class", "file": "ExcelDiff.GUI/Views/DiffView.xaml.cs", "pattern": "class DiffView\\b", "note": "对比视图核心：事件监听注册/卸载、模态强关" },
+    { "id": "SingleInstance.SendToRunningInstance", "file": "ExcelDiff.GUI/SingleInstance.cs", "pattern": "public static bool SendToRunningInstance", "note": "命名管道 client：转发参数给常驻（3s 超时）" },
+    { "id": "SingleInstance.ServerLoop", "file": "ExcelDiff.GUI/SingleInstance.cs", "pattern": "private static void ServerLoop", "note": "常驻管道后台线程：收包后交 handler，禁阻塞" },
+    { "id": "SingleInstance.Class", "file": "ExcelDiff.GUI/SingleInstance.cs", "pattern": "class SingleInstance", "note": "Mutex 单实例 + 命名管道 server/client，channel id 由 exe 名派生" },
+    { "id": "TrayIconManager.Class", "file": "ExcelDiff.GUI/TrayIconManager.cs", "pattern": "class TrayIconManager", "note": "托盘常驻：显示/隐藏/退出，双击恢复窗口" },
+    { "id": "StartupHelper.Class", "file": "ExcelDiff.GUI/StartupHelper.cs", "pattern": "class StartupHelper", "note": "HKCU Run 键按 exe 名单槽位自启管理" },
+    { "id": "Timing.Class", "file": "ExcelDiff.GUI/Timing.cs", "pattern": "class Timing", "note": "PERF_TIMING 分段计时（正式构建裁掉）" },
+    { "id": "CommandFactory.Class", "file": "ExcelDiff.GUI/Commands/CommandFactory.cs", "pattern": "class CommandFactory", "note": "命令工厂：Create(option) → DiffCommand" },
+    { "id": "CommandLineArguments.Class", "file": "ExcelDiff.GUI/Commands/CommandLineArguments.cs", "pattern": "class CommandLineArguments", "note": "解析前归一化：位置参数改写 -s/-d，两条入口共用" },
+    { "id": "CommandLineOption.Class", "file": "ExcelDiff.GUI/Commands/CommandLineOption.cs", "pattern": "class CommandLineOption", "note": "CLI 参数绑定（-s/-d/-c/-i/-w/-v/-e）" },
+    { "id": "MainWindow.Class", "file": "ExcelDiff.GUI/Views/MainWindow.xaml.cs", "pattern": "class MainWindow", "note": "主窗口：PowerShell 宿主、窗口状态持久化、ESC 的 Win32 钩子" },
+    { "id": "NoDiffWindow.Class", "file": "ExcelDiff.GUI/Views/NoDiffWindow.xaml.cs", "pattern": "class NoDiffWindow", "note": "无差异模态窗：✕ 仅关提示，红色退出按钮连窗口一起关" },
+    { "id": "LocalizationManager.Class", "file": "ExcelDiff.GUI/Localization/LocalizationManager.cs", "pattern": "class LocalizationManager", "note": "外置 lang json 加载与缺键回落" },
+    { "id": "ExcelWorkbook.Class", "file": "ExcelDiff/ExcelWorkbook.cs", "pattern": "class ExcelWorkbook", "note": "读取入口工厂：按扩展名分发（ExcelDataReader 唯一实现 + csv/tsv 自研）" },
+    { "id": "ExcelSheetDiff.Class", "file": "ExcelDiff/ExcelSheetDiff.cs", "pattern": "class ExcelSheetDiff", "note": "差异结果容器与摘要计数" }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "ai-mermaid-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "本仓固定版本 mermaid 渲染工具（供 AI_Script/mermaid-render.ps1 调用；版本固定保证渲染可复现）",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "11.17.0"
+  }
+}

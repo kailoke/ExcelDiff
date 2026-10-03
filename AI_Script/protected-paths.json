@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "note": "verify-scope.ps1 / pre-commit-check.ps1 使用的路径规则表。forbidden=禁改（命中即验收失败；forbiddenExcept 里的 glob 例外放行）；caution=谨慎区（命中仅告警，需主会话确认授权）。glob 为 -like 通配，/ 分隔。原则 = 机器生成、人只读的产物进 forbidden；改坏影响面大但确需人工手改的区进 caution。根 AGENTS.md 的禁改区列表必须与本文件 forbidden 逐条一致（门禁 E10 查对）。",
+  "forbiddenExcept": [],
+  "forbidden": [
+    "packages/*",
+    "Build/*",
+    "ExcelDiff.Installer/Release/*"
+  ],
+  "caution": [
+    "lang/*",
+    "ProjectPaths.ps1",
+    ".githooks/*",
+    "AI_Script/*",
+    "AI_docs/CODE_INDEX.md",
+    "AI_docs/PROJECT_STATE.md",
+    "AI架构复刻包/*"
+  ]
+}

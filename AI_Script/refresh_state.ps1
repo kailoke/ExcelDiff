@@ -1,4 +1,4 @@
-# refresh_state.ps1 - Regenerate AI_Programmer\PROJECT_STATE.md from live git state.
+# refresh_state.ps1 - Regenerate AI_docs\PROJECT_STATE.md from live git state.
 #
 # Single source of truth for the branch. Commit state stays in git (a pre-commit refresh is always one
 # commit behind, so it is not recorded here).
@@ -18,7 +18,7 @@ $ErrorActionPreference = 'Stop'
 
 $scriptDir = $PSScriptRoot                 # ...\AI_Script
 $root      = Split-Path -Parent $scriptDir # repo root
-$out       = Join-Path $root 'AI_Programmer\PROJECT_STATE.md'
+$out       = Join-Path $root 'AI_docs\PROJECT_STATE.md'
 
 function Invoke-Git([string[]]$cmdArgs) {
     return (& git.exe -C $root @cmdArgs 2>&1 | Out-String).Trim()

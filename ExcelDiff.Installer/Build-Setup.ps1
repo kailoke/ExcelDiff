@@ -13,7 +13,7 @@
       7. publish to Release\ExcelDiffSetup-<version>.exe
 
     ASCII only on purpose: a .ps1 with non-ASCII literals must be saved with a BOM or
-    PowerShell 5.1 decodes it as GBK (AGENTS 8.1).
+    PowerShell 5.1 decodes it as GBK (INVARIANTS D3 / root AGENTS.md encoding rules).
 
 .PARAMETER SkipBuild
     Reuse the existing staging tree instead of rebuilding it.

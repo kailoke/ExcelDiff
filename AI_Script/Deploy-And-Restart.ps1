@@ -3,7 +3,8 @@
     Build the product, deploy to Program Files, and restart the resident process.
 
 .DESCRIPTION
-    Solidifies the deploy/restart procedure documented in AI_Programmer\AGENTS.md §7.6 / §8.6 / §8.7.
+    Solidifies the deploy/restart procedure documented in .agents/skills/exceldiff-workflow/SKILL.md
+    (build & deploy) and AI_docs/ARCHITECTURE.md section 7.
     There is one product build (ExcelDiffEDR.GUI, read via ExcelDataReader); the former EDN (NPOI)
     variant has been removed from the source, along with the EdrRead switch that selected it.
 
@@ -104,7 +105,7 @@ if ($Stage -eq "deploy") {
             Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 1
 
-        # Avoid the lang\lang nesting pitfall (AI_Programmer\ARCHITECTURE.md §8): delete dest lang first.
+        # Avoid the lang\lang nesting pitfall (AI_docs/ARCHITECTURE.md section 7): delete dest lang first.
         if (Test-Path "$Dst\lang") { Remove-Item "$Dst\lang" -Recurse -Force }
 
         $attempt = 0; $ok = $false

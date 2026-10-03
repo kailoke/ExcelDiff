@@ -39,7 +39,8 @@
          target are both refused with exit 1 while both installs survive, and the same command
          succeeds once the record points back at the real folder
     The interactive UninstallString (wizard needs a human click) is asserted only in shape by A;
-    executing it belongs to the manual acceptance checklist in AI_Programmer\AGENTS.md section 4.
+    executing it belongs to the manual acceptance checklist in .agents/skills/exceldiff-workflow/SKILL.md
+    (installer release section).
 
     Every assertion is taken BEFORE the finally-block repairs anything, so a product bug cannot be
     hidden by the gate's own cleanup. -Install writes HKLM keys, registers a COM server and touches

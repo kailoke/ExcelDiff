@@ -1,0 +1,8 @@
+#!/bin/sh
+# Post-commit: append the real hash and subject of this commit to the local
+# (gitignored) commit log, so ledgers/handoffs can reference real hashes without
+# back-filling tracked documents (which would create a second "fix the ID" commit).
+# AI_docs/HANDOFFS/ is gitignored by design (see root .gitignore).
+mkdir -p "AI_docs/HANDOFFS" 2>/dev/null
+git log -1 --format="%h %s" >> "AI_docs/HANDOFFS/commits.local.log" 2>/dev/null || true
+exit 0

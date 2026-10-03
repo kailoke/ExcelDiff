@@ -253,4 +253,22 @@ TestExcel/**
 
 # Setup packager output (regenerable by ExcelDiff.Installer\Build-Setup.ps1)
 ExcelDiff.Installer/Release/
+
+# ===== AI 会话基建 =====
+
+# 会话本地接力件（handoff / 提交记录），不进仓
+AI_docs/HANDOFFS/
+
+# verify-scope 的派发基线（机器副产物，随时重记）
+*.scope-baseline
+
+# 本地生成的图表产物（mermaid 源 + 渲染图，不入库；入口 AI_Script/mermaid-render.ps1）
+/Diagrams/
+
+# 本地演练与临时草稿
+/Temp/
+__pycache__/
+
+# mermaid 渲染依赖（package.json/lock 入库，node_modules 不入库）
+AI_Script/tools/mermaid/node_modules/
 AI架构复刻包/

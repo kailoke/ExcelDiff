@@ -1,15 +1,17 @@
 #!/bin/sh
-# pre-commit: refresh the AI context BEFORE committing so the refreshed files are
-# included in this commit. Re-stages the rewritten AI files.
-
+# Pre-commit gate:
+#   1) refresh AI_docs/PROJECT_STATE.md (branch snapshot) and re-stage it, so the
+#      refreshed file is part of this commit;
+#   2) run AI_Script/pre-commit-check.ps1 (forbidden zone / anchors / docs lint /
+#      CODE_INDEX restage / ledger-same-commit), preferring pwsh 7 with a
+#      powershell.exe fallback (5.1 cannot spawn children in restricted sandboxes).
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT" || exit 1
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "AI_Script/refresh_state.ps1"
+git add -- AI_docs/PROJECT_STATE.md
 
-if git diff --cached --name-only |
-    grep -Eq '^(ExcelDiff/|ExcelDiff\.GUI/|NetDiff/NetDiff/|FastWpfGrid/).*\.cs$'; then
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "AI_Script/refresh_codex.ps1"
+if command -v pwsh >/dev/null 2>&1; then
+    exec pwsh -NoProfile -ExecutionPolicy Bypass -File "AI_Script/pre-commit-check.ps1"
 fi
-
-git add -- AI_Programmer/PROJECT_STATE.md AI_Programmer/CODEX.md
+exec powershell.exe -NoProfile -ExecutionPolicy Bypass -File "AI_Script/pre-commit-check.ps1"
