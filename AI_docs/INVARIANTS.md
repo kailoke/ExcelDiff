@@ -14,9 +14,10 @@
 
 - [ ] **B1 读取层只有一条实现**：`ExcelWorkbook.Create` 对 xls/xlsx 走 ExcelDataReader，csv/tsv 走自研解析器；没有第二条读取路径可走。（`ARCHITECTURE.md` §6.2、ADR-019）
 - [ ] **B2 行列语义**：读取路径必须跳整空行、裁剪尾空单元格，每行的单元格列表止于最后一个有值的列——diff 的行/列对齐就建在这两条上。（`ExcelDiff/ExcelWorkbook.cs` 的 `CreateFromExcel`）
-- [ ] **B3 已知盲区（无兜底，别再承诺兜底）**：ExcelDataReader 读不到"仅样式无值"的单元格 → 空列被吞 → 列对齐漂移 → 漏报真实变更。仓库里不存在备用读取实现，也没有双读校验入口，所以这条盲区无法在本层被消掉：遇到该场景只能如实告知用户，或另开决策条目设计校验手段。（`ARCHITECTURE.md` §8、R-001）
+- [ ] **B3 存在性语义（设计规则，非盲区）**：格子存在当且仅当值非空；样式不参与存在判定与对比。依据：格式差异对内容评审是噪声；csv/tsv 无格式维度，值语义保证同一数据跨格式结论一致；样式存在性因继承关系没有确定答案。两侧皆无值的列不参与对比是正确行为而非丢失；一侧有值（含仅表头有值）的列必然参与对比（`ExcelDiff/ExcelSheet.cs` 的 `GetEffectiveColumnCount` 逐列数非空值）。读取库的样式接口（`IExcelDataReader.GetCellStyle`）有意不消费，要消费先另开决策条目。
 - [ ] **B4 回归比对（可选）**：`DiffHarness` 是单变体的 headless 输出工具；比对必须**严格用同名文件的工作区版 VS git HEAD 版**，严禁跨文件对比。（`AGENT_WORK_PROTOCOL.md`「实施规则」、`ARCHITECTURE.md` §8）
 - [ ] **B5 扩展名分发**：新增文件类型解析在 `ExcelWorkbook.Create` 里统一分发，CSV/TSV 保持自研零依赖。
+- [ ] **B6 内容对齐的固有极限**：列按内容配对（配置了表头行按表头文本，否则按整列值），同名的两列无法区分、配对可能互换。这是按内容对齐的固有歧义，读取层与算法层都无解，解读结果时须知，不算缺陷。
 
 ## C. 生命周期 / IPC（GUI 高危区）
 

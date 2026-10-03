@@ -6,7 +6,7 @@
 
 | 任务涉及 | 必读 | 基线之外的补充 |
 |---|---|---|
-| 读取层（`ExcelDiff/`：解析/行列语义/扩展名分发） | `INVARIANTS.md` B 区（读取层硬约束） + `DECISION_LOG.md` ADR-019（单一版本裁决：读取层只有一条实现） | `ARCHITECTURE.md` §6.2；R-001（读取盲区风险行）；改算法路径跑 `AI_Script/verify.ps1`（31 用例） |
+| 读取层（`ExcelDiff/`：解析/行列语义/扩展名分发） | `INVARIANTS.md` B 区（读取层硬约束） + `DECISION_LOG.md` ADR-019（单一版本裁决：读取层只有一条实现） | `ARCHITECTURE.md` §6.2；R-005（列对齐丢列风险行，含最小复现与交接件指针）；改算法路径跑 `AI_Script/verify.ps1`（31 用例） |
 | 差异算法（`NetDiff/`：EditGraph/DiffUtil） | `INVARIANTS.md` F 区（F3 前沿守卫） + ADR-010（EditGraph 不重写裁决） | R-002（病态大表风险行）；`ARCHITECTURE.md` §6.3（NetDiff 与 FastWpfGrid）|
 | 常驻生命周期 / IPC / 托盘（`App.xaml.cs`、`SingleInstance.cs` 等） | `INVARIANTS.md` C 区（IPC 高危区） | `ARCHITECTURE.md` §5、§6.4（启动链与两条调用链）；`.agents/skills/exceldiff-workflow/SKILL.md`（本工程操作规范通道） |
 | 本地化（resx/lang/语言切换） | `INVARIANTS.md` D 区 | `ARCHITECTURE.md` §9（本地化管线与语言解析顺序）；`GenerateLangJson.ps1`（resx → lang json 生成脚本）；`AI_Script/verify.ps1` 的 lang 同步段 |

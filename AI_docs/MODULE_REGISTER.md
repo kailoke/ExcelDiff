@@ -10,7 +10,7 @@
 
 ## 模块分区（一区一模块）
 
-- **ExcelDiff（读取 + 差异模型）**：入口 `ExcelDiff/ExcelWorkbook.cs`（扩展名分发工厂）。现状 = ExcelDataReader 唯一读取实现 + csv/tsv 自研解析器；已知盲区 R-001。边界：不做 UI、不做持久化。
+- **ExcelDiff（读取 + 差异模型）**：入口 `ExcelDiff/ExcelWorkbook.cs`（扩展名分发工厂）。现状 = ExcelDataReader 唯一读取实现 + csv/tsv 自研解析器；存在性语义与内容对齐极限见 `INVARIANTS.md` B3/B6；未关闭风险 R-005（列对齐丢列）。边界：不做 UI、不做持久化。
 - **NetDiff（差异算法）**：入口 `NetDiff/NetDiff/EditGraph.cs` + `DiffUtil.cs`。现状 = 类 Myers 算法 + Limit=2000 守卫（ADR-010）；31 用例钉住行为。边界：通用文本差异，不懂表格语义。
 - **ExcelDiff.GUI（主程序）**：入口 `ExcelDiff.GUI/App.xaml.cs`。现状 = 常驻 + difftool 双形态、IPC 非阻塞、YAML 设置原子写、外置 lang 本地化。高危区：`SingleInstance.cs`（命名管道）、`Views/DiffViewEvent/`（静态事件分发器）、`Settings/ApplicationSetting.cs`（原子写）。边界：diff 逻辑全部下沉到 ExcelDiff/NetDiff。
 - **FastWpfGrid（虚拟化网格）**：入口 `FastWpfGrid/FastWpfGrid/FastGridControl_Render.cs`。现状 = vendored 上游库 + `WriteableBitmapEx` 依赖，不随产品升版（ADR-014）。边界：上游库，改动要克制（只动渲染护栏类问题）。
