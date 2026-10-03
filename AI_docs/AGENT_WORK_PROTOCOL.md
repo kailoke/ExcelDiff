@@ -96,7 +96,7 @@ Git 提交溯源：Task: <任务 ID>（git log --grep 定位；台账与代码�
 - 仓库：根目录单仓。受限环境里 git 若报"非安全目录"，按提示加 `-c safe.directory=<仓库路径>`。
 - 提交粒度：一个提交一个完整意图，不混入无关格式化、他人修改、未验证半成品、不同模块决策。
 - 提交消息：`<type>(<scope>): <intent>` + `Task / Status / Decision / Risk / Verify` 五行（`Task:` 供 `git log --grep "Task: <ID>"` 溯源）。
-- **提交授权（本工程硬规则）**：**AI 不直接 commit**。改动完成后给出 Commit subject / description 供审查，实际提交由用户决定并执行；"提交"只授权到本地提交为止，**推送（`git push` 及任何写远端的操作）在用户当轮明确指令前永不执行**，二者需分别取得指令。机械防线 = `.githooks/pre-push` 推送闸门（失败关闭；一次性豁免变量 `EXCELDIFF_ALLOW_PUSH`，**AI 会话不得设置该变量、也不得用 `--no-verify` 绕过**）。
+- **提交与推送授权（本工程硬规则）**：**AI 不直接 commit**。改动完成后给出 Commit subject / description 供审查，实际提交经用户当轮授权后执行；**推送永远由业主本人执行**——Fork GUI 的 Push 按钮、或独立终端直接 `git push`，闸门不拦人类操作，AI 会话无论有无指令都不推送。机械防线 = `.githooks/pre-push` 推送闸门：检测到 AI 会话环境（编码宿主注入的 `ZCODE_*`/`ZAI_*` 环境变量）即拒绝，人类环境直接放行。**AI 会话不得清除环境标记、不得设置 `EXCELDIFF_ALLOW_PUSH`（那是给在 AI 环境的集成终端里手动操作的人类的豁免变量）、也不得用 `--no-verify` 绕过**。
 - **台账先行**：先写 `PROJECT_STATUS.md` 与 `EXECUTION_PLAN.md` §8 队列，与代码**同一笔**提交（`.githooks/pre-commit` → `pre-commit-check.ps1` 强制同笔，未暂存即拒提）；不写本次提交的 commit ID（自引用悖论），关联靠 `Task:` 行。
 - **出队即删交接件**：切片完成并出队时，其 `HANDOFFS/<yyyy-MM-dd>-<task-id>.md` 一并删除（活跃件才留）。
 - 提交前：`git status --short` / `git diff --check` / `git diff --stat` 复核；钩子自动跑禁改区拦截 + 锚点健康 + CODE_INDEX 重暂存 + 台账同笔 + 文档 lint。

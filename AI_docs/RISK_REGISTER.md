@@ -8,5 +8,5 @@
 |---|---|---|---|---|---|
 | R-001 | P1 | 读取层固有盲区：ExcelDataReader 读不到"仅样式无值"的单元格（INVARIANTS B3） | 此类表格参与对比 → 空列被吞 → 列对齐漂移 → 漏报真实差异，且无兜底读取器 | 遇该场景如实告知用户；要消掉须另开决策条目修读取层 | 开放 |
 | R-002 | P2 | `EditGraph`（NetDiff 算法核心）最坏 O(D²) 节点分配（ADR-010：不重写算法、用 Limit 守卫的裁决） | "两表几乎全不同"的病态大表 → 内存/冻结风险 | 行级 `Limit=2000` 前沿守卫兜底；31 用例钉住路径；崩溃报告出现再评估重写 | 开放 |
-| R-003 | P2 | 推送闸门（`.githooks/pre-push`，失败关闭的推送拦截钩子）只在本机克隆有效 | `core.hooksPath` 不随克隆传播；`--no-verify` 可绕过 | 新克隆执行 `git config core.hooksPath .githooks`；钩子是摩擦不是保证，靠纪律补位 | 开放 |
+| R-003 | P2 | 推送闸门（`.githooks/pre-push`，检测 AI 会话环境标记并拒绝的钩子）只在本机克隆有效 | `core.hooksPath` 不随克隆传播；`--no-verify` 可绕过；环境标记可被蓄意清除 | 新克隆执行 `git config core.hooksPath .githooks`；钩子是摩擦不是保证，靠纪律补位 | 开放 |
 | R-004 | P2 | 未签名 setup exe 触发 SmartScreen/杀软拦截 | 对外分发未签名产物 → 用户侧安装被拦 | 发布前流水线 Authenticode 签名（INVARIANTS E10）；开发期本机安装不受影响 | 开放 |

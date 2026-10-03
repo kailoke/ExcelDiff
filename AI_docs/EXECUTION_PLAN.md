@@ -30,7 +30,7 @@
 
 ## 4. 人工确认暂停点
 
-- 提交与推送：AI 不直接 commit，推送需用户当轮明确指令（`AGENT_WORK_PROTOCOL.md`「Git 提交与追踪」）。
+- 提交与推送：AI 不直接 commit（提交经用户当轮授权后执行）；推送永远由业主本人执行（Fork 的 Push 按钮或独立终端），闸门只拦 AI 会话环境（`AGENT_WORK_PROTOCOL.md`「Git 提交与追踪」）。
 - 权威数据判定：外部 xlsx 数据仓内容、用户 git 配置（`[difftool "ExcelDiff"]` 标签）不可改动；制造测试差异前征得用户同意。
 - 不可逆操作：卸载/删除目录、注册表清理类动作只走 `verify-installer.ps1` 的隔离用例，不对真实安装执行。
 

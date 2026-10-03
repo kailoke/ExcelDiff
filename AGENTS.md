@@ -70,7 +70,7 @@ ExcelDiff：Windows 桌面 GUI 差异对比工具（xls/xlsx/csv/tsv），可作
 | 省档子任务 | 仅派发单（材料已内联）；禁止读台账、禁止全仓探索 |
 
 - 动态状态唯一回写点 = `AI_docs/PROJECT_STATUS.md`（与代码**同一笔**提交，pre-commit 强制同笔；应急 `--no-verify` 须补跟随笔并注明原因）。
-- **提交授权**：**AI 不直接 commit**——改动完成后给出 Commit subject / description 供用户审查执行；**推送（`git push` 及任何写远端的操作）在用户当轮明确指令前永不执行**，机械防线 = `.githooks/pre-push`（推送闸门，失败关闭；一次性豁免变量 `EXCELDIFF_ALLOW_PUSH`，AI 会话不得设置、不得用 `--no-verify` 绕过）。
+- **提交授权**：**AI 不直接 commit**——改动完成后给出 Commit subject / description 供用户审查执行；**推送永远由业主本人执行**（Fork 的 Push 按钮、或独立终端直接 `git push`），AI 会话无论有无指令都不执行推送。机械防线 = `.githooks/pre-push`（推送闸门：检测到 AI 会话环境——宿主注入的 `ZCODE_*`/`ZAI_*` 环境变量——即拒绝；人类环境直接放行。AI 会话不得清除环境标记、不得设置 `EXCELDIFF_ALLOW_PUSH`（那是给在 AI 环境里手动操作的人类的豁免变量）、不得用 `--no-verify` 绕过）。
 - **派发闸门**（判据唯一权威 = `AI_docs/ORCHESTRATION/MODEL_ROUTING.md` §3）：写派发单前先一句话回答两问——① 主会话并行在做什么（答"等着"即不成立）；② 并行收益是否抵得过返工风险。任一应不上 ⇒ 弃单，主会话直接实施。
 
 ## 导航（按需加载，不预读）

@@ -42,8 +42,9 @@ description: 本工程操作规范通道与机器事实：构建命令与必需�
 
 ## 提交与推送闸门
 
-- **AI 不直接 commit**；改动完成后给 Commit subject / description 供用户审查执行（`AI_docs/AGENT_WORK_PROTOCOL.md`「Git 提交与追踪」）。
-- **推送闸门 = `.githooks/pre-push`**（失败关闭）：任何 `git push` 被拒，除非执行者自己带一次性豁免变量 `EXCELDIFF_ALLOW_PUSH=1`（PowerShell：`$env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master`；Git Bash：`EXCELDIFF_ALLOW_PUSH=1 git push origin master`）。**AI 会话不得设置该变量、也不得用 `--no-verify` 绕过**。
+- **AI 不直接 commit**；改动完成后给 Commit subject / description 供用户审查，提交经用户当轮授权后执行（`AI_docs/AGENT_WORK_PROTOCOL.md`「Git 提交与追踪」）。
+- **推送永远由业主本人执行**：Fork GUI 的 Push 按钮（左上角或 Ctrl+Shift+P）、或独立终端直接 `git push`——人类环境直接放行，无需任何变量。
+- **推送闸门 = `.githooks/pre-push`**：只拦 AI 会话环境（检测编码宿主注入的 `ZCODE_*`/`ZAI_*` 环境变量）。业主在 AI 工具的集成终端里手动推时，用一次性豁免 `EXCELDIFF_ALLOW_PUSH=1`（PowerShell：`$env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master`；Git Bash：`EXCELDIFF_ALLOW_PUSH=1 git push origin master`）。**AI 会话不得清除环境标记、不得设置该变量、也不得用 `--no-verify` 绕过**。
 
 ## 纪律提醒
 

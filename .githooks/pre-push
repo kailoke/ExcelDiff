@@ -1,16 +1,22 @@
 #!/bin/sh
-# 推送纪律（正典 = AI_docs/AGENT_WORK_PROTOCOL.md「Git 提交与追踪」）：业主没有当轮明确指令时，
-# 任何会话都不许推送远端。
-# 钩子是失败关闭的：确要推送的人用一次性豁免变量放行，作用域只有这一条命令。
-#   EXCELDIFF_ALLOW_PUSH=1 git push origin master
-if [ "$EXCELDIFF_ALLOW_PUSH" = "1" ]; then
-    echo "pre-push: EXCELDIFF_ALLOW_PUSH=1，放行本次推送。" >&2
-    exit 0
+# 推送闸门（正典 = AI_docs/AGENT_WORK_PROTOCOL.md「Git 提交与追踪」）。
+# 只拦 AI 会话环境：编码宿主（ZCode 等）在其拉起的 shell 里注入 ZCODE_* / ZAI_* 环境变量，
+# 人类终端与 Fork 等 GUI 没有这些变量 → 推送直接放行，不需要任何操作。
+# AI 会话不得清除这些环境标记、不得设置 EXCELDIFF_ALLOW_PUSH、不得用 --no-verify 绕过。
+# 人类若在带标记的集成终端里手动推送，用一次性豁免变量放行：
+#   PowerShell:  $env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master
+#   Git Bash  :  EXCELDIFF_ALLOW_PUSH=1 git push origin master
+if env | grep -Eq '^(ZCODE|ZAI)_'; then
+    if [ "$EXCELDIFF_ALLOW_PUSH" = "1" ]; then
+        echo "pre-push: EXCELDIFF_ALLOW_PUSH=1（人类在 AI 环境里手动放行），放行本次推送。" >&2
+        exit 0
+    fi
+    echo "pre-push: 已拒绝推送：检测到 AI 会话环境（ZCODE_*/ZAI_* 环境变量）。" >&2
+    echo "pre-push:   推送由业主本人执行（正典 = AI_docs/AGENT_WORK_PROTOCOL.md「Git 提交与追踪」），" >&2
+    echo "pre-push:   AI 会话无论有无指令都不推送。你本人手动推：用 Fork 的 Push 按钮或独立终端直接 git push；" >&2
+    echo "pre-push:   若就在本终端推，执行其一：" >&2
+    echo "pre-push:     PowerShell:  \$env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master" >&2
+    echo "pre-push:     Git Bash  :  EXCELDIFF_ALLOW_PUSH=1 git push origin master" >&2
+    exit 1
 fi
-
-echo "pre-push: 已拒绝推送。" >&2
-echo "pre-push:   推送需要业主在当轮给出明确指令（正典 = AI_docs/AGENT_WORK_PROTOCOL.md「Git 提交与追踪」），" >&2
-echo "pre-push:   本地提交不受此限制。确属本人要推，请自己执行其一：" >&2
-echo "pre-push:     PowerShell:  \$env:EXCELDIFF_ALLOW_PUSH='1'; git push origin master" >&2
-echo "pre-push:     Git Bash  :  EXCELDIFF_ALLOW_PUSH=1 git push origin master" >&2
-exit 1
+exit 0
